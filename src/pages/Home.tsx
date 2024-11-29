@@ -45,26 +45,26 @@ export default function Dashboard() {
 
       {/* Overview Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">OVERVIEW</h2>
+        <h2 className="text-xl font-semibold text-black dark:text-white mb-4">OVERVIEW</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <p className="text-3xl font-bold text-gray-800">$0</p>
-            <p className="text-sm text-gray-600">Total Balance</p>
+          <div className="bg-white rounded-lg p-6 shadow-sm dark:bg-boxdark">
+            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+            <p className="text-sm text-gray-600 dark:text-white">Total Balance</p>
           </div>
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <p className="text-3xl font-bold text-gray-800">$0</p>
-            <p className="text-sm text-gray-600">Total DEX(s)</p>
+          <div className="bg-white rounded-lg p-6 shadow-sm dark:bg-boxdark">
+            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+            <p className="text-sm text-gray-600 dark:text-white">Total DEX(s)</p>
           </div>
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <p className="text-3xl font-bold text-gray-800">$0</p>
-            <p className="text-sm text-gray-600">Total CEX(s)</p>
+          <div className="bg-white rounded-lg p-6 shadow-sm dark:bg-boxdark">
+            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+            <p className="text-sm text-gray-600 dark:text-white">Total CEX(s)</p>
           </div>
         </div>
       </div>
 
       {/* Portfolio Evolution */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-6 dark:bg-boxdark">
+        <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
           Portfolio Evolution
         </h2>
         <PortfolioChart />

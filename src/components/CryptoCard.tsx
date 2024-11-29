@@ -58,7 +58,7 @@ export default function CryptoCard({
   }, []);
 
   return (
-    <div className='bg-white rounded-lg p-4 shadow-sm relative overflow-hidden'>
+    <div className='bg-white dark:bg-boxdark rounded-lg p-4 shadow-sm relative overflow-hidden'>
       <div className='flex items-center justify-between mb-4'>
         <div className='flex items-center gap-3'>
           <img
@@ -69,8 +69,8 @@ export default function CryptoCard({
             className='rounded-full'
           />
           <div>
-            <h3 className='font-semibold text-gray-800'>{symbol}</h3>
-            <p className='text-xl font-bold text-gray-800'>{price}</p>
+            <h3 className='font-semibold text-black dark:text-white'>{symbol}</h3>
+            <p className='text-xl font-bold text-black dark:text-white'>{price}</p>
             <span
               className={`text-sm ${
                 isPositive ? "text-green-500" : "text-red-500"

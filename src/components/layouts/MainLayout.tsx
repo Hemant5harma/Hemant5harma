@@ -16,8 +16,16 @@ import Header from "../Header";
 
 const menuItems = [
   { icon: FaChartLine, label: "Dashboard", href: "/" },
-  { icon: FaChartLine, label: "Analytics", href: "/analytics" },
-  { icon: FaWallet, label: "Wallet", href: "/wallet" },
+  { icon: FaWallet, 
+    label: "My Portfolios", 
+    href: "#",
+    subItems: [
+      {icon: FaChartBar ,label: "Portfolio",  href: "/portfolio"},
+      {icon: FaChartBar ,label: "My Trades",  href: "/my-trades"},
+      {icon: FaChartBar ,label: "Manual Trade",  href: "/manual-trade"},
+
+    ]
+  },
   {
     icon: FaRobot,
     label: "Trading Bots",

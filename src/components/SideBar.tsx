@@ -77,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
       className={`bg-black dark:bg-boxdark w-64 h-screen overflow-y-auto flex flex-col`}>
       <div
         className={`sticky top-0 bg-black dark:bg-boxdark z-10 pb-4`}>
-        <div className='flex items-center justify-center gap-2 px-6 py-5.5 lg:py-6.5'>
+        <a href="/" className='flex items-center justify-center gap-2 px-6 py-5.5 lg:py-6.5'>
           <svg
             className='h-8 w-8 fill-current text-white-300'
             viewBox='0 0 24 24'>
@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
             className={`text-2xl font-bold ml-2 text-white`}>
             SiteName
           </span>
-        </div>
+        </a>
       </div>
       <nav className='px-4 pb-4 flex flex-col gap-1.5'>{menuItems.map(renderMenuItem)}</nav>
     </aside>
