@@ -11,7 +11,7 @@ const MyTrades = () => {
           <h3 className="text-xl font-semibold text-black mb-4 dark:text-white">
             Total Profit
           </h3>
-          <p className="text-primary text-title-md font-bold text-black">
+          <p className="text-primary text-title-md font-bold">
             3.333K USD
           </p>
         </div>
