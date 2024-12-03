@@ -25,22 +25,35 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         <CryptoCard
           symbol="BTC"
+          name="Bitcoin"
           price="$98,804.36"
           change="1.56"
           chartData={generateChartData(30, 98804.36, "up")}
+          high24h="$99,500.00"
+          low24h="$97,800.00"
+          volume24h="1200 BTC"
         />
         <CryptoCard
           symbol="ETH"
+          name="Ethereum"
           price="$3,416.88"
           change="2.05"
           chartData={generateChartData(30, 3416.88, "up")}
+          high24h="$3,500.00"
+          low24h="$3,300.00"
+          volume24h="5000 ETH"
         />
         <CryptoCard
           symbol="BNB"
+          name="BNB"
           price="$670.17"
           change="9.97"
-          chartData={generateChartData(30, 670.17, "up")}
+          chartData={generateChartData(30, 670.17, "down")}
+          high24h="$700.00"
+          low24h="$650.00"
+          volume24h="10000 BNB"
         />
+
       </div>
 
       {/* Overview Section */}

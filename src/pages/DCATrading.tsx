@@ -385,9 +385,13 @@ const DCATrading: React.FC = () => {
                         <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg ">
                             <CryptoCard
                                 symbol="BTC"
+                                name="Bitcoin"
                                 price="$98,804.36"
                                 change="1.56"
                                 chartData={generateChartDatafortrend(30, 98804.36, "up")}
+                                high24h="$99,500.00"
+                                low24h="$97,800.00"
+                                volume24h="1200 BTC"
                             />
                         </div>
                     </div>
