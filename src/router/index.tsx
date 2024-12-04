@@ -6,6 +6,7 @@ import MainLayout from "../components/layouts/MainLayout";
 import Portfolio from "../pages/Portfolio";
 import MyTrades from "../pages/MyTrades";
 import DCATrading from "../pages/DCATrading";
+import ManageBots from "../pages/ManageBots";
 
 
 const Markup = () => {
@@ -15,6 +16,7 @@ const Markup = () => {
     { url: "/portfolio", component: <Portfolio />},
     { url: "/my-trades", component: <MyTrades />},
     { url: "/bots/dca", component: <DCATrading />},
+    { url: "/bots/manage", component: <ManageBots/>},
   ];
 
   return (

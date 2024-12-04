@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CryptoCard from '../components/CryptoCard';
 
-
 interface DCAState {
     entryPrice: number;
     currentPrice: number;
@@ -19,6 +18,8 @@ interface DCAState {
         thresholdValue: number;
     };
     availableBalance: number;
+    tradingType: 'spot' | 'futures';
+    futuresStrategy: 'long' | 'short';
 }
 
 interface Notification {
@@ -46,7 +47,9 @@ const initialState: DCAState = {
         botName: 'DCA Bot 1',
         thresholdValue: -10
     },
-    availableBalance: 990059.94
+    availableBalance: 990059.94,
+    tradingType: 'spot',
+    futuresStrategy: 'long'
 };
 
 const cryptocurrencies = [
@@ -113,7 +116,7 @@ const DCATrading: React.FC = () => {
         const newNotification = {
             id: Date.now().toString(),
             type: 'buy' as const,
-            message: `New DCA created for ${selectedCrypto.symbol}: ${dca.dcaSettings.totalInvestment} USDT`,
+            message: `New DCA created for ${selectedCrypto.symbol}: ${dca.dcaSettings.totalInvestment} USDT (${dca.tradingType} ${dca.tradingType === 'futures' ? `- ${dca.futuresStrategy}` : ''})`,
             timestamp: Date.now()
         };
 
@@ -149,6 +152,20 @@ const DCATrading: React.FC = () => {
         }));
     };
 
+    const handleTradingTypeChange = (type: 'spot' | 'futures') => {
+        setDca(prevState => ({
+            ...prevState,
+            tradingType: type,
+        }));
+    };
+
+    const handleFuturesStrategyChange = (strategy: 'long' | 'short') => {
+        setDca(prevState => ({
+            ...prevState,
+            futuresStrategy: strategy,
+        }));
+    };
+
     const thresholdOptions = [-5, -10, -15, -20, -25, -30];
 
     return (
@@ -175,6 +192,38 @@ const DCATrading: React.FC = () => {
                                 </svg>
                             </div>
                         </div>
+                        <div className="relative">
+                            <select
+                                value={dca.tradingType}
+                                onChange={(e) => handleTradingTypeChange(e.target.value as 'spot' | 'futures')}
+                                className="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+                            >
+                                <option value="spot">Spot</option>
+                                <option value="futures">Futures</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                </svg>
+                            </div>
+                        </div>
+                        {dca.tradingType === 'futures' && (
+                            <div className="relative">
+                                <select
+                                    value={dca.futuresStrategy}
+                                    onChange={(e) => handleFuturesStrategyChange(e.target.value as 'long' | 'short')}
+                                    className="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+                                >
+                                    <option value="long">Long</option>
+                                    <option value="short">Short</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        )}
                         <button
                             onClick={handleCreateDCA}
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-200"
@@ -340,6 +389,18 @@ const DCATrading: React.FC = () => {
                                                 onChange={(e) => handleUpdateDCASettings('botName', e.target.value)}
                                                 className="mt-1 block w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
                                             />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Trading Type</label>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                {dca.tradingType === 'spot' ? 'Spot Trading' : 'Futures Trading'}
+                                            </p>
+                                            {dca.tradingType === 'futures' && (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                    Strategy: {dca.futuresStrategy === 'long' ? 'Long' : 'Short'}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -39,6 +39,7 @@ const menuItems = [
         href: "/bots/arbitrage",
       },
       { icon: FaBolt, label: "Frontrunner Trading", href: "/bots/frontrunner" },
+      {icon: FaChartBar ,label: "Manage Bots",  href: "/bots/manage"},
     ],
   },
   { icon: FaCog, label: "Settings", href: "/settings" },
