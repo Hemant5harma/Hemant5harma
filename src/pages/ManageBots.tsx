@@ -1,5 +1,3 @@
-"use client"
-
 import BotCard from "../components/BotCard"
 
 function generateChartData(days: number, trend: "up" | "down" | "volatile") {
@@ -31,7 +29,7 @@ const bots = [
   {
     name: "Swing Sniper - BTC",
     icon: "/placeholder.svg?height=48&width=48",
-    type: "Pure Gold Crypto Signals",
+    type: "Spot",
     pairs: ["BTC", "USDT"],
     apy: 88.61,
     threeMonthPerf: 4.97,
@@ -43,7 +41,7 @@ const bots = [
   {
     name: "SuperTrader - BNB",
     icon: "/placeholder.svg?height=48&width=48",
-    type: "XpR",
+    type: "Futures",
     pairs: ["BNB", "USDT"],
     apy: 77.79,
     threeMonthPerf: 15.59,
@@ -55,7 +53,7 @@ const bots = [
   {
     name: "Sonny - ETH",
     icon: "/placeholder.svg?height=48&width=48",
-    type: "I-Robot",
+    type: "Spot",
     pairs: ["ETH", "USDT"],
     apy: 72.88,
     threeMonthPerf: -21.57,
@@ -67,7 +65,7 @@ const bots = [
   {
     name: "Spooner - BTC",
     icon: "/placeholder.svg?height=48&width=48",
-    type: "I-Robot",
+    type: "Spot",
     pairs: ["BTC", "USDT"],
     apy: 70.36,
     threeMonthPerf: -3.25,
@@ -79,7 +77,7 @@ const bots = [
   {
     name: "SuperTrader - BNB",
     icon: "/placeholder.svg?height=48&width=48",
-    type: "XpR",
+    type: "Futures",
     pairs: ["BNB", "USDT"],
     apy: 57.89,
     threeMonthPerf: 15.59,
@@ -90,9 +88,9 @@ const bots = [
   },
 ]
 
-export default function BotsPage() {
+export default function ManageBots() {
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
+    <div className="min-h-screen dark:bg-boxdark-2 p-6">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-black dark:text-white">Trading Bots</h1>
         <p className="text-gray-600 dark:text-gray-400">Manage and monitor your trading bots</p>

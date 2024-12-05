@@ -1,5 +1,3 @@
-"use client"
-
 import { motion } from "framer-motion"
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
@@ -96,6 +94,7 @@ export default function BotCard({
                     >
                         {/* for grid system */}
                         {/* <CartesianGrid strokeDasharray="3 3" stroke="#B0B0B0" /> */}
+                        
                         <XAxis dataKey="date" hide />
                         <YAxis hide domain={['dataMin', 'dataMax']} />
                         <Tooltip content={<CustomTooltip />} />
@@ -146,7 +145,7 @@ export default function BotCard({
             </div>
 
             <motion.button
-                className="w-full px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                className="w-full px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-400 hover:bg-indigo-600 transition-colors"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
             >
