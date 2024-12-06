@@ -26,6 +26,7 @@ const menuItems = [
 
     ]
   },
+  { icon: FaChartBar, label: "Manual Trading", href: "/trade" },
   {
     icon: FaRobot,
     label: "Trading Bots",

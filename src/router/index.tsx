@@ -7,6 +7,7 @@ import Portfolio from "../pages/Portfolio";
 import MyTrades from "../pages/MyTrades";
 import DCATrading from "../pages/DCATrading";
 import ManageBots from "../pages/ManageBots";
+import ManualTrade from "../pages/ManualTrade";
 
 
 const Markup = () => {
@@ -17,6 +18,7 @@ const Markup = () => {
     { url: "/my-trades", component: <MyTrades />},
     { url: "/bots/dca", component: <DCATrading />},
     { url: "/bots/manage", component: <ManageBots/>},
+    { url: "/trade", component: <ManualTrade/>},
   ];
 
   return (
