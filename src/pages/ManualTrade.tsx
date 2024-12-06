@@ -55,7 +55,11 @@ const ManualTrade: React.FC = () => {
         setSellPrice(orderBookData[0].price)
     }, [])
 
+
+// a seprate fuction for handling buy and sell order.
     const TradingForm = ({ side }: { side: 'buy' | 'sell' }) => {
+
+        // select the order is for buy or sell
         const isBuy = side === 'buy'
         const amount = isBuy ? buyAmount : sellAmount
         const setAmount = isBuy ? setBuyAmount : setSellAmount

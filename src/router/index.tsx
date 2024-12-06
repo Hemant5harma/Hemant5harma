@@ -18,7 +18,7 @@ const Markup = () => {
     { url: "/my-trades", component: <MyTrades />},
     { url: "/bots/dca", component: <DCATrading />},
     { url: "/bots/manage", component: <ManageBots/>},
-    { url: "/trade", component: <ManualTrade/>},
+    { url: "/manual-trade", component: <ManualTrade/>},
   ];
 
   return (
