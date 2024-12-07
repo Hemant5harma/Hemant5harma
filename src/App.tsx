@@ -12,6 +12,9 @@ import {
 } from "react-router-dom";
 import "./App.css";
 
+
+
+
 const SignUp = lazy(() => import("./pages/authentication/Registration"));
 const Login = lazy(() => import("./pages/authentication/Login"));
 
@@ -23,6 +26,7 @@ function App() {
     </Routes>
   );
   return (
+    
     <Suspense
       fallback={
         <div id="preloader">
@@ -33,6 +37,7 @@ function App() {
       {routeblog}
       <Index />
     </Suspense>
+    
   );
 }
 
