@@ -1,5 +1,7 @@
 import React, { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { AppShell, Burger } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import Sidebar from "../SideBar";
 import {
   FaChartLine,
@@ -23,7 +25,6 @@ const menuItems = [
       {icon: FaChartBar ,label: "Portfolio",  href: "/portfolio"},
       {icon: FaChartBar ,label: "My Trades",  href: "/my-trades"},
       {icon: FaChartBar ,label: "Manual Trade",  href: "/manual-trade"},
-
     ]
   },
   {
@@ -47,37 +48,48 @@ const menuItems = [
 ];
 
 interface MainLayoutProps {
-  children?: ReactNode; // Optional prop if you want to pass children directly
+  children?: ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const [opened, { toggle }] = useDisclosure();
+
   return (
-    <div className="dark:bg-boxdark-2 dark:text-bodydark">
-      {/* <!-- ===== Page Wrapper Start ===== --> */}
-      <div className="flex h-screen overflow-hidden">
-        {/* <!-- ===== Sidebar Start ===== --> */}
-        <Sidebar menuItems={menuItems} />
-        {/* <!-- ===== Sidebar End ===== --> */}
-
-        {/* <!-- ===== Content Area Start ===== --> */}
-        <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-          {/* <!-- ===== Header Start ===== --> */}
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: 300,
+        breakpoint: 'sm',
+        collapsed: { mobile: !opened },
+      }}
+      padding="md"
+      className="dark:bg-boxdark-2 dark:text-bodydark"
+    >
+      <AppShell.Header>
+        <div className="flex items-center h-full px-4">
+          <Burger
+            opened={opened}
+            onClick={toggle}
+            hiddenFrom="sm"
+            size="sm"
+            className="mr-4"
+          />
           <Header />
-          {/* <!-- ===== Header End ===== --> */}
-
-          {/* <!-- ===== Main Content Start ===== --> */}
-          <main>
-            <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-              {children || <Outlet />}
-            </div>
-          </main>
-          {/* <!-- ===== Main Content End ===== --> */}
         </div>
-        {/* <!-- ===== Content Area End ===== --> */}
-      </div>
-      {/* <!-- ===== Page Wrapper End ===== --> */}
-    </div>
+      </AppShell.Header>
+
+      <AppShell.Navbar p="md">
+        <Sidebar menuItems={menuItems} />
+      </AppShell.Navbar>
+
+      <AppShell.Main>
+        <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+          {children || <Outlet />}
+        </div>
+      </AppShell.Main>
+    </AppShell>
   );
 };
 
 export default MainLayout;
+

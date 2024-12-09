@@ -1,31 +1,44 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import CryptoSelector from '../components/CryptoSelector'
 import TradingForm from '../components/TradingForm'
-
+import { cryptoData, CryptoData } from '../data/mockdata'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const ManualTrade: React.FC = () => {
+    const [selectedCrypto, setSelectedCrypto] = useState<CryptoData>(cryptoData[0])
     const [activeTab, setActiveTab] = useState('balances')
 
-    const orderBookData = [
-        { amount: 0.01, total: 1287.49, price: 97908.00 },
-        { amount: 0.0001, total: 5.87, price: 97907.73 },
-        { amount: 0.03, total: 2642.53, price: 97907.72 },
-        { amount: 0.001, total: 99.87, price: 97907.61 },
-        { amount: 0.0001, total: 10.77, price: 97905.64 },
-        { amount: 0.0001, total: 11.75, price: 97904.01 },
-    ]
-    
+    const handleCryptoChange = (value: string) => {
+        const newCrypto = cryptoData.find(crypto => crypto.id === value)
+        if (newCrypto) setSelectedCrypto(newCrypto)
+    }
+
     return (
         <div className="min-h-screen w-full bg-white dark:bg-boxdark text-black dark:text-white p-4 rounded-xl">
+            {/* Crypto selector */}
+           <div className='mb-4'>
+           <CryptoSelector
+                selectedCrypto={selectedCrypto.id}
+                onSelectCrypto={handleCryptoChange} 
+            />
+           </div>
+
             {/* Top section with chart and orderbook */}
             <div className="grid lg:grid-cols-[1fr,250px] gap-4 mb-4">
-                {/* Space for Chart */}
+                {/* Chart */}
                 <div className="w-full h-[500px] bg-white dark:bg-boxdark border dark:border-gray-700 rounded-lg">
                     <div className="p-6">
                         <h2 className="text-lg font-semibold mb-4">Chart</h2>
-                        <div className="w-full h-[400px] bg-gray-100 dark:bg-gray-800 rounded-lg">
-                            {/* Chart will go here */}
-                        </div>
+                        <ResponsiveContainer width="100%" height={400}>
+                            <LineChart data={selectedCrypto.chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="time" />
+                                <YAxis />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="close" stroke="#8884d8" />
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
@@ -42,7 +55,7 @@ const ManualTrade: React.FC = () => {
                         </div>
                         {/* Sell orders */}
                         <div className="space-y-1 p-4">
-                            {orderBookData.map((order, index) => (
+                            {selectedCrypto.orderBook.sells.map((order, index) => (
                                 <div key={`sell-${index}`} className="grid grid-cols-3 text-xs text-red-500">
                                     <div>{order.amount.toFixed(4)}</div>
                                     <div>{order.total.toFixed(2)}</div>
@@ -52,15 +65,15 @@ const ManualTrade: React.FC = () => {
                         </div>
                         {/* Current price */}
                         <div className="p-4 border-y dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                            <div className="text-center font-semibold">{orderBookData[0].price.toFixed(2)}</div>
+                            <div className="text-center font-semibold">{selectedCrypto.currentPrice.toFixed(2)}</div>
                         </div>
                         {/* Buy orders */}
                         <div className="space-y-1 p-4">
-                            {orderBookData.slice().reverse().map((order, index) => (
-                                <div key={`buy-${index}`} className="grid grid-cols-3 text-sm text-green-500">
+                            {selectedCrypto.orderBook.buys.map((order, index) => (
+                                <div key={`buy-${index}`} className="grid grid-cols-3 text-xs text-green-500">
                                     <div>{order.amount.toFixed(4)}</div>
                                     <div>{order.total.toFixed(2)}</div>
-                                    <div>{(order.price - index * 0.5).toFixed(2)}</div>
+                                    <div>{order.price.toFixed(2)}</div>
                                 </div>
                             ))}
                         </div>
@@ -69,8 +82,8 @@ const ManualTrade: React.FC = () => {
             </div>
 
             {/* Trading Forms */}
-            <div className="">
-                <TradingForm />
+            <div className="mb-4">
+                <TradingForm selectedCrypto={selectedCrypto} onCryptoChange={setSelectedCrypto} />
             </div>
 
             {/* Bottom section with details */}

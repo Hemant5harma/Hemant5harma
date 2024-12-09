@@ -308,7 +308,7 @@ const DCATrading: React.FC = () => {
                 </div>
             </div>
             <div className="max-w-7xl mx-auto mt-4 rounded-xl shadow-md p-4">
-               <ManageBots/>
+                <ManageBots />
             </div>
         </div>
     );

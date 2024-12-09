@@ -49,7 +49,7 @@ export default function BotCard({
 
     return (
         <motion.div
-            className="rounded-2xl bg-white dark:bg-boxdark p-6"
+            className="rounded-2xl bg-white dark:bg-boxdark shadow-xl p-6"
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
@@ -112,7 +112,7 @@ export default function BotCard({
 
             <div className="grid grid-cols-4 gap-4 mb-6">
                 <div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Pair</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400  mb-2">Pair</div>
                     <div className="flex -space-x-1">
                         {pairs.map((pair) => (
                             <div
