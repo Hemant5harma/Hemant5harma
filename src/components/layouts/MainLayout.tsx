@@ -58,7 +58,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 300,
+        width: 250,
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
@@ -66,7 +66,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       className="dark:bg-boxdark-2 dark:text-bodydark"
     >
       <AppShell.Header>
-        <div className="flex items-center h-full px-4">
+        <div className="flex items-center  h-full ">
           <Burger
             opened={opened}
             onClick={toggle}
@@ -78,7 +78,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </div>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar >
         <Sidebar menuItems={menuItems} />
       </AppShell.Navbar>
 

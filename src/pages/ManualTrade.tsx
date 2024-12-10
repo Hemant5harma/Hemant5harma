@@ -30,15 +30,7 @@ const ManualTrade: React.FC = () => {
                 <div className="w-full h-[500px] bg-white dark:bg-boxdark border dark:border-gray-700 rounded-lg">
                     <div className="p-6">
                         <h2 className="text-lg font-semibold mb-4">Chart</h2>
-                        <ResponsiveContainer width="100%" height={400}>
-                            <LineChart data={selectedCrypto.chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="time" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="close" stroke="#8884d8" />
-                            </LineChart>
-                        </ResponsiveContainer>
+                       
                     </div>
                 </div>
 
