@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { bots, Bot } from '../data/botmockdata';
 import {
   Container,
   Paper,
-  Stack,
-  Avatar,
-  Title,
   Text,
+  Title,
   Group,
+  Flex,
   Badge,
+  Avatar,
   Divider,
   Select,
-  Box,
-  Slider,
-  Button,
+  Slider
 } from '@mantine/core';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  FaChartLine,
+  FaWallet,
+  FaCoins,
+  FaChartPie
+} from 'react-icons/fa';
+import { bots } from '../data/botmockdata';
 
 export default function BotDetails() {
-  const { id } = useParams<{ id: string }>();
-  const [selectedTimeframe, setSelectedTimeframe] = useState('Daily');
+  const { id } = useParams();
   const [selectedWallet, setSelectedWallet] = useState('');
   const [selectedStableCoin, setSelectedStableCoin] = useState('');
   const [positionSize, setPositionSize] = useState(40);
@@ -28,195 +30,306 @@ export default function BotDetails() {
   const bot = bots.find(b => b.id === id);
 
   if (!bot) {
-    return <div className="text-center text-2xl mt-8">Bot not found</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-500">
+        Bot not found
+      </div>
+    );
   }
 
   return (
-    <Container fluid className="rounded-2xl bg-white dark:bg-boxdark shadow-xl p-6">
-      <Stack>
-        {/* Bot Details Card */}
-        <Paper className="rounded-2xl bg-white dark:bg-boxdark p-6" radius="lg">
-          <Stack align="center" gap="md">
-            <Avatar size={64} radius="xl" src={bot.icon} />
-            <div className="text-center">
-              <Title order={2} className="text-black dark:text-white">{bot.name}</Title>
-              <Text size="sm" className="text-gray-600 dark:text-gray-400">{bot.type}</Text>
-            </div>
+    <Container className="max-w-7xl mx-auto py-8 space-y-6">
+      {/* // upper section basic details of bot */}
+      <Paper
+        shadow="md"
+        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+      >
+        <Flex
+          direction={{ base: 'column', sm: 'row' }}
+          align="center"
+          gap="md"
+          className="w-full"
+        >
+          <Avatar
+            src={bot.icon}
+            alt={bot.name}
+            size={96}
+            radius="xl"
+            className="shrink-0"
+          />
 
-            <Group gap="xs" wrap="wrap" justify="center">
+          <div className="text-center space-y-2 sm:text-left w-full">
+            <Title
+              order={2}
+              className="text-2xl font-bold text-gray-900 dark:text-white"
+            >
+              {bot.name}
+            </Title>
+            <Text className="text-gray-600 dark:text-gray-300 mb-2">
+              {bot.type}
+            </Text>
+
+            <Group justify="center sm:justify-start" wrap="wrap" gap="xs">
               {[...bot.tradingTypes, ...bot.pairs].map((tag) => (
-                <Badge key={tag} className="bg-indigo-600 text-white">
+                <Badge
+                  key={tag}
+                  variant="light"
+                  color="indigo"
+                >
                   {tag}
                 </Badge>
               ))}
             </Group>
-
-            <Text size="sm" className="text-gray-600 dark:text-gray-400 text-center">
+            <Text className="text-center text-gray-600 dark:text-gray-300">
               {bot.description}
             </Text>
+          </div>
+        </Flex>
 
-            <Group grow className="w-full">
-              <div>
-                <Text className="text-gray-600 dark:text-gray-400">Trade/month:</Text>
-                <Text className="text-black dark:text-white font-bold">{bot.tradesPerMonth}</Text>
-              </div>
-              <div>
-                <Text className="text-gray-600 dark:text-gray-400">MDD:</Text>
-                <Text className="text-black dark:text-white font-bold">{bot.mdd}%</Text>
-              </div>
-            </Group>
 
-            <Group grow className="w-full">
-              <div>
-                <Text className="text-gray-600 dark:text-gray-400">Perf fees:</Text>
-                <Text className="text-black dark:text-white font-bold">{bot.fees}%</Text>
-              </div>
-              <div>
-                <Text className="text-gray-600 dark:text-gray-400">My fees:</Text>
-                <Text className="text-black dark:text-white font-bold">{bot.myFees}%</Text>
-              </div>
-            </Group>
 
-            <Divider className="my-4 w-full" />
+        <Divider my="md" />
 
-            <Text className="text-black dark:text-white font-medium">Performance</Text>
-            <Group justify="space-around" className="w-full">
-              <div className="text-center">
-                <Text className="text-cyan-400 font-bold text-xl">
-                  {bot.threeMonthPerf >= 0 ? '+' : ''}{bot.threeMonthPerf}%
-                </Text>
-                <Text size="xs" className="text-gray-600 dark:text-gray-400">Perf 3M</Text>
-              </div>
-              <div className="text-center">
-                <Text className="text-cyan-400 font-bold text-xl">
-                  {bot.sixMonthPerf >= 0 ? '+' : ''}{bot.sixMonthPerf}%
-                </Text>
-                <Text size="xs" className="text-gray-600 dark:text-gray-400">Perf 6M</Text>
-              </div>
-              <div className="text-center">
-                <Text className="text-cyan-400 font-bold text-xl">
-                  {bot.totalPerf >= 0 ? '+' : ''}{bot.totalPerf}%
-                </Text>
-                <Text size="xs" className="text-gray-600 dark:text-gray-400">Perf Total</Text>
-              </div>
-            </Group>
-          </Stack>
-        </Paper>
+        {/* Performance Metrics */}
+        <Flex
+          justify="space-between"
+          direction={{ base: 'column', sm: 'row' }}
+          gap="md"
+        >
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaChartLine className="mx-auto mb-2 text-indigo-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">3M Perf</Text>
+            <Text
+              className={`
+                font-bold 
+                ${bot.threeMonthPerf >= 0 ? 'text-green-600' : 'text-red-600'}
+              `}
+            >
+              {bot.threeMonthPerf >= 0 ? '+' : ''}{bot.threeMonthPerf}%
+            </Text>
+          </div>
 
-        {/* Wallet and Position Size Card */}
-        <Paper className="bg-white dark:bg-boxdark p-6 rounded-lg">
-          <Group grow align="flex-start">
-            {/* Wallet Section */}
-            <Stack gap="xs">
-              <Group gap="xs">
-                <Box className="bg-indigo-600 w-6 h-6 rounded-full flex items-center justify-center text-white">
-                  1
-                </Box>
-                <Text className="font-medium text-black dark:text-white">
-                  Select your Wallet
-                </Text>
-              </Group>
-              <Select
-                label="Account"
-                placeholder="Select your wallet"
-                data={['Wallet 1', 'Wallet 2']}
-                value={selectedWallet}
-                // onChange={setSelectedWallet}
-                className="mb-4"
-              />
-              <Select
-                label="Stable Coin"
-                placeholder="Select option"
-                data={['USDT', 'USDC', 'DAI']}
-                value={selectedStableCoin}
-                // onChange={setSelectedStableCoin}
-              />
-            </Stack>
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaWallet className="mx-auto mb-2 text-blue-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">6M Perf</Text>
+            <Text
+              className={`
+                font-bold 
+                ${bot.sixMonthPerf >= 0 ? 'text-green-600' : 'text-red-600'}
+              `}
+            >
+              {bot.sixMonthPerf >= 0 ? '+' : ''}{bot.sixMonthPerf}%
+            </Text>
+          </div>
 
-            {/* Position Size Section */}
-            <Stack gap="xs">
-              <Group gap="xs">
-                <Box className="bg-blue-600 w-6 h-6 rounded-full flex items-center justify-center text-white">
-                  2
-                </Box>
-                <Text className="font-medium text-black dark:text-white">
-                  Position Size
-                </Text>
-              </Group>
-              <Text size="sm" className="text-gray-600 dark:text-gray-400">
-                Order Size
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaCoins className="mx-auto mb-2 text-green-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">Total Perf</Text>
+            <Text
+              className={`
+                font-bold 
+                ${bot.totalPerf >= 0 ? 'text-green-600' : 'text-red-600'}
+              `}
+            >
+              {bot.totalPerf >= 0 ? '+' : ''}{bot.totalPerf}%
+            </Text>
+          </div>
+        </Flex>
+
+        <Divider my="md" />
+
+
+
+        <Flex
+          justify="space-between"
+          direction={{ base: 'column', sm: 'row' }}
+          gap="md"
+        >
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaChartLine className="mx-auto mb-2 text-indigo-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">Trades/Month</Text>
+            <Text className="font-bold text-gray-900 dark:text-white">
+              {bot.tradesPerMonth}
+            </Text>
+          </div>
+
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaChartPie className="mx-auto mb-2 text-red-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">MDD</Text>
+            <Text className="font-bold text-gray-900 dark:text-white">
+              {bot.mdd}%
+            </Text>
+          </div>
+
+          <div className="flex-1 text-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <FaCoins className="mx-auto mb-2 text-green-600" size={24} />
+            <Text className="text-gray-600 dark:text-gray-300">Perf Fees</Text>
+            <Text className="font-bold text-gray-900 dark:text-white">
+              {bot.fees}%
+            </Text>
+          </div>
+        </Flex>
+      </Paper>
+
+      {/* Additional Bot Details */}
+
+
+
+      {/* Trading Configuration Section */}
+      <Paper
+        shadow="md"
+        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+      >
+        <Title
+          order={3}
+          className="text-xl font-bold text-gray-900 dark:text-white mb-6"
+        >
+          Trading Configuration
+        </Title>
+
+        <Flex
+          direction={{ base: 'column', sm: 'row' }}
+          gap="md"
+          className="w-full"
+        >
+          {/* Wallet Selection */}
+          <div className="flex-1 space-y-4">
+            <Group gap="xs">
+              <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                1
+              </div>
+              <Text className="font-medium text-gray-900 dark:text-white">
+                Select Wallet
               </Text>
-              <Select 
-                placeholder="% available" 
-                data={['25%', '50%', '75%', '100%']}
-                value={`${positionSize}%`}
-                onChange={(value) => setPositionSize(parseInt(value || '0'))}
-              />
-              <Group grow>
-                <Text size="sm" className="text-gray-600 dark:text-gray-400">0%</Text>
-                <Text size="sm" className="text-gray-600 dark:text-gray-400 text-right">100%</Text>
-              </Group>
+            </Group>
+
+            <Select
+              label="Account"
+              placeholder="Select wallet"
+              data={['Wallet 1', 'Wallet 2', 'Wallet 3']}
+              value={selectedWallet}
+              onChange={(value) => setSelectedWallet(value || '')}
+              className="w-full"
+            />
+
+            <Select
+              label="Stable Coin"
+              placeholder="Select stable coin"
+              data={['USDT', 'USDC', 'DAI']}
+              value={selectedStableCoin}
+              onChange={(value) => setSelectedStableCoin(value || '')}
+              className="w-full"
+            />
+          </div>
+
+          {/* Position Size */}
+          <div className="flex-1 space-y-4">
+            <Group gap="xs">
+              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                2
+              </div>
+              <Text className="font-medium text-gray-900 dark:text-white">
+                Position Size
+              </Text>
+            </Group>
+
+            <Select
+              label="Order Size"
+              placeholder="% available"
+              data={['25%', '50%', '75%', '100%']}
+              value={`${positionSize}%`}
+              onChange={(value) => setPositionSize(parseInt(value || '40'))}
+              className="w-full"
+            />
+
+            <div className="space-y-2">
               <Slider
-                color="cyan"
                 value={positionSize}
                 onChange={setPositionSize}
+                min={0}
+                max={100}
+                step={1}
                 marks={[
-                  { value: 0, label: '0' },
-                  { value: 100, label: '100' },
+                  { value: 0, label: '0%' },
+                  { value: 50, label: '50%' },
+                  { value: 100, label: '100%' }
                 ]}
+                color="indigo"
               />
-            </Stack>
-          </Group>
-        </Paper>
+            </div>
+          </div>
+        </Flex>
+      </Paper>
 
-        {/* Bot History Card */}
-        <Paper className="bg-white dark:bg-boxdark p-6 rounded-lg">
-          <Group justify="space-between" className="mb-4">
-            <Text className="font-medium text-black dark:text-white">
-              Bot History
-            </Text>
-            <Select 
-              value={selectedTimeframe}
-              onChange={(value) => setSelectedTimeframe(value || 'Daily')}
-              data={['Daily', 'Weekly', 'Monthly']}
-              className="bg-white dark:bg-boxdark"
-            />
-          </Group>
-          <Box className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={bot.chartData}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Box>
-        </Paper>
-
-        {/* Action Buttons */}
-        {/* <Group className="mt-6" gap="md">
-          <Button variant="outline" color="cyan">
-            Add Token
-          </Button>
-          <Button
-            variant="gradient"
-            gradient={{ from: '#5c6ac4', to: '#4cd9ac', deg: 90 }}
+      {/* Bot History Section  */}
+      <Paper
+        shadow="md"
+        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+      >
+        {/* ... Bot History content ... */}
+        <Paper
+          shadow="md"
+          className="bg-white dark:bg-gray-800 p-6 rounded-lg"
+        >
+          <Title
+            order={3}
+            className="text-xl font-bold text-gray-900 dark:text-white mb-4"
           >
-            Add an API key
-          </Button>
-        </Group> */}
-      </Stack>
+            Bot History
+          </Title>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 dark:bg-gray-700">
+                  <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+              {bot.history && bot.history.map((entry, index) => (
+                <tr 
+                  key={index} 
+                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  <td className="p-3 text-sm text-gray-900 dark:text-white">
+                    {entry.date}
+                  </td>
+                  <td className="p-3 text-sm text-gray-900 dark:text-white">
+                    {entry.performance}
+                  </td>
+                  <td className="p-3 text-sm text-gray-900 dark:text-white">
+                    {entry.trades}
+                  </td>
+                  {/* <td className="p-3">
+                    <span 
+                      className={`
+                        px-2 py-1 rounded-full text-xs font-medium
+                        ${entry.status === 'Completed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'}
+                      `}
+                    >
+                      {entry.status}
+                    </span>
+                  </td> */}
+                </tr>
+              ))}
+            </tbody>
+            </table>
+          </div>
+        </Paper>
+      </Paper>
     </Container>
   );
 }
-

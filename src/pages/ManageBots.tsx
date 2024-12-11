@@ -13,7 +13,7 @@ export default function ManageBots() {
   );
 
   return (
-    <div className="min-h-screen dark:bg-boxdark-2 p-6">
+    <div className="min-h-screen dark:bg-boxdark-2">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-black dark:text-white">Trading Bots</h1>
         <p className="text-gray-600 dark:text-gray-400">Manage and monitor your trading bots</p>

@@ -23,9 +23,11 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ selectedCrypto, onSelec
       maxDropdownHeight={280}
       placeholder="Search for a cryptocurrency"
       className="w-full max-w-xs"
+      classNames={{
+        input: 'text-black dark:text-white bg-white dark:bg-boxdark',
+      }}
     />
   );
 };
 
 export default CryptoSelector;
-

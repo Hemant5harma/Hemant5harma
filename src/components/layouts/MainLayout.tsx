@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { AppShell, Burger } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -18,13 +18,14 @@ import Header from "../Header";
 
 const menuItems = [
   { icon: FaChartLine, label: "Dashboard", href: "/" },
-  { icon: FaWallet, 
-    label: "My Portfolios", 
+  {
+    icon: FaWallet,
+    label: "My Portfolios",
     href: "#",
     subItems: [
-      {icon: FaChartBar ,label: "Portfolio",  href: "/portfolio"},
-      {icon: FaChartBar ,label: "My Trades",  href: "/my-trades"},
-      {icon: FaChartBar ,label: "Manual Trade",  href: "/manual-trade"},
+      { icon: FaChartBar, label: "Portfolio", href: "/portfolio" },
+      { icon: FaChartBar, label: "My Trades", href: "/my-trades" },
+      { icon: FaChartBar, label: "Manual Trade", href: "/manual-trade" },
     ]
   },
   {
@@ -34,13 +35,9 @@ const menuItems = [
     subItems: [
       { icon: FaChartBar, label: "Trend Trading", href: "/bots/trend" },
       { icon: FaBalanceScale, label: "DCA Trading", href: "/bots/dca" },
-      {
-        icon: FaExchangeAlt,
-        label: "Arbitrage Trading",
-        href: "/bots/arbitrage",
-      },
+      { icon: FaExchangeAlt, label: "Arbitrage Trading", href: "/bots/arbitrage" },
       { icon: FaBolt, label: "Frontrunner Trading", href: "/bots/frontrunner" },
-      {icon: FaChartBar ,label: "Manage Bots",  href: "/bots/manage"},
+      { icon: FaChartBar, label: "Manage Bots", href: "/bots/manage" },
     ],
   },
   { icon: FaCog, label: "Settings", href: "/settings" },
@@ -63,23 +60,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         collapsed: { mobile: !opened },
       }}
       padding="md"
-      className="dark:bg-boxdark-2 dark:text-bodydark"
+      className="dark:bg-boxdark-2 dark:text-bodydark "
     >
       <AppShell.Header>
-        <div className="flex items-center  h-full ">
+        <div className="flex items-center justify-between w-full bg-white drop-shadow-1 dark:bg-boxdark dark:drop-shadow-none">
           <Burger
             opened={opened}
             onClick={toggle}
             hiddenFrom="sm"
             size="sm"
-            className="mr-4"
+            className="mr-25 text-dark dark:text-white" // Set light and dark colors
           />
           <Header />
         </div>
       </AppShell.Header>
 
-      <AppShell.Navbar >
-        <Sidebar menuItems={menuItems} />
+
+      <AppShell.Navbar>
+        <div className="dark:bg-boxdark-2 ">
+          <Sidebar menuItems={menuItems} />
+        </div>
       </AppShell.Navbar>
 
       <AppShell.Main>
@@ -92,4 +92,3 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 };
 
 export default MainLayout;
-

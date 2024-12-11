@@ -295,7 +295,7 @@ const DCATrading: React.FC = () => {
                         <div className="bg-gray-50 dark:bg-gray-600 rounded-lg p-4 max-h-96 overflow-y-auto space-y-2">
                             {dca.notifications.map((notification) => (
                                 <div key={notification.id} className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-md">
-                                    <p className={`text-sm ${notification.type === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-green-600 dark:text-red-400'}`}>
+                                    <p className={`text-sm ${notification.type === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                         {notification.message}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
