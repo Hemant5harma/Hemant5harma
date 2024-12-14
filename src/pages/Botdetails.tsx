@@ -42,7 +42,7 @@ export default function BotDetails() {
       {/* // upper section basic details of bot */}
       <Paper
         shadow="md"
-        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+        className="bg-white dark:bg-boxdark p-6  shadow-xl -xl"
       >
         <Flex
           direction={{ base: 'column', sm: 'row' }}
@@ -178,7 +178,7 @@ export default function BotDetails() {
       {/* Trading Configuration Section */}
       <Paper
         shadow="md"
-        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+        className="bg-white dark:bg-boxdark p-6 shadow-xl rounded-xl"
       >
         <Title
           order={3}
@@ -264,12 +264,12 @@ export default function BotDetails() {
       {/* Bot History Section  */}
       <Paper
         shadow="md"
-        className="bg-white dark:bg-gray-800 p-6 rounded-xl"
+        className="bg-white dark:bg-boxdark p-6 rounded-xl"
       >
         {/* ... Bot History content ... */}
         <Paper
           shadow="md"
-          className="bg-white dark:bg-gray-800 p-6 rounded-lg"
+          className="bg-white dark:bg-boxdark p-6 rounded-lg"
         >
           <Title
             order={3}

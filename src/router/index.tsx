@@ -10,6 +10,8 @@ import ManageBots from "../pages/ManageBots";
 import ManualTrade from "../pages/ManualTrade";
 import Test from "../components/Test";
 import BotDetails from "../pages/Botdetails";
+import TrendTrading from "../pages/TrendTrading";
+
 
 
 const Markup = () => {
@@ -23,6 +25,7 @@ const Markup = () => {
     { url: "/manual-trade", component: <ManualTrade/>},
     { url: "/test", component: <Test/>},
     { url: "/bot-details/:id", component: <BotDetails/>},
+    { url: "/bots/trend", component: <TrendTrading/>},
   ];
 
   return (
