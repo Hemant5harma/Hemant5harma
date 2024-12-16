@@ -11,6 +11,7 @@ import ManualTrade from "../pages/ManualTrade";
 import Test from "../components/Test";
 import BotDetails from "../pages/Botdetails";
 import TrendTrading from "../pages/TrendTrading";
+import ArbitrageDashboard from "../pages/ArbitrageBots";
 
 
 
@@ -26,6 +27,7 @@ const Markup = () => {
     { url: "/test", component: <Test/>},
     { url: "/bot-details/:id", component: <BotDetails/>},
     { url: "/bots/trend", component: <TrendTrading/>},
+    { url: "/bots/arbitrage", component: <ArbitrageDashboard/>},
   ];
 
   return (
