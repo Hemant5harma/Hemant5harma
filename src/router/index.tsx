@@ -12,10 +12,12 @@ import Test from "../components/Test";
 import BotDetails from "../pages/Botdetails";
 import TrendTrading from "../pages/TrendTrading";
 import ArbitrageDashboard from "../pages/ArbitrageBots";
+import FrontBots from "../pages/FrontBots";
 
 
 
 const Markup = () => {
+  
   const allroutes = [
     { url: "/", component: <Home /> },
     { url: "/profile", component: <Profile /> },
@@ -28,6 +30,7 @@ const Markup = () => {
     { url: "/bot-details/:id", component: <BotDetails/>},
     { url: "/bots/trend", component: <TrendTrading/>},
     { url: "/bots/arbitrage", component: <ArbitrageDashboard/>},
+    { url: "/bots/frontrunner", component: <FrontBots/>},
   ];
 
   return (
