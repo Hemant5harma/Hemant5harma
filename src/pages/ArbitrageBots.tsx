@@ -61,7 +61,7 @@ const ArbitrageDashboard: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4">Exchanges</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
               {exchanges.map((exchange, index) => (
-                <div key={index} className="bg-gray-100 dark:bg-gray-600 rounded-lg p-4">
+                <div key={index} className="bg-white dark:bg-boxdark shadow-lg rounded-lg p-4">
                   <div className="flex items-center">
                     <exchange.icon className="text-2xl mr-2" />
                     <div>
@@ -92,6 +92,10 @@ const ArbitrageDashboard: React.FC = () => {
                     }));
                   }
                 }}
+                classNames={{
+                  input: "bg-white dark:bg-boxdark text-black dark:text-white",
+                  label: "text-black dark:text-white",
+                }}
                 className="w-full"
               />
               <TextInput
@@ -107,13 +111,18 @@ const ArbitrageDashboard: React.FC = () => {
                     }));
                   }
                 }}
+                classNames={{
+                  input: "bg-white dark:bg-boxdark text-black dark:text-white",
+                  label: "text-black dark:text-white",
+                }}
+                
                 className="w-full"
               />
             </div>
           </div>
 
           <div className="col-span-1 lg:col-span-2">
-            <div className="bg-gray-100 dark:bg-gray-600 rounded-lg p-4">
+            <div className="bg-white dark:bg-boxdark shadow-lg rounded-lg p-4">
               <div className="flex items-center mb-4">
                 <FaExclamationTriangle className="text-yellow-500 mr-2" />
                 <h2 className="text-xl font-semibold">Risk Assessment</h2>
@@ -133,7 +142,7 @@ const ArbitrageDashboard: React.FC = () => {
           </div>
 
           <div className="col-span-1 lg:col-span-2">
-            <div className="bg-gray-100 dark:bg-gray-600 rounded-lg p-4">
+            <div className="bg-white dark:bg-boxdark shadow-xl rounded-lg p-4">
               <div className="flex items-center mb-4">
                 <FaChartBar className="text-green-500 mr-2" />
                 <h2 className="text-xl font-semibold">Arbitrage Opportunities</h2>
