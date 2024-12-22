@@ -13,6 +13,7 @@ import BotDetails from "../pages/Botdetails";
 import TrendTrading from "../pages/TrendTrading";
 import ArbitrageDashboard from "../pages/ArbitrageBots";
 import FrontBots from "../pages/FrontBots";
+import SettingsPage from "../pages/setting";
 
 
 
@@ -31,6 +32,7 @@ const Markup = () => {
     { url: "/bots/trend", component: <TrendTrading/>},
     { url: "/bots/arbitrage", component: <ArbitrageDashboard/>},
     { url: "/bots/frontrunner", component: <FrontBots/>},
+    { url: "/settings", component: <SettingsPage/>},
   ];
 
   return (

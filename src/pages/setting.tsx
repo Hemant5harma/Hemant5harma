@@ -10,7 +10,7 @@ const SettingsPage: React.FC = () => {
   const [tradingPreferences, setTradingPreferences] = useState({
     riskLevel: 50,
     autoTrade: false,
-    preferredMarkets: ['crypto'],
+    preferredMarkets: ['crypto'] as string[],
   });
 
   const [notifications, setNotifications] = useState({
@@ -47,7 +47,7 @@ const SettingsPage: React.FC = () => {
           <Select
             label="Language"
             value={generalSettings.language}
-            onChange={(value) => setGeneralSettings({ ...generalSettings, language: value as string })}
+            onChange={(value) => setGeneralSettings({ ...generalSettings, language: value || 'en' })}
             data={[
               { value: 'en', label: 'English' },
               { value: 'es', label: 'Spanish' },
@@ -80,14 +80,15 @@ const SettingsPage: React.FC = () => {
           </div>
           <Select
             label="Preferred Markets"
-            value={tradingPreferences.preferredMarkets}
-            onChange={(value) => setTradingPreferences({ ...tradingPreferences, preferredMarkets: value as string[] })}
+            // value={tradingPreferences.preferredMarkets}
+            // onChange={(value: string[]) => setTradingPreferences({ ...tradingPreferences, preferredMarkets: value })}
             data={[
               { value: 'crypto', label: 'Cryptocurrency' },
               { value: 'forex', label: 'Forex' },
               { value: 'stocks', label: 'Stocks' },
             ]}
             multiple
+            clearable
           />
         </div>
       </section>
