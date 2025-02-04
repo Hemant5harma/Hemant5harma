@@ -20,6 +20,7 @@ import {
   FaChartPie
 } from 'react-icons/fa';
 import { bots } from '../data/botmockdata';
+import { addListener } from 'process';
 
 export default function BotDetails() {
   const { id } = useParams();
@@ -36,6 +37,7 @@ export default function BotDetails() {
       </div>
     );
   }
+  
 
   return (
     <Container className="max-w-7xl mx-auto py-8 space-y-6">
