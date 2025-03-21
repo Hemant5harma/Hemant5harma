@@ -4,7 +4,7 @@ import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.database.models.models import Base
-from .endpoints import users
+from .endpoints import users, auth
 
 app = FastAPI()
 
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 # app.include_router(bots.router, prefix="/bots", tags=["bots"])
 # app.include_router(trades.router, prefix="/trades", tags=["trades"])
 
