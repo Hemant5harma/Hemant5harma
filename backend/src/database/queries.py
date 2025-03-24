@@ -51,6 +51,13 @@ async def delete_bot(db: AsyncSession, bot_id: int) -> None:
     await db.execute(delete(Bot).where(Bot.id == bot_id))
     await db.commit()
 
+async def get_bot_by_id(db: AsyncSession, bot_id: int) -> Bot:
+    """
+    Retrieves a bot by its ID.
+    """
+    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    return result.scalars().first()
+
 # Coin Operations
 async def create_coin(db: AsyncSession, bot_id: int, token_address: str, amount: float, threshold: float) -> Coin:
     """

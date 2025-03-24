@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from datetime import datetime
 from .coin import CoinCreate, CoinResponse
 
 class BotCreate(BaseModel):
@@ -13,7 +14,7 @@ class BotResponse(BaseModel):
     name: str
     frequency: str
     status: str
-    next_execution_time: str | None
+    next_execution_time: datetime | None
     coins: List[CoinResponse] = []
 
     class Config:

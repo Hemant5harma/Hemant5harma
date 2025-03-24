@@ -13,4 +13,4 @@ async def get_trades(bot_id: int, db: AsyncSession = Depends(get_db_session)):
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
     trades = await get_trades_by_bot(db, bot_id)
-    return [TradeResponse.from_orm(trade) for trade in trades]
+    return [TradeResponse.model_validate(trade) for trade in trades]
