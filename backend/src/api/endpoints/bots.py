@@ -5,6 +5,7 @@ from src.py_models.bot import BotCreate, BotResponse
 from src.py_models.coin import CoinResponse
 from src.api.dependencies import get_db_session
 import time
+from src.services.manager import BotManager
 
 router = APIRouter()
 
@@ -34,9 +35,14 @@ async def create_new_bot(user_id: int, bot: BotCreate, db: AsyncSession = Depend
 
 @router.put("/{bot_id}/start", response_model=BotResponse)
 async def start_bot(bot_id: int, db: AsyncSession = Depends(get_db_session)):
-    bot = await update_bot_status(db, bot_id, "running")
+    
+    bot = await get_bot_by_id(db, bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
+
+    bot = await update_bot_status(db, bot_id, "running")
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not update")
 
     coins = [CoinResponse.model_validate(coin) for coin in await get_coins_by_bot(db, bot_id)]
     bot = {
@@ -48,7 +54,14 @@ async def start_bot(bot_id: int, db: AsyncSession = Depends(get_db_session)):
         "next_execution_time": bot.next_execution_time,
         "coins": coins
     }
+      
     bot_response = BotResponse.model_validate(bot)
+    success = await BotManager.start_bot(BotManager,bot_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to start bot")
+        
+
+    #return await get_bot(db, bot_id)
     return bot_response
 
 @router.put("/{bot_id}/pause", response_model=BotResponse)
