@@ -6,3 +6,4 @@ python-dotenv
 apscheduler
 web3
 psycopg2-binary
+PyJWT

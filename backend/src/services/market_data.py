@@ -84,3 +84,5 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error fetching data for {token_id}: {str(e)}")
             return None
+        
+        

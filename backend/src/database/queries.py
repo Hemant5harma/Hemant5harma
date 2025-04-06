@@ -58,6 +58,13 @@ async def get_bot_by_id(db: AsyncSession, bot_id: int) -> Bot:
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     return result.scalars().first()
 
+async def get_all_bot(db: AsyncSession) -> Bot:
+    """
+    Retrieves a bot by its ID.
+    """
+    result = await db.execute(select(Bot))
+    return result.scalars().all()
+
 # Coin Operations
 async def create_coin(db: AsyncSession, bot_id: int, token_address: str, amount: float, threshold: float) -> Coin:
     """
