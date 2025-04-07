@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime
 
 # Base class for async SQLAlchemy models
 class Base(AsyncAttrs, DeclarativeBase):
@@ -42,6 +43,20 @@ class Trade(Base):
     coin_id = Column(Integer, ForeignKey("coins.id", ondelete="CASCADE"), nullable=False)
     trade_time = Column(DateTime, nullable=False)
     token_address = Column(String, nullable=False)
+    transaction_hash = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     bot = relationship("Bot", back_populates="trades")
     coin = relationship("Coin", back_populates="trades")
+
+class BotPerformance(Base):
+    __tablename__ = "bot_performances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False)
+    total_trades = Column(Integer, default=0)
+    total_volume = Column(Float, default=0.0)
+    apy = Column(Float, default=0.0)
+    three_month_perf = Column(Float, default=0.0)
+    six_month_perf = Column(Float, default=0.0)
+    total_perf = Column(Float, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow)

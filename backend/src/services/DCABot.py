@@ -65,13 +65,11 @@ class JobManager:
                 await db_gen.aclose()
                 return False
 
-            # Update the bot status
+            # Pause the job in the scheduler
+            self.scheduler_manager.pause_job(bot_id)
             bot.status = 'paused'
 
             await db.commit()
-
-            # Pause the job in the scheduler
-            self.scheduler_manager.pause_job(bot_id)
             logger.info(f"Bot {bot_id} paused successfully")
             await db_gen.aclose()
             return True

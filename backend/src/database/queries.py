@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from .models.models import User, Bot, Coin, Trade
-from datetime import datetime
+from sqlalchemy import select, delete 
+from .models.models import User, Bot, Coin, Trade, BotPerformance
+from datetime import datetime , timezone
+from typing import Optional
 
 # User Operations
 async def create_user(db: AsyncSession, address: str) -> User:
@@ -64,6 +65,38 @@ async def get_all_bot(db: AsyncSession) -> Bot:
     """
     result = await db.execute(select(Bot))
     return result.scalars().all()
+
+async def create_or_update_bot_performance(
+    db: AsyncSession,
+    bot_id: int,
+    performance_data: dict
+) -> BotPerformance:
+    # Check if there's already a record for this bot
+    result = await db.execute(
+        select(BotPerformance).where(BotPerformance.bot_id == bot_id)
+    )
+    record = result.scalars().first()
+    if not record:
+        record = BotPerformance(bot_id=bot_id)
+        db.add(record)
+    
+    record.total_trades = performance_data["total_trades"]
+    record.total_volume = performance_data["total_volume"]
+    record.apy = performance_data["apy"]
+    record.three_month_perf = performance_data["three_month_perf"]
+    record.six_month_perf = performance_data["six_month_perf"]
+    record.total_perf = performance_data["total_perf"]
+    record.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+async def get_bot_performance(db: AsyncSession, bot_id: int) -> Optional[BotPerformance]:
+    result = await db.execute(
+        select(BotPerformance).where(BotPerformance.bot_id == bot_id)
+    )
+    return result.scalars().first()
 
 # Coin Operations
 async def create_coin(db: AsyncSession, bot_id: int, token_address: str, amount: float, threshold: float) -> Coin:

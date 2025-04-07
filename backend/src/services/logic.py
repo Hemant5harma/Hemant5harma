@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
-from src.services.market_data import MarketDataService  # Placeholder for your actual market data fetching function
+from src.services.market_data import (
+    MarketDataService,
+)  # Placeholder for your actual market data fetching function
+from src.database.queries import create_or_update_bot_performance
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,79 +17,146 @@ logger = logging.getLogger(__name__)
 # web3 = Web3(Web3.HTTPProvider('your_ethereum_node_url'))
 # ...
 
+
 async def get_current_price(token_address):
-    # This is a placeholder for your actual implementation
-    # When you uncomment the Web3 code, you can implement the actual price fetching
-     # Placeholder for your actual market data fetching function
+    # This function doesn't need a DB session, so leave it as is
     md_service = MarketDataService()
     price = await md_service.get_token_data(token_id=token_address)
     if price is None:
         logger.error(f"Failed to fetch price for token: {token_address}")
         return None
-    return price  # Placeholder value
+    return price
+
 
 async def execute_trade(token_address, amount):
-    # This is a placeholder for your actual implementation
-    # When you uncomment the Web3 code, you can implement the actual trading
+    # This function doesn't need a DB session either
     logger.info(f"Executing trade for {amount} of token: {token_address}")
-    return "0xtransaction_hash_placeholder"  # Placeholder value
+    return "0xtransaction_hash_placeholder"
+
+
+async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
+    """
+    Returns {
+      "total_trades": int,
+      "total_volume": float,
+      "apy": float,
+      "three_month_perf": float,
+      "six_month_perf": float,
+      "total_perf": float
+    }
+    """
+    # Get trades
+    result = await db.execute(select(Trade).where(Trade.bot_id == bot_id))
+    trades = result.scalars().all()
+    if not trades:
+        return {
+            "total_trades": 0,
+            "total_volume": 0.0,
+            "apy": 0.0,
+            "three_month_perf": 0.0,
+            "six_month_perf": 0.0,
+            "total_perf": 0.0,
+        }
+
+    # Total trades and volume
+    total_trades = len(trades)
+    total_invested = sum(t.amount for t in trades)
+
+    # For real calculations, you'd get current prices & do TWR or MWR
+    # Here is just a placeholder
+    now = datetime.now()
+    first_trade_date = min(t.trade_time for t in trades)
+    days_active = (now - first_trade_date).days or 1
+    total_return = 5.0  # Placeholder for total return %, just an example
+    three_month_perf = 3.0
+    six_month_perf = 4.0
+    
+    # Calculate an APY-like figure (simple approximation)
+    apy = total_return * (365 / days_active)
+    
+    return {
+        "total_trades": total_trades,
+        "total_volume": total_invested,
+        "apy": round(apy, 2),
+        "three_month_perf": round(three_month_perf, 2),
+        "six_month_perf": round(six_month_perf, 2),
+        "total_perf": round(total_return, 2),
+    }
+
 
 async def check_bot(bot_id: int):
     """Check bot conditions and execute trades using SQLAlchemy ORM"""
-    try:
-        async with async_session() as session:
+    async with async_session() as db:
+        try:
             # Get the bot
-            result = await session.execute(
-                select(Bot).where(Bot.id == bot_id, Bot.status == 'running')
+            result = await db.execute(
+                select(Bot).where(Bot.id == bot_id, Bot.status == "running")
             )
             bot = result.scalars().first()
-            
+
             if not bot:
                 logger.info(f"Bot {bot_id} not found or not running")
                 return
-            
+
             # Get all coins for this bot
-            result = await session.execute(
-                select(Coin).where(Coin.bot_id == bot_id)
-            )
+            result = await db.execute(select(Coin).where(Coin.bot_id == bot_id))
             coins = result.scalars().all()
-            
+
             for coin in coins:
                 try:
                     # Get current price and check against threshold
-                    current_threshold = await get_current_price(coin.token_address)
-                    current_threshold = current_threshold['price_drop_pct'] if current_threshold else print ("Failed to fetch price")
-                    # Compare price to threshold logic
-                    # Note: You might need to adjust this logic based on your threshold definition
-                    if current_threshold < -coin.threshold:
+                    price_data = await get_current_price(coin.token_address)
+                    if not price_data:
+                        logger.warning(f"No price data for {coin.token_address}, skipping")
+                        continue
+
+                    price_drop = price_data.get("price_drop_pct")
+                    if price_drop is None:
+                        logger.warning(
+                            f"No price drop data for {coin.token_address}, skipping"
+                        )
+                        continue
+
+                    logger.info(
+                        f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
+                    )
+
+                    if -price_drop <= -coin.threshold:
                         # Execute the trade
                         tx_hash = await execute_trade(coin.token_address, coin.amount)
-                        
+
                         # Record the trade
                         trade = Trade(
                             bot_id=bot_id,
                             coin_id=coin.id,
-                            trade_time=datetime.utcnow(),
+                            trade_time=datetime.now(timezone.utc).replace(tzinfo=None),
                             token_address=coin.token_address,
                             amount=coin.amount,
-                            transaction_hash=tx_hash
+                            transaction_hash=tx_hash,  # Fixed spelling here
                         )
-                        session.add(trade)
+                        db.add(trade)
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")
-                
+
                 except Exception as e:
                     logger.error(f"Error processing coin {coin.id}: {str(e)}")
             
-            # Update next execution time
-            next_time = datetime.now(timezone.utc) + parse_frequency(bot.frequency)
+            # Update next execution time for bot
+            next_time = (datetime.now() + parse_frequency(bot.frequency)).replace(tzinfo=None)
             bot.next_execution_time = next_time
             
-            # Commit all changes
-            await session.commit()
-            logger.info(f"Bot {bot_id} check completed, next run at {next_time}")
-            
-    except Exception as e:
-        logger.error(f"Error checking bot {bot_id}: {str(e)}")
+            # Commit once after processing all coins
+            await db.commit()
+
+            # Calculate performance after trades
+            performance = await calculate_bot_performance(bot_id, db)
+            logger.info(f"Bot {bot_id} performance: {performance}")
+
+            await create_or_update_bot_performance(db, bot_id, performance)
+
+        except Exception as e:
+            logger.error(f"Error checking bot {bot_id}: {str(e)}")
+            await db.rollback()  # Rollback on error
+
 
 def parse_frequency(frequency_str):
     """Parse frequency string into timedelta"""
@@ -94,21 +164,21 @@ def parse_frequency(frequency_str):
         # If frequency is stored as an integer (minutes)
         if isinstance(frequency_str, int):
             return timedelta(minutes=frequency_str)
-        
+
         # If frequency is stored as a string like "5 minute"
         num, unit = frequency_str.split()
         num = int(num)
-        if unit.lower() in ('second', 'seconds'):
+        if unit.lower() in ("second", "seconds"):
             return timedelta(seconds=num)
-        elif unit.lower() in ('minute', 'minutes'):
+        elif unit.lower() in ("minute", "minutes"):
             return timedelta(minutes=num)
-        elif unit.lower() in ('hour', 'hours'):
+        elif unit.lower() in ("hour", "hours"):
             return timedelta(hours=num)
-        elif unit.lower() in ('day', 'days'):
+        elif unit.lower() in ("day", "days"):
             return timedelta(days=num)
-        elif unit.lower() in ('week', 'weeks'):
+        elif unit.lower() in ("week", "weeks"):
             return timedelta(weeks=num)
-        elif unit.lower() in ('month', 'months'):
+        elif unit.lower() in ("month", "months"):
             return timedelta(days=num * 30)
         else:
             raise ValueError(f"Invalid frequency unit: {unit}")

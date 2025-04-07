@@ -80,9 +80,14 @@ class BotManager:
 
     def pause_job(self, bot_id):
         job_id = f"bot_{bot_id}"
-        if self.scheduler.get_job(job_id):
+        print(f"Pausing job for bot {job_id}")
+        job = self.scheduler.get_job(job_id)
+        if job:
             self.scheduler.pause_job(job_id)
+            print(f"Paused job for bot {bot_id}")
             logger.info(f"Paused job for bot {bot_id}")
+        else:
+            logger.info(f"No job found for bot {bot_id}")
 
     def resume_job(self, bot_id):
         job_id = f"bot_{bot_id}"
