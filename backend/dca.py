@@ -18,4 +18,6 @@ def get_current_price(token_address):
     return price  # Placeholder value
 
 p = asyncio.run(get_current_price("solana")) 
+# Example usage, replace with actual token address
 print(p['price_drop_pct']) # Example usage, replace with actual token address
+print(p['current_price']) # Example usage, replace with actual token address

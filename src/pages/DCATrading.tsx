@@ -1,26 +1,25 @@
+"use client"
+
 import type React from "react"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Plus, X } from "lucide-react"
 import ManageBots from "./ManageBots"
+import { apiClient } from '../utils/apiClient';
 
 interface DCAState {
   notifications: Notification[]
   dcaSettings: {
-    assets: { symbol: string; name: string; allocation: number }[]
+    assets: { symbol: string; name: string; amount: number; threshold: number }[]
     frequency: string
-    duration: string
     botName: string
-    thresholdValue: number
   }
   availableBalance: number
-  tradingType: "spot" | "futures"
-  futuresStrategy: "long" | "short"
 }
 
 interface Notification {
   id: string
-  type: "buy" | "sell"
+  type: "buy" | "sell" | "success"
   message: string
   timestamp: number
 }
@@ -32,14 +31,10 @@ const initialState: DCAState = {
   ],
   dcaSettings: {
     assets: [],
-    frequency: "1 Day",
-    duration: "6 Months",
+    frequency: "1 minute",
     botName: "DCA Bot 1",
-    thresholdValue: 10,
   },
   availableBalance: 990059.94,
-  tradingType: "spot",
-  futuresStrategy: "long",
 }
 
 const cryptocurrencies = [
@@ -71,7 +66,7 @@ const DCATrading: React.FC = () => {
   const [totalValue, setTotalValue] = useState(0)
 
   useEffect(() => {
-    const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.allocation, 0)
+    const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0)
     setTotalValue(newTotalValue)
   }, [dca.dcaSettings.assets])
 
@@ -86,31 +81,41 @@ const DCATrading: React.FC = () => {
   }
 
   const handleSubmitDCA = () => {
-    const newNotification = {
-      id: Date.now().toString(),
-      type: "buy" as const,
-      message: `New DCA created for ${dca.dcaSettings.assets.map((c) => c.symbol).join(", ")}: ${totalValue} USDT (${dca.tradingType} ${dca.tradingType === "futures" ? `- ${dca.futuresStrategy}` : ""})`,
-      timestamp: Date.now(),
+    // Validate that there are assets before creating a bot
+    if (dca.dcaSettings.assets.length === 0) {
+      alert("Please add at least one cryptocurrency to create a DCA bot");
+      return;
     }
 
-    setDca((prevState) => ({
-      ...prevState,
-      notifications: [newNotification, ...prevState.notifications],
-    }))
-  }
+    const apiData = {
+      name: dca.dcaSettings.botName,
+      frequency: dca.dcaSettings.frequency,
+      coins: dca.dcaSettings.assets.map((asset) => ({
+        token_address: asset.symbol.toLowerCase(),
+        amount: asset.amount,
+        threshold: asset.threshold,
+      })),
+    };
 
-  const handleTradingTypeChange = (type: "spot" | "futures") => {
-    setDca((prevState) => ({
-      ...prevState,
-      tradingType: type,
-    }))
-  }
+    // Make API call using the API client
+    apiClient.post('/bots/create', apiData)
+      .then((data) => {
+        console.log("Bot created:", data);
+        const newNotification: Notification = {
+          id: String(Date.now()),
+          type: "buy", // must match union type "buy" | "sell" | "success"
+          message: `New DCA bot "${dca.dcaSettings.botName}" created for ${dca.dcaSettings.assets.map((c) => c.symbol).join(", ")}`,
+          timestamp: Date.now(),
+        };
 
-  const handleFuturesStrategyChange = (strategy: "long" | "short") => {
-    setDca((prevState) => ({
-      ...prevState,
-      futuresStrategy: strategy,
-    }))
+        setDca((prevState) => ({
+          ...prevState,
+          notifications: [newNotification, ...prevState.notifications],
+        }));
+      })
+      .catch((error) => {
+        console.error("Error creating bot:", error);
+      });
   }
 
   const handleAddCrypto = (crypto: { symbol: string; name: string }) => {
@@ -118,7 +123,7 @@ const DCATrading: React.FC = () => {
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
-        assets: [...prevState.dcaSettings.assets, { ...crypto, allocation: 0 }],
+        assets: [...prevState.dcaSettings.assets, { ...crypto, amount: 0, threshold: 1 }],
       },
     }))
     setShowCryptoModal(false)
@@ -134,13 +139,23 @@ const DCATrading: React.FC = () => {
     }))
   }
 
-  const handleAllocationChange = (symbol: string, allocation: number) => {
+  const handleAmountChange = (symbol: string, amount: number) => {
+    setDca((prevState) => ({
+      ...prevState,
+      dcaSettings: {
+        ...prevState.dcaSettings,
+        assets: prevState.dcaSettings.assets.map((asset) => (asset.symbol === symbol ? { ...asset, amount } : asset)),
+      },
+    }))
+  }
+
+  const handleThresholdChange = (symbol: string, threshold: number) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
         assets: prevState.dcaSettings.assets.map((asset) =>
-          asset.symbol === symbol ? { ...asset, allocation } : asset,
+          asset.symbol === symbol ? { ...asset, threshold } : asset,
         ),
       },
     }))
@@ -149,7 +164,7 @@ const DCATrading: React.FC = () => {
   return (
     <div className="min-h-screen p-4 bg-gray-100 dark:bg-gray-900 text-black dark:text-white">
       <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-        <h1 className="text-3xl  font-bold mb-6 text-center">DCA Trading Bot Creator</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">DCA Trading Bot Creator</h1>
 
         <div className="space-y-6">
           <motion.div
@@ -165,13 +180,26 @@ const DCATrading: React.FC = () => {
                   <span>
                     {asset.name} ({asset.symbol})
                   </span>
-                  <input
-                    type="number"
-                    value={asset.allocation}
-                    onChange={(e) => handleAllocationChange(asset.symbol, Number(e.target.value))}
-                    className="w-20 bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Allocation %"
-                  />
+                  <div className="flex items-center space-x-2">
+                    <div className="flex flex-col">
+                      <label className="text-xs">Amount</label>
+                      <input
+                        type="number"
+                        value={asset.amount}
+                        onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
+                        className="w-20 bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs">Threshold</label>
+                      <input
+                        type="number"
+                        value={asset.threshold}
+                        onChange={(e) => handleThresholdChange(asset.symbol, Number(e.target.value))}
+                        className="w-20 bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
                   <button onClick={() => handleRemoveCrypto(asset.symbol)} className="text-red-500 hover:text-red-700">
                     <X size={16} />
                   </button>
@@ -190,43 +218,9 @@ const DCATrading: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <label className="block text-sm font-medium mb-2">Trading Type</label>
-            <select
-              value={dca.tradingType}
-              onChange={(e) => handleTradingTypeChange(e.target.value as "spot" | "futures")}
-              className="w-full bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="spot">Spot</option>
-              <option value="futures">Futures</option>
-            </select>
-          </motion.div>
-
-          {dca.tradingType === "futures" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <label className="block text-sm font-medium mb-2">Futures Strategy</label>
-              <select
-                value={dca.futuresStrategy}
-                onChange={(e) => handleFuturesStrategyChange(e.target.value as "long" | "short")}
-                className="w-full bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="long">Long</option>
-                <option value="short">Short</option>
-              </select>
-            </motion.div>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <label className="block text-sm font-medium mb-2">Total Value (USDT)</label>
+            <label className="block text-sm font-medium mb-2">Total Amount</label>
             <div className="text-2xl font-bold">{totalValue.toFixed(2)} USDT</div>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Available Balance: {dca.availableBalance.toFixed(2)} USDT
@@ -237,18 +231,8 @@ const DCATrading: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
-            <div>
-              <label className="block text-sm font-medium mb-2">Threshold Value</label>
-              <input
-                type="number"
-                value={dca.dcaSettings.thresholdValue}
-                onChange={(e) => handleUpdateDCASettings("thresholdValue", Number.parseInt(e.target.value))}
-                className="w-full bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium mb-2">Frequency</label>
               <select
@@ -256,24 +240,12 @@ const DCATrading: React.FC = () => {
                 onChange={(e) => handleUpdateDCASettings("frequency", e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option>1 Day</option>
-                <option>1 Week</option>
-                <option>2 Weeks</option>
-                <option>1 Month</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Duration</label>
-              <select
-                value={dca.dcaSettings.duration}
-                onChange={(e) => handleUpdateDCASettings("duration", e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option>1 Month</option>
-                <option>3 Months</option>
-                <option>6 Months</option>
-                <option>1 Year</option>
+                <option>1 minute</option>
+                <option>5 minutes</option>
+                <option>15 minutes</option>
+                <option>1 hour</option>
+                <option>4 hours</option>
+                <option>1 day</option>
               </select>
             </div>
 
@@ -336,4 +308,3 @@ const DCATrading: React.FC = () => {
 }
 
 export default DCATrading
-

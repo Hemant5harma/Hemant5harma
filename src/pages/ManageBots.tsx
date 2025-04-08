@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import BotCard from '../components/BotCard';
-import { bots } from '../data/botmockdata';
+import { fetchBots } from '../utils/apiClient';
 
 export default function ManageBots() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [bots, setBots] = useState<any[]>([]);
 
-  const filteredBots = bots.filter(bot => 
+  useEffect(() => {
+    fetchBots()
+      .then(data => setBots(data))
+      .catch(error => console.error(error));
+  }, []);
+
+  const filteredBots = bots.filter(bot =>
     bot.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bot.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bot.pairs.some(pair => pair.toLowerCase().includes(searchTerm.toLowerCase()))
+    bot.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    bot.coins.some((coin: any) =>
+      coin.token_address.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   return (
@@ -27,11 +36,9 @@ export default function ManageBots() {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredBots.map((bot) => (
-          <Link key={bot.id} to={`/bot-details/${bot.id}`}>
-            <BotCard {...bot} />
-          </Link>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredBots.map(bot => (
+          <BotCard key={bot.id} bot={bot} />
         ))}
       </div>
     </div>

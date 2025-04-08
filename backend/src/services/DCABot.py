@@ -1,14 +1,19 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Callable, Any
 from sqlalchemy.future import select
-from src.database.models.models import Bot
+from src.database.models.models import Bot, BotPerformance
 from src.services.manager import BotManager
 import logging
 from src.database.connection import async_session
-from src.database.connection import get_db  # <- note we're importing the function, not calling it
+from src.database.connection import (
+    get_db,
+)  # <- note we're importing the function, not calling it
 from src.services.logic import parse_frequency
+from sqlalchemy import delete
+
 
 logger = logging.getLogger(__name__)
+
 
 class JobManager:
     def __init__(self, scheduler_manager: BotManager):
@@ -34,11 +39,14 @@ class JobManager:
 
             # Update the bot status
             bot_frequency = bot.frequency
-            next_run_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=30)
-            
-        
+            next_run_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+                seconds=30
+            )
+
             # Schedule the job
-            self.scheduler_manager.schedule_job(bot_id, next_run_time, check_bot, [bot_id],bot_frequency)
+            self.scheduler_manager.schedule_job(
+                bot_id, next_run_time, check_bot, [bot_id], bot_frequency
+            )
             bot.status = "running"
             await db.commit()
             logger.info(f"Bot {bot_id} started successfully")
@@ -67,7 +75,7 @@ class JobManager:
 
             # Pause the job in the scheduler
             self.scheduler_manager.pause_job(bot_id)
-            bot.status = 'paused'
+            bot.status = "paused"
 
             await db.commit()
             logger.info(f"Bot {bot_id} paused successfully")
@@ -95,7 +103,7 @@ class JobManager:
                 return False
 
             # Update the bot status
-            bot.status = 'running'
+            bot.status = "running"
 
             await db.commit()
 
@@ -126,6 +134,11 @@ class JobManager:
                 return False
 
             # Delete the bot
+            await db.execute(
+                delete(BotPerformance).where(BotPerformance.bot_id == bot_id)
+            )
+            await db.commit()
+
             await db.delete(bot)
             await db.commit()
 

@@ -1,7 +1,7 @@
 import aiohttp
 import time
 import logging
-from datetime import datetime
+from datetime import datetime , timezone
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class MarketDataService:
                 "price_change_24h": price_change_24h,
                 "sma_7day": round(sma, 2),
                 "price_drop_pct": round(price_drop, 2),
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.now(timezone.utc).isoformat()
             }
 
             # Cache the result

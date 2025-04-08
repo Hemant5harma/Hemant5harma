@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import ClickOutside from "./ClickOutside"
 import UserOne from "../assets/image/user-10.png"
 import { ethers, BrowserProvider } from "ethers"
+import { setAuthToken, removeAuthToken } from "../utils/auth"
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -55,7 +56,7 @@ const DropdownUser = () => {
   const disconnectWallet = () => {
     setAccount(null)
     setIsAuthenticated(false)
-    localStorage.removeItem("auth_token")
+    removeAuthToken() // Remove the token
     setDropdownOpen(false)
   }
 
@@ -73,7 +74,7 @@ const DropdownUser = () => {
       const signature = await signer.signMessage(message)
 
       // Send the signature to the backend
-      const response = await fetch("http://127.0.0.1:8000/auth/login", {
+      const response = await fetch("http://127.0.0.1:8000/users/metamask_login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,8 +88,7 @@ const DropdownUser = () => {
 
       if (response.ok) {
         const data = await response.json()
-        // Store the token or session information
-        localStorage.setItem("auth_token", data.token)
+        setAuthToken(data.access_token) // Store the token
         setIsAuthenticated(true)
         alert("Successfully authenticated!")
       } else {

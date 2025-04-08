@@ -1,17 +1,29 @@
 import { motion } from "framer-motion";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { Link } from "react-router-dom";
 
-interface BotCardProps {
+interface Bot {
+  id: number;
+  user_id: number;
   name: string;
-  icon: string;
-  type: string;
-  pairs: string[];
-  apy: number;
-  threeMonthPerf: number;
-  sixMonthPerf: number;
-  fees: number;
-  chartData: { date: string; value: number }[];
-  tradingTypes: string[];
+  frequency: string;
+  status: string;
+  next_execution_time: string | null;
+  coins: {
+    id: number;
+    bot_id: number;
+    token_address: string;
+    amount: number;
+    threshold: number;
+  }[];
+  performance: {
+    total_trades: number;
+    total_volume: number;
+    apy: number;
+    three_month_perf: number;
+    six_month_perf: number;
+    total_perf: number;
+  };
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -26,117 +38,99 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function BotCard({
-  name,
-  icon,
-  type,
-  pairs,
-  apy,
-  threeMonthPerf,
-  sixMonthPerf,
-  fees,
-  chartData,
-  tradingTypes,
-}: BotCardProps) {
+export default function BotCard({ bot }: { bot: Bot }) {
   const chartColors = {
     BTC: "#818cf8",
     BNB: "#22d3ee",
     ETH: "#6366f1",
-  }[name.split(" - ")[1]] || "#818cf8";
+  }[bot.name.split(" - ")[1]] || "#818cf8";
 
   return (
-    <motion.div
-      className="rounded-2xl bg-white dark:bg-boxdark shadow-xl p-4 md:p-6"
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-    >
-      {/* Header Section */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-4">
-          <img src={icon} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full" />
+    <Link to={`/bot-details/${bot.id}`} className="block">
+      <motion.div
+        className="rounded-2xl bg-white dark:bg-boxdark shadow-xl p-4 md:p-6 cursor-pointer"
+        whileHover={{ scale: 1.02 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        {/* Header Section */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-black dark:text-white">{name}</h3>
-            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">{type}</p>
+            <h3 className="text-base md:text-lg font-semibold text-black dark:text-white">{bot.name}</h3>
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+              {bot.status.toUpperCase()} · {bot.frequency}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+              {bot.next_execution_time ? 
+                `Next: ${new Date(bot.next_execution_time).toLocaleTimeString()}` : 
+                "Not scheduled"}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {tradingTypes.map((type) => (
-            <span
-              key={type}
-              className="px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200"
-            >
-              {type}
-            </span>
-          ))}
+
+        {/* Performance Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">APY</p>
+            <p className="font-bold text-green-600">{bot.performance.apy.toFixed(2)}%</p>
+          </div>
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total Trades</p>
+            <p className="font-bold text-gray-800 dark:text-gray-200">{bot.performance.total_trades}</p>
+          </div>
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">3M Perf</p>
+            <p className={`font-bold ${bot.performance.three_month_perf >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {bot.performance.three_month_perf >= 0 ? "+" : ""}{bot.performance.three_month_perf.toFixed(2)}%
+            </p>
+          </div>
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">6M Perf</p>
+            <p className={`font-bold ${bot.performance.six_month_perf >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {bot.performance.six_month_perf >= 0 ? "+" : ""}{bot.performance.six_month_perf.toFixed(2)}%
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* APY Section */}
-      <div className="mb-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl md:text-4xl font-bold text-green-500">+{apy.toFixed(2)}%</span>
-          <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">APY</span>
+        {/* Volume and Total Performance */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total Volume</p>
+            <p className="font-bold text-gray-800 dark:text-gray-200">${bot.performance.total_volume.toFixed(2)}</p>
+          </div>
+          <div className="text-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total Perf</p>
+            <p className={`font-bold ${bot.performance.total_perf >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {bot.performance.total_perf >= 0 ? "+" : ""}{bot.performance.total_perf.toFixed(2)}%
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Chart Section */}
-      <div className="h-[25vh] mb-6">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-            <XAxis dataKey="date" hide />
-            <YAxis hide domain={["dataMin", "dataMax"]} />
-            <Tooltip content={<CustomTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={chartColors}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Info Grid Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
-        <div>
-          <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">Pair</div>
-          <div className="flex -space-x-1">
-            {pairs.map((pair) => (
-              <div
-                key={pair}
-                className="h-5 w-5 md:h-6 md:w-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs text-black dark:text-white ring-2 ring-white dark:ring-boxdark"
-              >
-                {pair}
+        {/* Coins Section */}
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Coin Allocations</h4>
+          <div className="space-y-2">
+            {bot.coins.map(coin => (
+              <div key={coin.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center">
+                  <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-xs text-indigo-800 dark:text-indigo-200 mr-2">
+                    {coin.token_address.substring(0, 3).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">{coin.token_address.toUpperCase()}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium">${coin.amount.toFixed(2)}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Threshold: {coin.threshold}%</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
-        <div>
-          <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">3M Perf</div>
-          <span className={`text-xs md:text-sm font-medium ${threeMonthPerf >= 0 ? "text-green-500" : "text-red-500"}`}>
-            {threeMonthPerf >= 0 ? "+" : ""}
-            {threeMonthPerf}%
-          </span>
-        </div>
-        <div>
-          <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">6M Perf</div>
-          <span className={`text-xs md:text-sm font-medium ${sixMonthPerf >= 0 ? "text-green-500" : "text-red-500"}`}>
-            {sixMonthPerf >= 0 ? "+" : ""}
-            {sixMonthPerf}%
-          </span>
-        </div>
-      </div>
 
-      {/* Action Button */}
-      <motion.button
-        className="w-full px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium text-white bg-indigo-400 hover:bg-indigo-600 transition-colors"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        See more
-      </motion.button>
-    </motion.div>
+        {/* Action Buttons */}
+      
+      </motion.div>
+    </Link>
   );
 }

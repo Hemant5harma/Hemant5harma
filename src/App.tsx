@@ -11,6 +11,8 @@ import {
   useParams,
 } from "react-router-dom";
 import "./App.css";
+import ProtectedRoute from './components/ProtectedRoute';
+import Dashboard from "./pages/Home";
 
 
 
@@ -23,6 +25,12 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<SignUp />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      {/* Add more protected routes */}
     </Routes>
   );
   return (

@@ -25,6 +25,7 @@ class Bot(Base):
     user = relationship("User", back_populates="bots")
     coins = relationship("Coin", back_populates="bot", cascade="all, delete-orphan")
     trades = relationship("Trade", back_populates="bot", cascade="all, delete-orphan")
+    performances = relationship("BotPerformance", back_populates="bot", cascade="all, delete-orphan", passive_deletes=True)
 
 class Coin(Base):
     __tablename__ = "coins"
@@ -43,6 +44,7 @@ class Trade(Base):
     coin_id = Column(Integer, ForeignKey("coins.id", ondelete="CASCADE"), nullable=False)
     trade_time = Column(DateTime, nullable=False)
     token_address = Column(String, nullable=False)
+    trade_price = Column(Float, nullable=False)
     transaction_hash = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     bot = relationship("Bot", back_populates="trades")
@@ -52,11 +54,13 @@ class BotPerformance(Base):
     __tablename__ = "bot_performances"
 
     id = Column(Integer, primary_key=True, index=True)
-    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False)
+    bot_id = Column(Integer, ForeignKey("bots.id", ondelete="CASCADE"), nullable=False)
     total_trades = Column(Integer, default=0)
     total_volume = Column(Float, default=0.0)
     apy = Column(Float, default=0.0)
+    trade_price = Column(Float, default=0.0)
     three_month_perf = Column(Float, default=0.0)
     six_month_perf = Column(Float, default=0.0)
     total_perf = Column(Float, default=0.0)
     updated_at = Column(DateTime, default=datetime.utcnow)
+    bot = relationship("Bot", back_populates="performances")

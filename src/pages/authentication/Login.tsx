@@ -1,17 +1,44 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import BgPic3 from "../../assets/image/pic3.png";
 import BgPic4 from "../../assets/image/pic4.png";
 import BgPic5 from "../../assets/image/pic5.png";
 import GoogleSignIn from "../../components/authComponents/GoogleSignIn";
+import { setAuthToken } from "../../utils/auth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const handleSubmit = (event: React.FormEvent) => {
+  const [error, setError] = React.useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log(email, password);
+    
+    try {
+      const response = await fetch("http://127.0.0.1:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAuthToken(data.access_token);
+        // Redirect to dashboard or home page
+        navigate("/dashboard");
+      } else {
+        // Handle login error
+        setError("Invalid email or password");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An error occurred during login");
+    }
   };
+
   return (
     <div className='h-screen bg-white'>
       <div className='flex flex-row min-h-[100vh]'>
