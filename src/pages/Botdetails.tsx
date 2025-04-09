@@ -5,20 +5,17 @@ import {
   Paper,
   Text,
   Title,
-  Group,
   Flex,
-  Badge,
-  Avatar,
   Divider,
-  Select,
-  Slider,
-  Button
+  Button,
+  Modal,
+  Group,
+  Loader
 } from '@mantine/core';
 import {
   FaChartLine,
   FaWallet,
   FaCoins,
-  FaChartPie
 } from 'react-icons/fa';
 import { apiClient, pauseBot, resumeBot, deleteBot } from '../utils/apiClient';
 
@@ -26,15 +23,38 @@ export default function BotDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [bot, setBot] = useState<any>(null);
-  const [selectedWallet, setSelectedWallet] = useState('');
-  const [selectedStableCoin, setSelectedStableCoin] = useState('');
-  const [positionSize, setPositionSize] = useState(40);
+  const [loading, setLoading] = useState(true);
+  
+  // Action loading states
+  const [pauseLoading, setPauseLoading] = useState(false);
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Modal states
+  const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     apiClient.get(`/bots/${id}`)
-      .then((data) => setBot(data))
-      .catch((error) => console.error("Error fetching bot:", error));
+      .then((data) => {
+        setBot(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching bot:", error);
+        setLoading(false);
+      });
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-500">
+        <Loader size="xl" />
+        <span className="ml-3">Loading bot details...</span>
+      </div>
+    );
+  }
 
   if (!bot) {
     return (
@@ -49,12 +69,22 @@ export default function BotDetails() {
     frequency, 
     status, 
     next_execution_time, 
-    coins, 
-    performance 
+    coins,
   } = bot;
+  
+  // Safely access performance data with fallback to empty object
+  const performance = bot.performance || {
+    total_trades: 0,
+    total_volume: 0,
+    apy: 0,
+    three_month_perf: 0,
+    six_month_perf: 0,
+    total_perf: 0
+  };
 
-  // Handle pause action
+  // Handle pause action with confirmation
   const handlePause = async () => {
+    setPauseLoading(true);
     try {
       await pauseBot(bot.id);
       // Optionally refetch or update local state
@@ -62,11 +92,15 @@ export default function BotDetails() {
       setBot(updatedBot);
     } catch (error) {
       console.error("Error pausing bot:", error);
+    } finally {
+      setPauseLoading(false);
+      setPauseModalOpen(false);
     }
   };
 
   // Handle resume action
   const handleResume = async () => {
+    setResumeLoading(true);
     try {
       await resumeBot(bot.id);
       // Optionally refetch or update local state
@@ -74,21 +108,66 @@ export default function BotDetails() {
       setBot(updatedBot);
     } catch (error) {
       console.error("Error resuming bot:", error);
+    } finally {
+      setResumeLoading(false);
     }
   };
 
-  // Handle exit (delete) action
+  // Handle exit (delete) action with confirmation
   const handleDelete = async () => {
+    setDeleteLoading(true);
     try {
       await deleteBot(bot.id);
       navigate('/bots/dca'); // Navigate back to your bots list or another route
     } catch (error) {
       console.error("Error deleting bot:", error);
+      setDeleteLoading(false);
+      setDeleteModalOpen(false);
     }
   };
 
   return (
     <Container className="max-w-7xl mx-auto py-8 space-y-6">
+      {/* Pause Confirmation Modal */}
+      <Modal
+        opened={pauseModalOpen}
+        onClose={() => setPauseModalOpen(false)}
+        title="Confirm Pause"
+        centered
+      >
+        <Text className="mb-4">
+          Are you sure you want to pause this bot? It will stop executing trades until resumed.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="outline" onClick={() => setPauseModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button color="yellow" onClick={handlePause} loading={pauseLoading}>
+            Pause
+          </Button>
+        </Group>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Confirm Exit"
+        centered
+      >
+        <Text className="mb-4">
+          Are you sure you want to exit (delete) this bot? This action cannot be undone.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={handleDelete} loading={deleteLoading}>
+            Exit
+          </Button>
+        </Group>
+      </Modal>
+
       {/* Basic Bot Info */}
       <Paper shadow="md" className="bg-white dark:bg-boxdark p-6 shadow-xl rounded-xl">
         <Title
@@ -198,7 +277,7 @@ export default function BotDetails() {
         >
           Coin Allocations
         </Title>
-        {coins.length > 0 ? (
+        {coins && coins.length > 0 ? (
           <div className="space-y-3">
             {coins.map((coin: any) => (
               <div 
@@ -226,8 +305,6 @@ export default function BotDetails() {
         )}
       </Paper>
 
-      {/* Trading Configuration Section */}
-   
       {/* Actions Section */}
       <Paper shadow="md" className="bg-white dark:bg-boxdark p-6 shadow-xl rounded-xl">
         <Title order={3} className="text-xl font-bold text-gray-900 dark:text-white mb-4">
@@ -236,20 +313,35 @@ export default function BotDetails() {
         <Flex gap="md" wrap="wrap">
           {/* Pause Bot */}
           {status === 'running' && (
-            <Button color="yellow" variant="filled" onClick={handlePause}>
+            <Button 
+              color="yellow" 
+              variant="filled" 
+              onClick={() => setPauseModalOpen(true)}
+              loading={pauseLoading}
+            >
               Pause Bot
             </Button>
           )}
 
           {/* Resume Bot */}
           {status === 'paused' && (
-            <Button color="green" variant="filled" onClick={handleResume}>
+            <Button 
+              color="green" 
+              variant="filled" 
+              onClick={handleResume}
+              loading={resumeLoading}
+            >
               Resume Bot
             </Button>
           )}
 
           {/* Delete Bot */}
-          <Button color="red" variant="filled" onClick={handleDelete}>
+          <Button 
+            color="red" 
+            variant="filled" 
+            onClick={() => setDeleteModalOpen(true)}
+            loading={deleteLoading}
+          >
             Exit Bot
           </Button>
         </Flex>

@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { Plus, X } from "lucide-react"
 import ManageBots from "./ManageBots"
 import { apiClient } from '../utils/apiClient';
+import { showNotification } from '@mantine/notifications';
 
 interface DCAState {
   notifications: Notification[]
@@ -64,6 +65,7 @@ const DCATrading: React.FC = () => {
   const [dca, setDca] = useState<DCAState>(initialState)
   const [showCryptoModal, setShowCryptoModal] = useState(false)
   const [totalValue, setTotalValue] = useState(0)
+  const [isCreatingBot, setIsCreatingBot] = useState(false)
 
   useEffect(() => {
     const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0)
@@ -83,9 +85,16 @@ const DCATrading: React.FC = () => {
   const handleSubmitDCA = () => {
     // Validate that there are assets before creating a bot
     if (dca.dcaSettings.assets.length === 0) {
-      alert("Please add at least one cryptocurrency to create a DCA bot");
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please add at least one cryptocurrency to create a DCA bot',
+        color: 'red',
+      });
       return;
     }
+
+    // Set loading state to true when starting the API call
+    setIsCreatingBot(true);
 
     const apiData = {
       name: dca.dcaSettings.botName,
@@ -101,9 +110,16 @@ const DCATrading: React.FC = () => {
     apiClient.post('/bots/create', apiData)
       .then((data) => {
         console.log("Bot created:", data);
+        
+        showNotification({
+          title: 'Bot Created',
+          message: `Bot "${dca.dcaSettings.botName}" has been created successfully`,
+          color: 'green',
+        });
+        
         const newNotification: Notification = {
           id: String(Date.now()),
-          type: "buy", // must match union type "buy" | "sell" | "success"
+          type: "buy", 
           message: `New DCA bot "${dca.dcaSettings.botName}" created for ${dca.dcaSettings.assets.map((c) => c.symbol).join(", ")}`,
           timestamp: Date.now(),
         };
@@ -112,9 +128,21 @@ const DCATrading: React.FC = () => {
           ...prevState,
           notifications: [newNotification, ...prevState.notifications],
         }));
+        
+        // Reset loading state
+        setIsCreatingBot(false);
       })
       .catch((error) => {
         console.error("Error creating bot:", error);
+        
+        showNotification({
+          title: 'Error',
+          message: error.message || 'Failed to create bot',
+          color: 'red',
+        });
+        
+        // Reset loading state
+        setIsCreatingBot(false);
       });
   }
 
@@ -267,9 +295,22 @@ const DCATrading: React.FC = () => {
           >
             <button
               onClick={handleSubmitDCA}
-              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={isCreatingBot}
+              className={`w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center ${
+                isCreatingBot ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-1 hover:scale-105'
+              }`}
             >
-              Create DCA Bot
+              {isCreatingBot ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating Bot...
+                </>
+              ) : (
+                'Create DCA Bot'
+              )}
             </button>
           </motion.div>
         </div>
