@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -131,6 +129,11 @@ const DCATrading: React.FC = () => {
         
         // Reset loading state
         setIsCreatingBot(false);
+        
+        // Add a small delay before refreshing to ensure the notification is seen
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       })
       .catch((error) => {
         console.error("Error creating bot:", error);

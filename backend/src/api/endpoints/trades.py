@@ -7,7 +7,7 @@ from typing import List
 
 router = APIRouter()
 
-@router.get("/{bot_id}", response_model=List[TradeResponse])
+@router.get("/{bot_id}/history", response_model=List[TradeResponse])
 async def get_trades(bot_id: int, db: AsyncSession = Depends(get_db_session)):
     bot = await get_bot_by_id(db, bot_id)
     if not bot:

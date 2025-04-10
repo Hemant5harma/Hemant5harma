@@ -221,3 +221,21 @@ export const deleteBot = async (botId: number) => {
     throw error;
   }
 };
+
+/**
+ * Get trade history for a specific bot
+ */
+export const fetchBotTradeHistory = async (botId: number) => {
+  try {
+    const data = await apiClient.get(`/trades/${botId}/history`);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching trade history for bot ${botId}:`, error);
+    showNotification({
+      title: 'Error',
+      message: 'Failed to load trade history',
+      color: 'red',
+    });
+    throw error;
+  }
+};

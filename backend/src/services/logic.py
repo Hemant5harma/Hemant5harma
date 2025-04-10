@@ -37,12 +37,17 @@ async def execute_trade(token_address, amount):
 async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
     """
     A more complete performance calculation for a DCA bot:
-      - Summation of all trades to find cost basis (USD).
-      - Summation of current market value (USD).
-      - Calculate total % return and accurate APY.
+      - Summation of all trades to find the cost basis (USDT invested).
+      - Summation of the current market value (in USDT).
+      - Calculation of total % return and an accurate APY.
       - Proper three_month_perf and six_month_perf calculations.
+    
+    Note: Each trade's `amount` now represents the USDT allocated to buy a token.
+          For example, if a coin costs $1, then an amount of $20 will buy 20 coins.
+          The actual coin quantity purchased is calculated as:
+              coin_qty = amount / trade_price
     """
-    # Retrieve trades
+    # Retrieve trades for the given bot
     result = await db.execute(select(Trade).where(Trade.bot_id == bot_id))
     trades = result.scalars().all()
     if not trades:
@@ -58,55 +63,48 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
     # 1) Total trades
     total_trades = len(trades)
     
-    # 2) Total invested: sum of (trade_price * amount) - for DCA bot, all are buys
-    total_invested = sum(t.trade_price * t.amount for t in trades if t.trade_price)
+    # 2) Total USDT invested is the sum of amounts (since amount is already in USDT)
+    total_invested = sum(t.amount for t in trades if t.amount)
     
     # Get current timestamp for time-based calculations
     current_time = datetime.now()
-    
-    # Define time boundaries for 3-month and 6-month periods
     three_months_ago = current_time - timedelta(days=90)
     six_months_ago = current_time - timedelta(days=180)
     
-    # Prepare for time-based calculations
-    three_month_invested = sum(
-        t.trade_price * t.amount
-        for t in trades
-        if t.trade_price and t.trade_time >= three_months_ago
-    )
-    six_month_invested = sum(
-        t.trade_price * t.amount
-        for t in trades
-        if t.trade_price and t.trade_time >= six_months_ago
-    )
+    # For time-based invested amounts, we sum the USDT amounts that occurred
+    three_month_invested = sum(t.amount for t in trades if t.amount and t.trade_time >= three_months_ago)
+    six_month_invested = sum(t.amount for t in trades if t.amount and t.trade_time >= six_months_ago)
     
     # 3) Calculate current value by token address
+    # Here we calculate the coin quantity purchased per token:
+    #       coin_qty = (USDT allocated) / (trade_price)
     md_service = MarketDataService()
     token_amounts = {}
     
-    # Group token amounts by token address
+    # Group and accumulate coin quantities by token address
     for trade in trades:
         token_address = trade.token_address
-        if token_address not in token_amounts:
-            token_amounts[token_address] = 0
-        token_amounts[token_address] += trade.amount
+        # Ensure we have a valid price and amount to avoid division errors.
+        if token_address and trade.trade_price and trade.amount:
+            coin_qty = trade.amount / trade.trade_price
+            token_amounts[token_address] = token_amounts.get(token_address, 0) + coin_qty
     
-    # Calculate current value of all tokens
     current_value = 0.0
     current_prices = {}
     
-    for token_address, amount in token_amounts.items():
+    # Retrieve current prices for each token and compute overall portfolio value
+    for token_address, coin_qty in token_amounts.items():
         try:
             token_data = await md_service.get_token_data(token_id=token_address)
             if token_data and "current_price" in token_data:
                 price = token_data["current_price"]
                 current_prices[token_address] = price
-                current_value += amount * price
+                current_value += coin_qty * price
         except Exception as e:
             logger.error(f"Error fetching current price for {token_address}: {str(e)}")
-            # Skip this token in calculations if price fetch fails
+            # Skip tokens that raise an exception
     
-    # If we couldn't get any current prices, we can't calculate performance
+    # If no prices were fetched, we return a safe default
     if not current_value:
         return {
             "total_trades": total_trades,
@@ -117,61 +115,48 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
             "total_perf": 0.0,
         }
     
-    # 4) Calculate current value of tokens purchased in 3-month and 6-month periods
-    three_month_current_value = 0.0
-    six_month_current_value = 0.0
+    # 4) Calculate current value for the trades made in the last 3 and 6 months
+    # Instead of using raw amounts, we convert USDT allocation to coin quantity on each trade.
+    three_month_current_value = sum(
+        (t.amount / t.trade_price) * current_prices[t.token_address]
+        for t in trades
+        if t.amount and t.trade_price and t.trade_time >= three_months_ago and t.token_address in current_prices
+    )
+    six_month_current_value = sum(
+        (t.amount / t.trade_price) * current_prices[t.token_address]
+        for t in trades
+        if t.amount and t.trade_price and t.trade_time >= six_months_ago and t.token_address in current_prices
+    )
     
-    # Group trades by time period
-    three_month_trades = [t for t in trades if t.trade_time >= three_months_ago]
-    six_month_trades = [t for t in trades if t.trade_time >= six_months_ago]
-    
-    # Calculate current value for 3-month trades
-    for trade in three_month_trades:
-        if trade.token_address in current_prices:
-            three_month_current_value += trade.amount * current_prices[trade.token_address]
-    
-    # Calculate current value for 6-month trades
-    for trade in six_month_trades:
-        if trade.token_address in current_prices:
-            six_month_current_value += trade.amount * current_prices[trade.token_address]
-    
-    # 5) Calculate performance metrics
-    # Total performance
+    # 5) Calculate overall performance metrics
     profit_loss = current_value - total_invested
     total_perf = (profit_loss / total_invested) * 100 if total_invested > 0 else 0.0
     
-    # 3-month performance
-    three_month_perf = 0.0
-    if three_month_invested > 0:
-        three_month_profit = three_month_current_value - three_month_invested
-        three_month_perf = (three_month_profit / three_month_invested) * 100
+    three_month_perf = (
+        ((three_month_current_value - three_month_invested) / three_month_invested) * 100
+        if three_month_invested > 0 else 0.0
+    )
+    six_month_perf = (
+        ((six_month_current_value - six_month_invested) / six_month_invested) * 100
+        if six_month_invested > 0 else 0.0
+    )
     
-    # 6-month performance
-    six_month_perf = 0.0
-    if six_month_invested > 0:
-        six_month_profit = six_month_current_value - six_month_invested
-        six_month_perf = (six_month_profit / six_month_invested) * 100
-    
-    # 6) Calculate APY properly
-    # For a DCA bot, we need to account for the timing of each investment
+    # 6) Calculate APY (annual percentage yield) with a weighted average time factor
     first_trade_date = min(t.trade_time for t in trades)
     days_active = max(1, (current_time - first_trade_date).days)
     
-    # For DCA, a simple but reasonable approximation is to use the average investment time
+    # Use weighted average of the invested USDT amounts over the active days
     if total_invested > 0:
-        # Calculate weighted average time of investments
         weighted_days = sum(
-            (current_time - t.trade_time).days * (t.trade_price * t.amount)
-            for t in trades if t.trade_price
+            (current_time - t.trade_time).days * t.amount for t in trades if t.amount
         ) / total_invested
-        weighted_days = max(1, weighted_days)  # Ensure no division by zero
-        
-        # Use the weighted time to calculate a more accurate APY
+        weighted_days = max(1, weighted_days)  # avoid division by zero
         ratio = current_value / total_invested
         apy = ((ratio ** (365.0 / weighted_days)) - 1.0) * 100.0
     else:
         apy = 0.0
     
+    # 7) Return the summarized performance metrics
     return {
         "total_trades": total_trades,
         "total_volume": round(total_invested, 2),
@@ -219,7 +204,7 @@ async def check_bot(bot_id: int):
                         f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
                     )
 
-                    if price_drop <= -coin.threshold:
+                    if price_drop >= -coin.threshold:
                         # Execute the trade
                         tx_hash = await execute_trade(coin.token_address, coin.amount)
 

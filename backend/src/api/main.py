@@ -31,7 +31,7 @@ app.add_middleware(
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(bots.router, prefix="/bots", tags=["bots"])
-# app.include_router(trades.router, prefix="/trades", tags=["trades"])
+app.include_router(trades.router, prefix="/trades", tags=["trades"])
 
 
 @app.get("/")
