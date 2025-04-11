@@ -204,7 +204,7 @@ async def check_bot(bot_id: int):
                         f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
                     )
 
-                    if price_drop >= -coin.threshold:
+                    if price_drop <= -coin.threshold:
                         # Execute the trade
                         tx_hash = await execute_trade(coin.token_address, coin.amount)
 

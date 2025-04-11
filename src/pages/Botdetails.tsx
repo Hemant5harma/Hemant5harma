@@ -213,10 +213,11 @@ export default function BotDetails() {
 
       {/* Delete Confirmation Modal */}
       <Modal
+      
         opened={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         title={
-          <Text fw={600} size="lg" c="red">
+          <Text fw={600} size="lg" c="red" >
             Confirm Exit
           </Text>
         }
