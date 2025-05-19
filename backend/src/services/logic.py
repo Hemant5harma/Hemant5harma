@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
+from src.dex.dex_integration import DexIntegration
+
 from src.services.market_data import (
     MarketDataService,
 )  # Placeholder for your actual market data fetching function
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 # Web3 setup (commented out as in your original)
 # web3 = Web3(Web3.HTTPProvider('your_ethereum_node_url'))
 # ...
+WETH_ADDRESS = "0x7b79995e5f793A07Bc00c21412e50E4C7287F794"
+LINK_ADDRESS = "0x779877A7B0D9E8603169DdbD7836e478b4624789"
 
 
 async def get_current_price(token_address):
@@ -28,10 +32,10 @@ async def get_current_price(token_address):
     return price
 
 
-async def execute_trade(token_address, amount):
-    # This function doesn't need a DB session either
-    logger.info(f"Executing trade for {amount} of token: {token_address}")
-    return "0xtransaction_hash_placeholder"
+# async def execute_trade(token_address, amount):
+#     # This function doesn't need a DB session either
+#     logger.info(f"Executing trade for {amount} of token: {token_address}")
+#     return "0xtransaction_hash_placeholder"
 
 
 async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
@@ -184,11 +188,13 @@ async def check_bot(bot_id: int):
             # Get all coins for this bot
             result = await db.execute(select(Coin).where(Coin.bot_id == bot_id))
             coins = result.scalars().all()
-
+            
+            dex = DexIntegration() 
+            
             for coin in coins:
                 try:
                     # Get current price and check against threshold
-                    price_data = await get_current_price(coin.token_address)
+                    price_data = await dex.get_current_price("0x779877A7B0D9E8603169DdbD7836e478b4624789")
                     if not price_data:
                         logger.warning(f"No price data for {coin.token_address}, skipping")
                         continue
@@ -204,9 +210,13 @@ async def check_bot(bot_id: int):
                         f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
                     )
 
-                    if price_drop <= -coin.threshold:
+                    if True:
                         # Execute the trade
-                        tx_hash = await execute_trade(coin.token_address, coin.amount)
+                        tx_hash = dex.execute_trade(
+                            sell_token=WETH_ADDRESS,        # You have Sepolia ETH (WETH)
+                            buy_token=LINK_ADDRESS,         # You want to buy USDC
+                            amount=str(int(coin.amount * 1e18))  # Amount in wei (for 1 WETH, use 1e18)
+                        )
 
                         # Record the trade
                         trade = Trade(
