@@ -13,7 +13,8 @@ PRIVATE_KEY = "dfabd6cd20a0e7adb2e7f89eebaa0f1f66feacc84b5cb1608d95af29b937ef59"
 
 # Verified Monad Testnet addresses (as of latest deployment)
 NATIVE_TOKEN = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"  # For MON token
-USDC_ADDRESS = Web3.to_checksum_address("0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D")  # USDC contract
+USDT_ADDRESS = Web3.to_checksum_address("0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D")  # USDC contract
+USDC_ADDRESS = Web3.to_checksum_address("0xf817257fed379853cDe0fa4F97AB987181B1E5Ea")  # USDC contract
 PERMIT2_ADDRESS = Web3.to_checksum_address("0x000000000022D473030F116dDEE9F6B43aC78BA3")  # 0x Permit2
 
 # Initialize Web3
@@ -104,7 +105,8 @@ def execute_swap(quote: dict) -> str:
 def main():
     try:
         # Swap 0.4 MON (native) to USDC
-        sell_amount = w3.to_wei(0.001, 'ether')  # MON has 18 decimals
+        sell_amount = w3.to_wei(0.00001, 'ether')  # MON has 18 decimals
+        print("sell amount", sell_amount)
         
         # Get quote
         quote = get_0x_quote(NATIVE_TOKEN, USDC_ADDRESS, sell_amount)

@@ -15,21 +15,15 @@ from src.database.queries import create_or_update_bot_performance
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Web3 setup (commented out as in your original)
-# web3 = Web3(Web3.HTTPProvider('your_ethereum_node_url'))
-# ...
-WETH_ADDRESS = "0x7b79995e5f793A07Bc00c21412e50E4C7287F794"
-LINK_ADDRESS = "0x779877A7B0D9E8603169DdbD7836e478b4624789"
 
-
-async def get_current_price(token_address):
-    # This function doesn't need a DB session, so leave it as is
-    md_service = MarketDataService()
-    price = await md_service.get_token_data(token_id=token_address)
-    if price is None:
-        logger.error(f"Failed to fetch price for token: {token_address}")
-        return None
-    return price
+# async def get_current_price(token_address):
+#     # This function doesn't need a DB session, so leave it as is
+#     md_service = MarketDataService()
+#     price = await md_service.get_token_data(token_id=token_address)
+#     if price is None:
+#         logger.error(f"Failed to fetch price for token: {token_address}")
+#         return None
+#     return price
 
 
 # async def execute_trade(token_address, amount):
@@ -189,33 +183,35 @@ async def check_bot(bot_id: int):
             result = await db.execute(select(Coin).where(Coin.bot_id == bot_id))
             coins = result.scalars().all()
             
-            dex = DexIntegration() 
+            # Use bot.chain_id if available, otherwise default to 10143
+            chain_id = getattr(bot, "chain_id", 10143)
+            dex = DexIntegration(chain_id=chain_id)
             
             for coin in coins:
                 try:
                     # Get current price and check against threshold
-                    price_data = await dex.get_current_price("0x779877A7B0D9E8603169DdbD7836e478b4624789")
-                    if not price_data:
-                        logger.warning(f"No price data for {coin.token_address}, skipping")
-                        continue
+                    # price_data = await dex.get_current_price(coin.token_address)
+                    # if not price_data:
+                    #     logger.warning(f"No price data for {coin.token_address}, skipping")
+                    #     continue
 
-                    price_drop = price_data.get("price_drop_pct")
-                    if price_drop is None:
-                        logger.warning(
-                            f"No price drop data for {coin.token_address}, skipping"
-                        )
-                        continue
+                    # price_drop = price_data.get("price_drop_pct")
+                    # if price_drop is None:
+                    #     logger.warning(
+                    #         f"No price drop data for {coin.token_address}, skipping"
+                    #     )
+                    #     continue
 
-                    logger.info(
-                        f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
-                    )
+                    # logger.info(
+                    #     f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
+                    # )
 
                     if True:
                         # Execute the trade
                         tx_hash = dex.execute_trade(
-                            sell_token=WETH_ADDRESS,        # You have Sepolia ETH (WETH)
-                            buy_token=LINK_ADDRESS,         # You want to buy USDC
-                            amount=str(int(coin.amount * 1e18))  # Amount in wei (for 1 WETH, use 1e18)
+                            buy_token=coin.token_address,
+                            amount=int(coin.amount * 1e18),  # Amount in wei
+                            chain_id=chain_id
                         )
 
                         # Record the trade
@@ -225,8 +221,8 @@ async def check_bot(bot_id: int):
                             trade_time=datetime.now(timezone.utc).replace(tzinfo=None),
                             token_address=coin.token_address,
                             amount=coin.amount,
-                            trade_price=price_data["current_price"],
-                            transaction_hash=tx_hash,  # Fixed spelling here
+                            trade_price=12,
+                            transaction_hash=tx_hash,
                         )
                         db.add(trade)
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")

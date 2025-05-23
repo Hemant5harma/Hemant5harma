@@ -3,19 +3,22 @@ import requests
 import binascii
 import logging
 from web3 import Web3
+from dotenv import load_dotenv
 from eth_account import Account, messages
 from web3.middleware import ExtraDataToPOAMiddleware
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DexIntegration:
-    def __init__(self):
+    def __init__(self, chain_id: int = 10143):
         # Monad Testnet configuration
-        self.rpc_url = os.getenv("RPC_URL", "https://testnet-rpc.monad.xyz")
-        self.api_key = os.getenv("ZEROX_API_KEY", "4ff6ad29-58af-4bc3-b320-fa3f2b63d30c")
-        self.chain_id = 10143  # Monad Testnet
-        self.private_key = os.getenv("PRIVATE_KEY", "dfabd6cd20a0e7adb2e7f89eebaa0f1f66feacc84b5cb1608d95af29b937ef59")
+        self.rpc_url = os.getenv("RPC_URL")
+        self.api_key = os.getenv("ZEROX_API_KEY")
+        self.chain_id = chain_id  # Monad Testnet or as provided
+        self.private_key = os.getenv("PRIVATE_KEY")
         self.native_token = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"  # MON
         self.permit2_address = Web3.to_checksum_address("0x000000000022D473030F116dDEE9F6B43aC78BA3")
         self.web3 = Web3(Web3.HTTPProvider(self.rpc_url))
@@ -25,15 +28,16 @@ class DexIntegration:
         self.wallet_address = self.account.address
         self.base_url = "https://api.0x.org"
 
-    def get_0x_quote(self, buy_token: str, amount: int):
+    def get_0x_quote(self, buy_token: str, amount: int, chain_id: int = None):
         """
         Get 0x API v2 quote with Permit2 support for buying any token.
         buy_token: address of the token to buy (e.g., USDC address)
         amount: amount of native token (MON) to sell, in wei
+        chain_id: optional, overrides self.chain_id
         """
         url = f"{self.base_url}/swap/permit2/quote"
         params = {
-            "chainId": self.chain_id,
+            "chainId": chain_id if chain_id is not None else self.chain_id,
             "sellToken": self.native_token,
             "buyToken": buy_token,
             "sellAmount": str(amount),
@@ -59,15 +63,16 @@ class DexIntegration:
         signed = Account.sign_message(message, private_key=self.private_key)
         return signed.signature.hex()
 
-    def execute_trade(self, buy_token: str, amount: int):
+    def execute_trade(self, buy_token: str, amount: int, chain_id: int = None):
         """
         Executes a swap from MON (native) to any ERC20 token on Monad using 0x API.
         buy_token: address of the token to buy (e.g., USDC address)
         amount: amount of MON to sell, in wei
+        chain_id: optional, overrides self.chain_id
         Returns transaction hash if successful, None otherwise.
         """
         try:
-            quote = self.get_0x_quote(buy_token, amount)
+            quote = self.get_0x_quote(buy_token, amount, chain_id)
             tx_obj = quote.get('transaction', quote)
 
             # Permit2 signature handling
@@ -87,7 +92,7 @@ class DexIntegration:
                 transaction_data = tx_obj['data']
 
             tx = {
-                'chainId': tx_obj.get('chainId', self.chain_id),
+                'chainId': tx_obj.get('chainId', chain_id if chain_id is not None else self.chain_id),
                 'from': tx_obj.get('from', self.wallet_address),
                 'to': Web3.to_checksum_address(tx_obj['to']),
                 'data': transaction_data,
