@@ -12,6 +12,12 @@ from src.services.market_data import (
 )  # Placeholder for your actual market data fetching function
 from src.database.queries import create_or_update_bot_performance
 
+# Import the price fetching function from dca.py
+# import sys
+# import os
+# sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from dca import get_current_price_gecko
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -189,24 +195,28 @@ async def check_bot(bot_id: int):
             
             for coin in coins:
                 try:
-                    # Get current price and check against threshold
-                    # price_data = await dex.get_current_price(coin.token_address)
-                    # if not price_data:
-                    #     logger.warning(f"No price data for {coin.token_address}, skipping")
-                    #     continue
+                    # Get current price and check against threshold using GeckoTerminal API
+                    price_data = get_current_price_gecko(coin.token_address, chain_id)
+                    if not price_data:
+                        logger.warning(f"No price data for {coin.token_address}, skipping")
+                        continue
 
-                    # price_drop = price_data.get("price_drop_pct")
-                    # if price_drop is None:
-                    #     logger.warning(
-                    #         f"No price drop data for {coin.token_address}, skipping"
-                    #     )
-                    #     continue
+                    current_price = price_data.get("usdPrice")
+                    change_24h = price_data.get("24hChange")
+                    
+                    if change_24h is None:
+                        logger.warning(
+                            f"No 24h change data for {coin.token_address}, skipping"
+                        )
+                        continue
 
-                    # logger.info(
-                    #     f"Token {coin.token_address}: drop {price_drop}%, threshold {coin.threshold}%"
-                    # )
+                    logger.info(
+                        f"Token {coin.token_address}: current price ${current_price}, 24h change {change_24h}%, threshold {coin.threshold}%"
+                    )
 
-                    if True:
+                    # Execute trade only if 24h change is less than negative threshold (i.e., price dropped enough)
+                    if change_24h < -coin.threshold:
+                        logger.info(f"Threshold met! Executing trade for {coin.token_address}")
                         # Execute the trade
                         tx_hash = dex.execute_trade(
                             buy_token=coin.token_address,
@@ -221,11 +231,13 @@ async def check_bot(bot_id: int):
                             trade_time=datetime.now(timezone.utc).replace(tzinfo=None),
                             token_address=coin.token_address,
                             amount=coin.amount,
-                            trade_price=12,
+                            trade_price=current_price,
                             transaction_hash=tx_hash,
                         )
                         db.add(trade)
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")
+                    else:
+                        logger.info(f"Threshold not met for {coin.token_address}. 24h change {change_24h}% > -{coin.threshold}%")
 
                 except Exception as e:
                     logger.error(f"Error processing coin {coin.id}: {str(e)}")
