@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete 
-from .models.models import User, Bot, Coin, Trade, BotPerformance
+from .models.models import User, Bot, Coin, Trade, BotPerformance, ManualTrade
 from datetime import datetime , timezone
-from typing import Optional
+from typing import Optional, List
 
 # User Operations
 async def create_user(db: AsyncSession, address: str) -> User:
@@ -23,11 +23,19 @@ async def get_user_by_address(db: AsyncSession, address: str) -> User:
     return result.scalars().first()
 
 # Bot Operations
-async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str) -> Bot:
+async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
     """
-    Creates a new bot for the given user.
+    Creates a new bot for the given user with multi-chain support.
     """
-    bot = Bot(user_id=user_id, name=name, frequency=frequency, status="paused")
+    bot = Bot(
+        user_id=user_id, 
+        name=name, 
+        frequency=frequency, 
+        status="paused",
+        chain_id=chain_id,
+        rpc_url=rpc_url,
+        network_name=network_name
+    )
     db.add(bot)
     await db.commit()
     await db.refresh(bot)
@@ -41,6 +49,20 @@ async def update_bot_status(db: AsyncSession, bot_id: int, status: str) -> Bot:
     bot = result.scalars().first()
     if bot:
         bot.status = status
+        await db.commit()
+        await db.refresh(bot)
+    return bot
+
+async def update_bot_network(db: AsyncSession, bot_id: int, chain_id: int, rpc_url: str = None, network_name: str = None) -> Bot:
+    """
+    Updates the network configuration of a bot.
+    """
+    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    bot = result.scalars().first()
+    if bot:
+        bot.chain_id = chain_id
+        bot.rpc_url = rpc_url
+        bot.network_name = network_name
         await db.commit()
         await db.refresh(bot)
     return bot
@@ -61,9 +83,16 @@ async def get_bot_by_id(db: AsyncSession, bot_id: int) -> Bot:
 
 async def get_all_bot(db: AsyncSession) -> Bot:
     """
-    Retrieves a bot by its ID.
+    Retrieves all bots.
     """
     result = await db.execute(select(Bot))
+    return result.scalars().all()
+
+async def get_bots_by_chain(db: AsyncSession, chain_id: int) -> List[Bot]:
+    """
+    Retrieves all bots for a specific chain.
+    """
+    result = await db.execute(select(Bot).where(Bot.chain_id == chain_id))
     return result.scalars().all()
 
 async def create_or_update_bot_performance(
@@ -117,11 +146,32 @@ async def get_coins_by_bot(db: AsyncSession, bot_id: int) -> list[Coin]:
     return result.scalars().all()
 
 # Trade Operations
-async def create_trade(db: AsyncSession, bot_id: int, coin_id: int, trade_time: datetime, token_address: str, amount: float) -> Trade:
+async def create_trade(
+    db: AsyncSession, 
+    bot_id: int, 
+    coin_id: int, 
+    trade_time: datetime, 
+    token_address: str, 
+    amount: float, 
+    trade_price: float = 0.0, 
+    transaction_hash: str = "", 
+    chain_id: int = None, 
+    network_name: str = None
+) -> Trade:
     """
-    Records a new trade for the given bot and coin.
+    Records a new trade for the given bot and coin with multi-chain support.
     """
-    trade = Trade(bot_id=bot_id, coin_id=coin_id, trade_time=trade_time, token_address=token_address, amount=amount)
+    trade = Trade(
+        bot_id=bot_id, 
+        coin_id=coin_id, 
+        trade_time=trade_time, 
+        token_address=token_address, 
+        amount=amount,
+        trade_price=trade_price,
+        transaction_hash=transaction_hash,
+        chain_id=chain_id,
+        network_name=network_name
+    )
     db.add(trade)
     await db.commit()
     await db.refresh(trade)
@@ -133,3 +183,85 @@ async def get_trades_by_bot(db: AsyncSession, bot_id: int) -> list[Trade]:
     """
     result = await db.execute(select(Trade).where(Trade.bot_id == bot_id))
     return result.scalars().all()
+
+async def get_trades_by_chain(db: AsyncSession, chain_id: int) -> List[Trade]:
+    """
+    Retrieves all trades for a specific chain.
+    """
+    result = await db.execute(select(Trade).where(Trade.chain_id == chain_id))
+    return result.scalars().all()
+
+# Manual Trade queries
+async def create_manual_trade(db: AsyncSession, user_id: int, trade_data: dict) -> ManualTrade:
+    """Create a new manual trade record with multi-chain support"""
+    manual_trade = ManualTrade(
+        user_id=user_id,
+        sell_token=trade_data["sell_token"],
+        buy_token=trade_data["buy_token"],
+        sell_amount=trade_data["sell_amount"],
+        buy_amount=trade_data["buy_amount"],
+        transaction_hash=trade_data["transaction_hash"],
+        gas_used=trade_data.get("gas_used"),
+        gas_price=trade_data.get("gas_price"),
+        status=trade_data.get("status", "pending"),
+        slippage_bps=trade_data.get("slippage_bps", 100),
+        chain_id=trade_data.get("chain_id", 1),
+        network_name=trade_data.get("network_name")
+    )
+    db.add(manual_trade)
+    await db.commit()
+    await db.refresh(manual_trade)
+    return manual_trade
+
+async def get_manual_trades_by_user(
+    db: AsyncSession, 
+    user_id: int, 
+    limit: int = 50, 
+    offset: int = 0, 
+    chain_id: Optional[int] = None
+) -> List[ManualTrade]:
+    """Get manual trades for a specific user with optional chain filtering"""
+    query = select(ManualTrade).where(ManualTrade.user_id == user_id)
+    
+    if chain_id is not None:
+        query = query.where(ManualTrade.chain_id == chain_id)
+    
+    query = query.order_by(ManualTrade.created_at.desc()).limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_manual_trades_by_chain(db: AsyncSession, chain_id: int, limit: int = 50, offset: int = 0) -> List[ManualTrade]:
+    """Get all manual trades for a specific chain"""
+    result = await db.execute(
+        select(ManualTrade)
+        .where(ManualTrade.chain_id == chain_id)
+        .order_by(ManualTrade.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+async def get_manual_trade_by_hash(db: AsyncSession, tx_hash: str) -> Optional[ManualTrade]:
+    """Get manual trade by transaction hash"""
+    result = await db.execute(
+        select(ManualTrade).where(ManualTrade.transaction_hash == tx_hash)
+    )
+    return result.scalar_one_or_none()
+
+async def update_manual_trade_status(db: AsyncSession, tx_hash: str, status: str, gas_used: str = None) -> Optional[ManualTrade]:
+    """Update manual trade status"""
+    result = await db.execute(
+        select(ManualTrade).where(ManualTrade.transaction_hash == tx_hash)
+    )
+    manual_trade = result.scalar_one_or_none()
+    
+    if manual_trade:
+        manual_trade.status = status
+        if gas_used:
+            manual_trade.gas_used = gas_used
+        manual_trade.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(manual_trade)
+    
+    return manual_trade

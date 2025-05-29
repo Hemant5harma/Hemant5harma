@@ -13,6 +13,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     address = Column(String, unique=True, nullable=False)
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
+    manual_trades = relationship("ManualTrade", back_populates="user", cascade="all, delete-orphan")
 
 class Bot(Base):
     __tablename__ = "bots"
@@ -21,6 +22,9 @@ class Bot(Base):
     name = Column(String, nullable=False)
     frequency = Column(String, nullable=False)
     status = Column(String, nullable=False, default="paused")
+    chain_id = Column(Integer, nullable=False, default=1)  # Default to Ethereum
+    rpc_url = Column(String, nullable=True)  # Optional custom RPC URL
+    network_name = Column(String, nullable=True)  # Network display name
     next_execution_time = Column(DateTime)
     user = relationship("User", back_populates="bots")
     coins = relationship("Coin", back_populates="bot", cascade="all, delete-orphan")
@@ -47,8 +51,29 @@ class Trade(Base):
     trade_price = Column(Float, nullable=False)
     transaction_hash = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
+    chain_id = Column(Integer, nullable=True)  # Chain ID for the trade
+    network_name = Column(String, nullable=True)  # Network display name
     bot = relationship("Bot", back_populates="trades")
     coin = relationship("Coin", back_populates="trades")
+
+class ManualTrade(Base):
+    __tablename__ = "manual_trades"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sell_token = Column(String, nullable=False)
+    buy_token = Column(String, nullable=False)
+    sell_amount = Column(String, nullable=False)
+    buy_amount = Column(String, nullable=False)
+    transaction_hash = Column(String, nullable=False)
+    gas_used = Column(String)
+    gas_price = Column(String)
+    status = Column(String, nullable=False, default="pending")
+    slippage_bps = Column(Integer, nullable=False, default=100)
+    chain_id = Column(Integer, nullable=False, default=1)  # Chain ID for multi-chain support
+    network_name = Column(String, nullable=True)  # Network display name (e.g., "Ethereum", "Polygon")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user = relationship("User", back_populates="manual_trades")
 
 class BotPerformance(Base):
     __tablename__ = "bot_performances"
