@@ -30,11 +30,11 @@ def get_0x_quote(sell_token: str, buy_token: str, sell_amount: int) -> dict:
     """Get 0x API v2 quote with Permit2 support"""
     url = "https://api.0x.org/swap/permit2/quote"
     params = {
-        "chainId": CHAIN_ID,  # chainId is required
+        "chainId": CHAIN_ID,  
         "sellToken": sell_token,
         "buyToken": buy_token,
         "sellAmount": str(sell_amount),
-        "taker": wallet_address,  # 'takerAddress' renamed to 'taker'
+        "taker": wallet_address,  
         "slippageBps": "100"  # 1% slippage
     }
     headers = {
