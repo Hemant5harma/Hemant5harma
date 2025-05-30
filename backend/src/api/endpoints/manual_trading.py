@@ -71,7 +71,7 @@ async def get_quote(quote_request: QuoteRequest):
             quote_request.chain_id, 
             quote_request.rpc_url
         )
-        quote = trading_service.get_quote(quote_request)
+        quote = trading_service._get_0x_quote_extended(quote_request)
         return quote
     except Exception as e:
         logger.error(f"Failed to get quote: {e}")

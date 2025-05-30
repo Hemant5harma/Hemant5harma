@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import {
   Container,
@@ -31,6 +31,40 @@ import {
 } from "react-icons/fa"
 import { apiClient, pauseBot, resumeBot, deleteBot, fetchBotTradeHistory } from "../utils/apiClient"
 
+// Token address to name mapping
+const tokenAddressToName: Record<string, { symbol: string; name: string }> = {
+  // Ethereum Mainnet
+  "0xA0b86a33E6441b4dc5029316a4B3D3536aDF38F5": { symbol: "USDC", name: "USD Coin" },
+  "0xdac17f958d2ee523a2206206994597c13d831ec7": { symbol: "USDT", name: "Tether" },
+  "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599": { symbol: "WBTC", name: "Wrapped Bitcoin" },
+  "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": { symbol: "WETH", name: "Wrapped Ethereum" },
+  
+  // Polygon
+  "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": { symbol: "USDC", name: "USD Coin" },
+  "0xc2132d05d31c914a87c6611c10748aeb04b58e8f": { symbol: "USDT", name: "Tether" },
+  "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6": { symbol: "WBTC", name: "Wrapped Bitcoin" },
+  "0x7ceb23fd6f88b48c8f58f96b81b6c2f8f2f8f8f8": { symbol: "WETH", name: "Wrapped Ethereum" },
+  
+  // BSC
+  "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d": { symbol: "USDC", name: "USD Coin" },
+  "0x55d398326f99059ff775485246999027b3197955": { symbol: "USDT", name: "Tether" },
+  "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c": { symbol: "BTCB", name: "Bitcoin BEP20" },
+  "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": { symbol: "WBNB", name: "Wrapped BNB" },
+  
+  // Monad Testnet
+  "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea": { symbol: "USDC", name: "USDC (testnet)" },
+  "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D": { symbol: "USDT", name: "USDT (testnet)" },
+  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d": { symbol: "WBTC", name: "WBTC (testnet)" },
+  "0xB5a30b0FDc42e3E9760Cb8449Fb37": { symbol: "WETH", name: "WETH (testnet)" },
+  "0x5387C85A4965769f6B0Df430638a1388493486F1": { symbol: "WSOL", name: "WSOL (testnet)" },
+};
+
+// Helper function to get token info from address
+const getTokenInfo = (tokenAddress: string) => {
+  const tokenInfo = tokenAddressToName[tokenAddress];
+  return tokenInfo || { symbol: tokenAddress.substring(0, 6), name: `Token ${tokenAddress.substring(0, 6)}` };
+};
+
 export default function BotDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -49,7 +83,7 @@ export default function BotDetails() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
   // Add a function to load trade history
-  const loadTradeHistory = async () => {
+  const loadTradeHistory = useCallback(async () => {
     if (!id) return
 
     setTradeHistoryLoading(true)
@@ -61,7 +95,7 @@ export default function BotDetails() {
     } finally {
       setTradeHistoryLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     setLoading(true)
@@ -79,7 +113,7 @@ export default function BotDetails() {
     }
 
     fetchBotData()
-  }, [id])
+  }, [id, loadTradeHistory])
 
   if (loading) {
     return (
@@ -483,7 +517,7 @@ export default function BotDetails() {
                             </Table.Td>
                             <Table.Td className="dark:border-gray-700">
                               <Badge variant="light" color="blue">
-                                {trade.token_address.toUpperCase()}
+                                {getTokenInfo(trade.token_address).name}
                               </Badge>
                             </Table.Td>
                             <Table.Td className="dark:border-gray-700">{trade.amount}</Table.Td>
@@ -492,7 +526,7 @@ export default function BotDetails() {
                             </Table.Td>
                             <Table.Td className="dark:border-gray-700">
                               {trade.trade_price
-                                ? `${(trade.amount / trade.trade_price).toFixed(2)} ${trade.token_address.toUpperCase()}`
+                                ? `${(trade.amount / trade.trade_price).toFixed(2)} ${getTokenInfo(trade.token_address).name}`
                                 : "N/A"}
                             </Table.Td>
                           </Table.Tr>
@@ -517,7 +551,7 @@ export default function BotDetails() {
 
                       <Flex justify="space-between" align="center" mb="xs">
                         <Badge variant="light" color="blue">
-                          {trade.token_address.toUpperCase()}
+                          {getTokenInfo(trade.token_address).name}
                         </Badge>
                         <Text size="sm" fw={600} className="dark:text-white">
                           ${trade.trade_price ? trade.trade_price.toFixed(2) : "N/A"}
@@ -539,7 +573,7 @@ export default function BotDetails() {
                           </Text>
                           <Text size="sm" className="dark:text-white">
                             {trade.trade_price
-                              ? `${(trade.amount / trade.trade_price).toFixed(2)} ${trade.token_address.toUpperCase()}`
+                              ? `${(trade.amount / trade.trade_price).toFixed(2)} ${getTokenInfo(trade.token_address).name}`
                               : "N/A"}
                           </Text>
                         </Grid.Col>
@@ -575,7 +609,7 @@ export default function BotDetails() {
                     <Card key={coin.id || index} padding="xs" radius="md" className="bg-gray-50 dark:bg-gray-800">
                       <Flex justify="space-between" align="center" mb="xs">
                         <Text fw={600} size="sm" className="text-gray-800 dark:text-gray-200">
-                          {coin.token_address.toUpperCase()}
+                          {getTokenInfo(coin.token_address).name}
                         </Text>
                         <Badge size="sm" variant="dot" color="indigo">
                           Active

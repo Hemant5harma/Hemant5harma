@@ -10,10 +10,12 @@ from src.database.queries import (
     get_coins_by_bot,
     get_all_bot,
     get_bots_by_chain,
-    get_bot_performance
+    get_bot_performance,
+    get_trades_by_bot
 )
 from src.py_models.bot import BotCreate, BotResponse, BotUpdate, BotNetworkUpdate, MultiChainBotStats
 from src.py_models.coin import CoinResponse
+from src.py_models.trade import TradeResponse
 from src.api.dependencies import get_db_session
 from src.services.manager import BotManager
 from src.services.DCABot import JobManager
@@ -375,6 +377,24 @@ async def update_bot_network_config(
         "coins": coins
     }
     return BotResponse.model_validate(bot_data)
+
+@router.get("/{bot_id}/trades", response_model=List[TradeResponse])
+async def get_trades_for_bot(
+    bot_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieves trade history for a specific bot.
+    """
+    # Verify bot ownership
+    bot = await get_bot_by_id(db, bot_id)
+    if not bot or bot.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Bot not found or not yours")
+
+    trades = await get_trades_by_bot(db, bot_id)
+    trade_responses = [TradeResponse.model_validate(trade) for trade in trades]
+    return trade_responses
 
 
 

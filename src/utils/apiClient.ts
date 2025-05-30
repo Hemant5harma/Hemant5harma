@@ -19,9 +19,9 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `${response.status} login failed`;
+        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
         
-        // Show error notification
+        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -33,13 +33,17 @@ export const apiClient = {
       
       return response.json();
     } catch (error: any) {
+      // Only show notification for network errors if no notification was already shown
       if (error.message === 'Failed to fetch') {
         showNotification({
           title: 'Connection Error',
           message: 'Unable to connect to server',
           color: 'red',
         });
+        throw new Error('Unable to connect to server');
       }
+      
+      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -57,9 +61,9 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `API error: ${response.status}`;
+        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
         
-        // Show error notification
+        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -71,13 +75,17 @@ export const apiClient = {
       
       return response.json();
     } catch (error: any) {
+      // Only show notification for network errors if no notification was already shown
       if (error.message === 'Failed to fetch') {
         showNotification({
           title: 'Connection Error',
           message: 'Unable to connect to server',
           color: 'red',
         });
+        throw new Error('Unable to connect to server');
       }
+      
+      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -95,9 +103,9 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `API error: ${response.status}`;
+        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
         
-        // Show error notification
+        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -109,13 +117,17 @@ export const apiClient = {
       
       return response.json();
     } catch (error: any) {
+      // Only show notification for network errors if no notification was already shown
       if (error.message === 'Failed to fetch') {
         showNotification({
           title: 'Connection Error',
           message: 'Unable to connect to server',
           color: 'red',
         });
+        throw new Error('Unable to connect to server');
       }
+      
+      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -132,9 +144,9 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `API error: ${response.status}`;
+        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
         
-        // Show error notification
+        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -146,13 +158,17 @@ export const apiClient = {
       
       return response.json();
     } catch (error: any) {
+      // Only show notification for network errors if no notification was already shown
       if (error.message === 'Failed to fetch') {
         showNotification({
           title: 'Connection Error',
           message: 'Unable to connect to server',
           color: 'red',
         });
+        throw new Error('Unable to connect to server');
       }
+      
+      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -164,6 +180,7 @@ export const fetchBots = async () => {
     return data;
   } catch (error) {
     console.error("Error fetching bots:", error);
+    // Don't show additional notification here since apiClient already handles it
     throw error;
   }
 };
@@ -182,6 +199,7 @@ export const pauseBot = async (botId: number) => {
     return data;
   } catch (error) {
     console.error(`Error pausing bot ${botId}:`, error);
+    // Don't show additional notification here since apiClient already handles it
     throw error;
   }
 };
@@ -200,6 +218,7 @@ export const resumeBot = async (botId: number) => {
     return data;
   } catch (error) {
     console.error(`Error resuming bot ${botId}:`, error);
+    // Don't show additional notification here since apiClient already handles it
     throw error;
   }
 };
@@ -218,6 +237,7 @@ export const deleteBot = async (botId: number) => {
     return data;
   } catch (error) {
     console.error(`Error deleting bot ${botId}:`, error);
+    // Don't show additional notification here since apiClient already handles it
     throw error;
   }
 };
@@ -227,15 +247,11 @@ export const deleteBot = async (botId: number) => {
  */
 export const fetchBotTradeHistory = async (botId: number) => {
   try {
-    const data = await apiClient.get(`/trades/${botId}/history`);
+    const data = await apiClient.get(`/bots/${botId}/trades`);
     return data;
   } catch (error) {
     console.error(`Error fetching trade history for bot ${botId}:`, error);
-    showNotification({
-      title: 'Error',
-      message: 'Failed to load trade history',
-      color: 'red',
-    });
+    // Don't show additional notification here since apiClient already handles it
     throw error;
   }
 };

@@ -10,9 +10,10 @@ import { showNotification } from "@mantine/notifications"
 interface DCAState {
   notifications: Notification[]
   dcaSettings: {
-    assets: { symbol: string; name: string; amount: number; threshold: number }[]
+    assets: { symbol: string; name: string; amount: number; threshold: number; token_address: string }[]
     frequency: string
     botName: string
+    chain_id: number
   }
   availableBalance: number
 }
@@ -33,32 +34,75 @@ const initialState: DCAState = {
     assets: [],
     frequency: "1 minute",
     botName: "DCA Bot 1",
+    chain_id: 10143, // Default to Monad testnet
   },
   availableBalance: 990059.94,
 }
 
-const cryptocurrencies = [
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
-  { symbol: "USDT", name: "Tether" },
-  { symbol: "BNB", name: "Binance Coin" },
-  { symbol: "ADA", name: "Cardano" },
-  { symbol: "XRP", name: "Ripple" },
-  { symbol: "SOL", name: "Solana" },
-  { symbol: "DOT", name: "Polkadot" },
-  { symbol: "DOGE", name: "Dogecoin" },
-  { symbol: "AVAX", name: "Avalanche" },
-  { symbol: "MATIC", name: "Polygon" },
-  { symbol: "LINK", name: "Chainlink" },
-  { symbol: "UNI", name: "Uniswap" },
-  { symbol: "ATOM", name: "Cosmos" },
-  { symbol: "ALGO", name: "Algorand" },
-  { symbol: "XLM", name: "Stellar" },
-  { symbol: "VET", name: "VeChain" },
-  { symbol: "FTM", name: "Fantom" },
-  { symbol: "THETA", name: "Theta Network" },
-  { symbol: "HBAR", name: "Hedera" },
-]
+// Network configurations with chain_id, rpc_url, and network_name
+const networkOptions = [
+  { 
+    value: 1, 
+    label: "Ethereum Mainnet",
+    shortName: "ETH",
+    rpc_url: "https://eth-mainnet.g.alchemy.com/v2/your-api-key",
+    network_name: "Ethereum Mainnet"
+  },
+  { 
+    value: 137, 
+    label: "Polygon",
+    shortName: "MATIC",
+    rpc_url: "https://polygon-rpc.com",
+    network_name: "Polygon"
+  },
+  { 
+    value: 56, 
+    label: "Binance Smart Chain",
+    shortName: "BSC",
+    rpc_url: "https://bsc-dataseed.binance.org",
+    network_name: "Binance Smart Chain"
+  },
+  { 
+    value: 10143, 
+    label: "Monad Testnet",
+    shortName: "Monad",
+    rpc_url: "https://testnet-rpc.monad.xyz",
+    network_name: "Monad testnet"
+  },
+];
+
+// Network-specific cryptocurrency configurations
+const cryptocurrenciesByNetwork: Record<number, Array<{ symbol: string; name: string; token_address: string }>> = {
+  // Ethereum Mainnet
+  1: [
+    { symbol: "USDC", name: "USD Coin", token_address: "0xA0b86a33E6441b4dc5029316a4B3D3536aDF38F5" },
+    { symbol: "USDT", name: "Tether", token_address: "0xdac17f958d2ee523a2206206994597c13d831ec7" },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", token_address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" },
+    { symbol: "WETH", name: "Wrapped Ethereum", token_address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
+  ],
+  // Polygon
+  137: [
+    { symbol: "USDC", name: "USD Coin", token_address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174" },
+    { symbol: "USDT", name: "Tether", token_address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f" },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", token_address: "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6" },
+    { symbol: "WETH", name: "Wrapped Ethereum", token_address: "0x7ceb23fd6f88b48c8f58f96b81b6c2f8f2f8f8f8" },
+  ],
+  // BSC
+  56: [
+    { symbol: "USDC", name: "USD Coin", token_address: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d" },
+    { symbol: "USDT", name: "Tether", token_address: "0x55d398326f99059ff775485246999027b3197955" },
+    { symbol: "BTCB", name: "Bitcoin BEP20", token_address: "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c" },
+    { symbol: "WBNB", name: "Wrapped BNB", token_address: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c" },
+  ],
+  // Monad Testnet
+  10143: [
+    { symbol: "USDC", name: "USDC (testnet)", token_address: "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea" },
+    { symbol: "USDT", name: "USDT (testnet)", token_address: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D" },
+    { symbol: "WBTC", name: "WBTC (testnet)", token_address: "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d" },
+    { symbol: "WETH", name: "WETH (testnet)", token_address: "0xB5a30b0FDc42e3E9760Cb8449Fb37" },
+    { symbol: "WSOL", name: "WSOL (testnet)", token_address: "0x5387C85A4965769f6B0Df430638a1388493486F1" },
+  ],
+};
 
 const frequencyOptions = [
   { value: "1 minute", label: "Every Minute" },
@@ -87,6 +131,8 @@ const DCATrading: React.FC = () => {
       dcaSettings: {
         ...prevState.dcaSettings,
         [field]: value,
+        // Clear assets when chain_id changes to show only network-specific tokens
+        ...(field === "chain_id" && { assets: [] }),
       },
     }))
   }
@@ -102,18 +148,35 @@ const DCATrading: React.FC = () => {
       return
     }
 
+    // Validate chain_id is selected
+    if (!dca.dcaSettings.chain_id) {
+      showNotification({
+        title: "Validation Error",
+        message: "Please select a blockchain network",
+        color: "red",
+      })
+      return
+    }
+
     // Set loading state to true when starting the API call
     setIsCreatingBot(true)
+
+    const selectedNetwork = networkOptions.find(net => net.value === dca.dcaSettings.chain_id);
 
     const apiData = {
       name: dca.dcaSettings.botName,
       frequency: dca.dcaSettings.frequency,
+      chain_id: dca.dcaSettings.chain_id,
+      rpc_url: selectedNetwork?.rpc_url,
+      network_name: selectedNetwork?.network_name,
       coins: dca.dcaSettings.assets.map((asset) => ({
-        token_address: asset.symbol.toLowerCase(),
+        token_address: asset.token_address,
         amount: asset.amount,
         threshold: asset.threshold,
       })),
     }
+
+    console.log("Creating bot with data:", apiData); // Debug log
 
     // Make API call using the API client
     apiClient
@@ -123,7 +186,7 @@ const DCATrading: React.FC = () => {
 
         showNotification({
           title: "Bot Created",
-          message: `Bot "${dca.dcaSettings.botName}" has been created successfully`,
+          message: `Bot "${dca.dcaSettings.botName}" has been created successfully on ${selectedNetwork?.label}`,
           color: "green",
         })
 
@@ -132,7 +195,7 @@ const DCATrading: React.FC = () => {
           type: "success",
           message: `New DCA bot "${dca.dcaSettings.botName}" created for ${dca.dcaSettings.assets
             .map((c) => c.symbol)
-            .join(", ")}`,
+            .join(", ")} on ${selectedNetwork?.label}`,
           timestamp: Date.now(),
         }
 
@@ -163,7 +226,7 @@ const DCATrading: React.FC = () => {
       })
   }
 
-  const handleAddCrypto = (crypto: { symbol: string; name: string }) => {
+  const handleAddCrypto = (crypto: { symbol: string; name: string; token_address: string }) => {
     // Check if crypto is already added
     if (dca.dcaSettings.assets.some((asset) => asset.symbol === crypto.symbol)) {
       showNotification({
@@ -216,14 +279,14 @@ const DCATrading: React.FC = () => {
     }))
   }
 
-  const filteredCryptocurrencies = cryptocurrencies.filter(
+  const filteredCryptocurrencies = cryptocurrenciesByNetwork[dca.dcaSettings.chain_id]?.filter(
     (crypto) =>
       crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  ) || []
 
   return (
-    <div className="min-h-screen p-4 sm:p-6  text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen p-4 sm:p-6 text-gray-900 dark:text-gray-100">
       <div className="max-w-4xl mx-auto">
         {/* Main Card */}
         <motion.div
@@ -288,11 +351,39 @@ const DCATrading: React.FC = () => {
                 </div>
               </motion.div>
 
-              {/* Selected Cryptocurrencies */}
+              {/* Blockchain Network */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                <label className="block text-sm font-medium mb-2 flex items-center">
+                  <Tag className="h-4 w-4 mr-2" />
+                  Blockchain Network
+                </label>
+                <div className="relative">
+                  <select
+                    value={dca.dcaSettings.chain_id}
+                    onChange={(e) => handleUpdateDCASettings("chain_id", Number(e.target.value))}
+                    className="w-full appearance-none bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                  >
+                    {networkOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Selected Cryptocurrencies */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
                 className="bg-gray-50 dark:bg-gray-700 rounded-xl p-5"
               >
                 <div className="flex justify-between items-center mb-4">
@@ -346,10 +437,12 @@ const DCATrading: React.FC = () => {
                               type="number"
                               value={asset.amount}
                               onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
-                              className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              className="w-28 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                               min="0"
-                              step="0.01"
+                              step="0.0001"
+                              placeholder="0.0001"
                             />
+                           
                           </div>
                           <div className="flex flex-col">
                             <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">Threshold (%)</label>
@@ -380,7 +473,7 @@ const DCATrading: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
+                transition={{ duration: 0.4, delay: 0.5 }}
                 className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl p-5"
               >
                 <div className="flex items-center justify-between">
@@ -390,11 +483,15 @@ const DCATrading: React.FC = () => {
                       <span>Total Investment</span>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                      {totalValue < 0.01 && totalValue > 0
+                        ? totalValue.toFixed(6) // Show more decimals for very small amounts
+                        : totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })
+                      }{" "}
                       <span className="text-sm font-normal text-gray-500 dark:text-gray-400">USDT</span>
                     </div>
                   </div>
-                  <div className="text-right">
+                  {/* Available Balance - Commented out as requested */}
+                  {/* <div className="text-right">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Available Balance</p>
                     <p className="font-medium">
                       {dca.availableBalance.toLocaleString(undefined, {
@@ -403,28 +500,29 @@ const DCATrading: React.FC = () => {
                       })}{" "}
                       <span className="text-sm font-normal text-gray-500 dark:text-gray-400">USDT</span>
                     </p>
-                  </div>
+                  </div> */}
                 </div>
 
-                {totalValue > dca.availableBalance && (
+                {/* Available Balance validation - Commented out as requested */}
+                {/* {totalValue > dca.availableBalance && (
                   <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-start">
                     <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
                     <span>Total investment amount exceeds your available balance. Please adjust your allocation.</span>
                   </div>
-                )}
+                )} */}
               </motion.div>
 
               {/* Create Button */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 }}
+                transition={{ duration: 0.4, delay: 0.6 }}
               >
                 <button
                   onClick={handleSubmitDCA}
-                  disabled={isCreatingBot || totalValue > dca.availableBalance || dca.dcaSettings.assets.length === 0}
+                  disabled={isCreatingBot || dca.dcaSettings.assets.length === 0}
                   className={`w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-xl transition duration-300 flex items-center justify-center ${
-                    isCreatingBot || totalValue > dca.availableBalance || dca.dcaSettings.assets.length === 0
+                    isCreatingBot || dca.dcaSettings.assets.length === 0
                       ? "opacity-70 cursor-not-allowed"
                       : "hover:shadow-lg transform hover:-translate-y-1"
                   }`}
@@ -508,7 +606,7 @@ const DCATrading: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
-                {filteredCryptocurrencies.length > 0 ? (
+                {filteredCryptocurrencies?.length > 0 ? (
                   filteredCryptocurrencies.map((crypto) => {
                     const isSelected = dca.dcaSettings.assets.some((asset) => asset.symbol === crypto.symbol)
                     return (
@@ -542,7 +640,7 @@ const DCATrading: React.FC = () => {
                   })
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">No cryptocurrencies found</p>
+                    <p className="text-gray-500 dark:text-gray-400">No cryptocurrencies found for this network</p>
                   </div>
                 )}
               </div>

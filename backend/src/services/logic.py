@@ -3,13 +3,11 @@ from datetime import datetime, timedelta, timezone
 from web3 import Web3
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
 from src.dex.dex_integration import DexIntegration
 
-from src.services.market_data import (
-    MarketDataService,
-)  # Placeholder for your actual market data fetching function
 from src.database.queries import create_or_update_bot_performance
 
 # Import the price fetching function from dca.py
@@ -82,8 +80,10 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
     # 3) Calculate current value by token address
     # Here we calculate the coin quantity purchased per token:
     #       coin_qty = (USDT allocated) / (trade_price)
-    md_service = MarketDataService()
     token_amounts = {}
+    
+    # Get chain_id from trades (use first trade's chain_id, or default to 10143)
+    chain_id = trades[0].chain_id if trades and trades[0].chain_id else 10143
     
     # Group and accumulate coin quantities by token address
     for trade in trades:
@@ -99,9 +99,10 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
     # Retrieve current prices for each token and compute overall portfolio value
     for token_address, coin_qty in token_amounts.items():
         try:
-            token_data = await md_service.get_token_data(token_id=token_address)
-            if token_data and "current_price" in token_data:
-                price = token_data["current_price"]
+            # Use the same price fetching function that works in the trading logic
+            price_data = get_current_price_gecko(token_address, chain_id)
+            if price_data and "usdPrice" in price_data:
+                price = price_data["usdPrice"]
                 current_prices[token_address] = price
                 current_value += coin_qty * price
         except Exception as e:
@@ -177,7 +178,7 @@ async def check_bot(bot_id: int):
         try:
             # Get the bot
             result = await db.execute(
-                select(Bot).where(Bot.id == bot_id, Bot.status == "running")
+                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins))
             )
             bot = result.scalars().first()
 
@@ -185,13 +186,11 @@ async def check_bot(bot_id: int):
                 logger.info(f"Bot {bot_id} not found or not running")
                 return
 
-            # Get all coins for this bot
-            result = await db.execute(select(Coin).where(Coin.bot_id == bot_id))
-            coins = result.scalars().all()
-            
-            # Use bot.chain_id if available, otherwise default to 10143
-            chain_id = getattr(bot, "chain_id", 10143)
+            chain_id = bot.chain_id  
             dex = DexIntegration(chain_id=chain_id)
+            
+            # Get all coins for this bot
+            coins = bot.coins
             
             for coin in coins:
                 try:
@@ -224,7 +223,7 @@ async def check_bot(bot_id: int):
                             chain_id=chain_id
                         )
 
-                        # Record the trade
+                        # Record the trade with additional data
                         trade = Trade(
                             bot_id=bot_id,
                             coin_id=coin.id,
@@ -233,6 +232,7 @@ async def check_bot(bot_id: int):
                             amount=coin.amount,
                             trade_price=current_price,
                             transaction_hash=tx_hash,
+                            chain_id=chain_id  # Added chain_id from bot config
                         )
                         db.add(trade)
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")

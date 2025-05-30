@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class TradeResponse(BaseModel):
     id: int
@@ -9,6 +10,9 @@ class TradeResponse(BaseModel):
     trade_price: float
     token_address: str
     amount: float
+    transaction_hash: str
+    chain_id: Optional[int] = None
+    network_name: Optional[str] = None
 
     class Config:
         from_attributes = True
