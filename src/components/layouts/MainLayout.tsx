@@ -1,7 +1,5 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { AppShell, Burger } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
 import Sidebar from "../SideBar";
 import {
   FaChartLine,
@@ -49,45 +47,45 @@ interface MainLayoutProps {
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const [opened, { toggle }] = useDisclosure();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{
-        width: 250,
-        breakpoint: 'sm',
-        collapsed: { mobile: !opened },
-      }}
-      padding="md"
-      className="dark:bg-boxdark-2 dark:text-bodydark "
-    >
-      <AppShell.Header>
-        <div className="flex items-center justify-between w-full bg-white drop-shadow-1 dark:bg-boxdark dark:drop-shadow-none">
-          <Burger
-            opened={opened}
-            onClick={toggle}
-            hiddenFrom="sm"
-            size="sm"
-            className="mr-25 text-dark dark:text-white" // Set light and dark colors
-          />
-          <Header />
-        </div>
-      </AppShell.Header>
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-boxdark-2 dark:to-gray-800">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-[70px] bg-white/80 backdrop-blur-xl border-b border-gray-200/50 dark:bg-boxdark dark:border-strokedark shadow-lg">
+        <Header sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
+      </header>
 
+      {/* Sidebar */}
+      <aside className={`fixed top-[70px] left-0 bottom-0 z-40 w-[280px] bg-white/70 backdrop-blur-xl border-r border-gray-200/50 dark:bg-boxdark dark:border-strokedark shadow-2xl transition-transform duration-300 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } sm:translate-x-0`}>
+        <Sidebar menuItems={menuItems} />
+      </aside>
 
-      <AppShell.Navbar>
-        <div className="dark:bg-boxdark-2 ">
-          <Sidebar menuItems={menuItems} />
-        </div>
-      </AppShell.Navbar>
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-30 sm:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
 
-      <AppShell.Main>
-        <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-          {children || <Outlet />}
+      {/* Main Content */}
+      <main className="pt-[70px] sm:ml-[280px] min-h-screen">
+        <div className="p-6 md:p-8 2xl:p-10">
+          <div className="mx-auto max-w-screen-2xl">
+            <div className="bg-white/60 backdrop-blur-sm dark:bg-boxdark rounded-2xl shadow-xl border border-gray-200/50 dark:border-strokedark p-4 sm:p-6 md:p-8 2xl:p-10 min-h-[calc(100vh-140px)]">
+              {children || <Outlet />}
+            </div>
+          </div>
         </div>
-      </AppShell.Main>
-    </AppShell>
+      </main>
+    </div>
   );
 };
 
