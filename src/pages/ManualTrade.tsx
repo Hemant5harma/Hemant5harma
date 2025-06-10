@@ -109,6 +109,14 @@ const networkOptions: Network[] = [
     isTestnet: false
   },
   {
+    chain_id: 97,
+    name: "BSC Testnet",
+    shortName: "tBNB",
+    rpc_url: "https://data-seed-prebsc-1-s1.binance.org:8545",
+    network_name: "BSC Testnet",
+    isTestnet: true
+  },
+  {
     chain_id: 10143,
     name: "Monad Testnet",
     shortName: "Monad",
@@ -123,7 +131,7 @@ const tokensByNetwork: Record<number, Token[]> = {
   // Ethereum Mainnet
   1: [
     { symbol: "ETH", name: "Ethereum", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", decimals: 18 },
-    { symbol: "USDC", name: "USD Coin", address: "0xA0b86a33E6417aEd136F0b5915b3E6E80B2d2BbF", decimals: 6 },
+    { symbol: "USDC", name: "USD Coin", address: "0xa0b86a33e6441b4dc5029316a4b3d3536adf38f5", decimals: 6 },
     { symbol: "USDT", name: "Tether", address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
     { symbol: "WBTC", name: "Wrapped Bitcoin", address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", decimals: 8 },
     { symbol: "WETH", name: "Wrapped Ethereum", address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", decimals: 18 },
@@ -158,20 +166,28 @@ const tokensByNetwork: Record<number, Token[]> = {
     { symbol: "WETH", name: "Wrapped Ethereum", address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", decimals: 18 },
     { symbol: "DAI", name: "Dai Stablecoin", address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", decimals: 18 },
   ],
+  // BSC Testnet
+  97: [
+    { symbol: "tBNB", name: "Testnet BNB", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", decimals: 18 },
+    { symbol: "USDT", name: "Tether (testnet)", address: "0x7ef95a0fee0dd31b22626fa2e10ee6a223f8a684", decimals: 18 },
+    { symbol: "USDC", name: "USD Coin (testnet)", address: "0x64544969ed7ebf5f083679233325356ebe738930", decimals: 18 },
+    { symbol: "BUSD", name: "BUSD (testnet)", address: "0xed24fc36d5ee211ea25a80239fb8c4cfd80f12ee", decimals: 18 },
+    { symbol: "CAKE", name: "PancakeSwap (testnet)", address: "0xfae44cf6309598c2557bb265bf0401d594db97da", decimals: 18 },
+  ],
+  
   // Monad Testnet
   10143: [
     { symbol: "MON", name: "Monad", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", decimals: 18 },
     { symbol: "USDC", name: "USDC (testnet)", address: "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea", decimals: 6 },
     { symbol: "USDT", name: "USDT (testnet)", address: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D", decimals: 6 },
     { symbol: "WBTC", name: "WBTC (testnet)", address: "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d", decimals: 8 },
-    { symbol: "WETH", name: "WETH (testnet)", address: "0xB5a30b0FDc42e3E9760Cb8449Fb37", decimals: 18 },
     { symbol: "WSOL", name: "WSOL (testnet)", address: "0x5387C85A4965769f6B0Df430638a1388493486F1", decimals: 9 },
   ]
 }
 
 const ManualTrade: React.FC = () => {
   // State management
-  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networkOptions[4]) // Default to Monad Testnet
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networkOptions[4]) // Default to BSC Testnet
   const [sellToken, setSellToken] = useState<Token | null>(null)
   const [buyToken, setBuyToken] = useState<Token | null>(null)
   const [sellAmount, setSellAmount] = useState<string>('')
@@ -185,6 +201,12 @@ const ManualTrade: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([])
   const [quoteError, setQuoteError] = useState<string>('')
+  
+  // New state for balance management
+  const [connectedWallet, setConnectedWallet] = useState<string | null>(null)
+  const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({})
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false)
+  const [walletChainId, setWalletChainId] = useState<number | null>(null)
 
   // Initialize default tokens and fetch trade history
   useEffect(() => {
@@ -196,6 +218,223 @@ const ManualTrade: React.FC = () => {
     // Fetch trade history on component mount (only if we have authentication)
     fetchTradeHistory()
   }, [selectedNetwork])
+
+  // Check wallet connection on component mount and listen for changes
+  useEffect(() => {
+    checkWalletConnection()
+    
+    // Listen for account changes
+    if ((window as any).ethereum) {
+      const handleAccountsChanged = (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setConnectedWallet(accounts[0])
+        } else {
+          setConnectedWallet(null)
+          setTokenBalances({})
+        }
+      }
+      
+      const handleChainChanged = (chainId: string) => {
+        const newChainId = parseInt(chainId, 16)
+        console.log('Chain changed to:', newChainId)
+        setWalletChainId(newChainId)
+        
+        // Clear balances immediately when network changes
+        setTokenBalances({})
+        
+        // Refresh balances for the new network with a small delay
+        setTimeout(() => {
+          console.log('Fetching balances for new network:', newChainId)
+          fetchTokenBalances(true) // Force refresh - fetchTokenBalances already checks for connectedWallet
+        }, 1000)
+      }
+      
+      ;(window as any).ethereum.on('accountsChanged', handleAccountsChanged)
+      ;(window as any).ethereum.on('chainChanged', handleChainChanged)
+      
+      // Cleanup listeners
+      return () => {
+        if ((window as any).ethereum.removeListener) {
+          ;(window as any).ethereum.removeListener('accountsChanged', handleAccountsChanged)
+          ;(window as any).ethereum.removeListener('chainChanged', handleChainChanged)
+        }
+      }
+    }
+  }, [])
+
+  // Check if wallet is connected
+  const checkWalletConnection = async () => {
+    if ((window as any).ethereum) {
+      try {
+        const accounts = await (window as any).ethereum.request({ method: "eth_accounts" })
+        if (accounts && accounts.length > 0) {
+          setConnectedWallet(accounts[0])
+        }
+      } catch (error) {
+        console.error("Error checking wallet connection:", error)
+      }
+    }
+  }
+
+  // Fetch token balances using Web3 (works with all chains)
+  const fetchTokenBalances = async (forceRefresh = false) => {
+    if (!connectedWallet) return
+
+    if (forceRefresh) {
+      console.log('Force refreshing balances...')
+      setTokenBalances({}) // Clear immediately for force refresh
+    }
+
+    setBalanceLoading(true)
+    
+    // Add timeout to prevent getting stuck
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Balance fetch timeout after 30 seconds')), 30000)
+    })
+    
+    try {
+      await Promise.race([fetchBalancesFromWeb3(), timeoutPromise])
+    } catch (error) {
+      console.error('Failed to fetch token balances:', error)
+      // Clear balances on error to avoid showing stale data
+      setTokenBalances({})
+    } finally {
+      setBalanceLoading(false)
+    }
+  }
+
+  // Fetch balances directly from Web3 (fetches for actual wallet network)
+  const fetchBalancesFromWeb3 = async () => {
+    if (!connectedWallet || !(window as any).ethereum) {
+      console.log('No wallet connected or ethereum not available')
+      return
+    }
+
+    try {
+      const { BrowserProvider, Contract, isAddress } = await import('ethers')
+      const provider = new BrowserProvider((window as any).ethereum)
+      
+      // Get the actual wallet network (don't try to change it)
+      const network = await provider.getNetwork()
+      const walletChainId = Number(network.chainId)
+      
+      console.log(`Fetching balances for wallet network: Chain ID ${walletChainId}`)
+      
+      // Find the network configuration for the wallet's actual network
+      const walletNetwork = networkOptions.find(net => net.chain_id === walletChainId)
+      const tokensToFetch = tokensByNetwork[walletChainId] || []
+      
+      if (!walletNetwork) {
+        console.log(`Unsupported network: Chain ID ${walletChainId}`)
+        setTokenBalances({})
+        return
+      }
+      
+      if (tokensToFetch.length === 0) {
+        console.log(`No tokens configured for Chain ID ${walletChainId}`)
+        setTokenBalances({})
+        return
+      }
+
+      const balances: Record<string, string> = {}
+
+      // Get native token balance
+      try {
+        const nativeBalance = await provider.getBalance(connectedWallet)
+        const nativeAmount = parseFloat(nativeBalance.toString()) / Math.pow(10, 18)
+        balances["0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"] = nativeAmount.toFixed(6)
+        console.log(`Native balance: ${nativeAmount.toFixed(6)} ${walletNetwork.shortName}`)
+      } catch (error) {
+        console.error('Failed to fetch native balance:', error)
+        balances["0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"] = "0.00"
+      }
+
+      // Get ERC20 token balances with minimal ABI
+      const erc20Abi = [
+        "function balanceOf(address owner) view returns (uint256)"
+      ]
+
+      for (const token of tokensToFetch) {
+        if (token.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") continue
+        
+        // Validate token address and skip invalid ones
+        if (!isAddress(token.address)) {
+          console.error(`Invalid token address: ${token.address}`)
+          balances[token.address] = "0.00"
+          continue
+        }
+        
+        try {
+          const contract = new Contract(token.address, erc20Abi, provider)
+          const balance = await contract.balanceOf(connectedWallet)
+          const decimals = token.decimals || 18
+          const amount = parseFloat(balance.toString()) / Math.pow(10, decimals)
+          balances[token.address.toLowerCase()] = amount.toFixed(6)
+          console.log(`${token.symbol} balance: ${amount.toFixed(6)}`)
+        } catch (error) {
+          console.error(`Failed to fetch balance for ${token.symbol} (${token.address}):`, error)
+          balances[token.address.toLowerCase()] = "0.00"
+        }
+        
+        // Add small delay between calls to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      setTokenBalances(balances)
+      setWalletChainId(walletChainId)
+      console.log(`Balance fetching completed successfully for ${walletNetwork.name}`)
+    } catch (error) {
+      console.error('Web3 balance fetch failed:', error)
+      throw error
+    }
+  }
+
+  // Fetch token balances only when wallet connects or wallet network changes
+  useEffect(() => {
+    if (connectedWallet) {
+      console.log('Wallet connected, fetching balances...')
+      fetchTokenBalances()
+    } else {
+      // Clear balances when wallet disconnects
+      setTokenBalances({})
+      setWalletChainId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectedWallet])
+
+  // Update token balances when tokens are selected and balances are available
+  useEffect(() => {
+    if (sellToken && tokenBalances[sellToken.address.toLowerCase()]) {
+      setSellToken({
+        ...sellToken,
+        balance: tokenBalances[sellToken.address.toLowerCase()]
+      })
+    }
+    if (buyToken && tokenBalances[buyToken.address.toLowerCase()]) {
+      setBuyToken({
+        ...buyToken,
+        balance: tokenBalances[buyToken.address.toLowerCase()]
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenBalances])
+
+  // Add max button functionality
+  const handleMaxClick = (tokenType: 'sell' | 'buy') => {
+    const token = tokenType === 'sell' ? sellToken : buyToken
+    if (!token || !token.balance) return
+
+    const balance = parseFloat(token.balance)
+    if (tokenType === 'sell') {
+      // For native tokens, leave some for gas
+      if (token.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+        const maxAmount = Math.max(0, balance - 0.01) // Leave 0.01 for gas
+        setSellAmount(maxAmount.toString())
+      } else {
+        setSellAmount(balance.toString())
+      }
+    }
+  }
 
   // Fetch supported networks from backend (optional - we already have hardcoded ones)
   const fetchSupportedNetworks = async () => {
@@ -221,6 +460,7 @@ const ManualTrade: React.FC = () => {
       setQuote(null)
       setQuoteError('')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sellAmount, sellToken, buyToken, slippage, selectedNetwork])
 
   const fetchQuote = async () => {
@@ -386,13 +626,120 @@ const ManualTrade: React.FC = () => {
     const network = networkOptions.find(n => n.chain_id === networkId)
     if (network) {
       setSelectedNetwork(network)
-      // Reset tokens and amounts when network changes
+      
+      // Clear previous token selections and balances
       setSellToken(null)
       setBuyToken(null)
       setSellAmount('')
       setBuyAmount('')
       setQuote(null)
+      
+      // Clear all token balances
+      const tokens = tokensByNetwork[networkId]
+      if (tokens) {
+        tokens.forEach(token => {
+          token.balance = undefined
+        })
+      }
+      
+      // Fetch fresh balances if wallet is connected
+      if (connectedWallet) {
+        fetchTokenBalances(true)
+      }
     }
+  }
+
+  // Switch wallet network to match selected network
+  const switchWalletNetwork = async () => {
+    if (!(window as any).ethereum || !connectedWallet) {
+      showNotification({
+        title: 'Wallet Error',
+        message: 'No wallet connected or MetaMask not available',
+        color: 'red'
+      })
+      return
+    }
+
+    try {
+      const chainIdHex = `0x${selectedNetwork.chain_id.toString(16)}`
+      
+      // Try to switch to the network
+      await (window as any).ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: chainIdHex }],
+      })
+      
+      showNotification({
+        title: 'Network Switched',
+        message: `Successfully switched to ${selectedNetwork.name}`,
+        color: 'green'
+      })
+
+      // Just refresh balances after successful switch
+      setTimeout(() => {
+        fetchTokenBalances(true)
+      }, 1000)
+      
+    } catch (switchError: any) {
+      // If the network doesn't exist in the wallet, try to add it
+      if (switchError.code === 4902) {
+        try {
+          await (window as any).ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: `0x${selectedNetwork.chain_id.toString(16)}`,
+              chainName: selectedNetwork.name,
+              nativeCurrency: {
+                name: selectedNetwork.shortName,
+                symbol: selectedNetwork.shortName,
+                decimals: 18
+              },
+              rpcUrls: [selectedNetwork.rpc_url],
+              blockExplorerUrls: getExplorerUrls(selectedNetwork.chain_id)
+            }]
+          })
+          
+          showNotification({
+            title: 'Network Added',
+            message: `Successfully added and switched to ${selectedNetwork.name}`,
+            color: 'green'
+          })
+
+          // Just refresh balances after successful addition
+          setTimeout(() => {
+            fetchTokenBalances(true)
+          }, 1500)
+          
+        } catch (addError: any) {
+          console.error('Error adding network:', addError)
+          showNotification({
+            title: 'Network Error',
+            message: `Failed to add ${selectedNetwork.name}: ${addError.message}`,
+            color: 'red'
+          })
+        }
+      } else {
+        console.error('Error switching network:', switchError)
+        showNotification({
+          title: 'Network Error',
+          message: `Failed to switch to ${selectedNetwork.name}: ${switchError.message}`,
+          color: 'red'
+        })
+      }
+    }
+  }
+
+  // Helper function to get explorer URLs for network addition
+  const getExplorerUrls = (chainId: number): string[] => {
+    const explorers: Record<number, string[]> = {
+      1: ['https://etherscan.io'],
+      137: ['https://polygonscan.com'],
+      42161: ['https://arbiscan.io'],
+      56: ['https://bscscan.com'],
+      97: ['https://testnet.bscscan.com'],
+      10143: ['https://testnet.monadexplorer.com'],
+    }
+    return explorers[chainId] || ['https://etherscan.io']
   }
 
   // Get current network tokens
@@ -420,26 +767,38 @@ const ManualTrade: React.FC = () => {
               <span className="text-sm text-gray-500">{selectedNetwork.name}</span>
             </div>
             <div className="space-y-2 overflow-y-auto max-h-64">
-              {currentTokens.map((token) => (
-                <button
-                  key={token.address}
-                  onClick={() => selectToken(token)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                      {token.symbol.charAt(0)}
+              {currentTokens.map((token) => {
+                const balance = tokenBalances[token.address.toLowerCase()] || '0.00'
+                const isLoading = balanceLoading && !tokenBalances[token.address.toLowerCase()]
+                
+                return (
+                  <button
+                    key={token.address}
+                    onClick={() => selectToken({...token, balance})}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        {token.symbol.charAt(0)}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-medium">{token.symbol}</div>
+                        <div className="text-sm text-gray-500">{token.name}</div>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <div className="font-medium">{token.symbol}</div>
-                      <div className="text-sm text-gray-500">{token.name}</div>
+                    <div className="text-right">
+                      {isLoading ? (
+                        <div className="w-4 h-4 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <div className="text-sm font-medium">{balance}</div>
+                      )}
+                      {connectedWallet && (
+                        <div className="text-xs text-gray-400">{token.symbol}</div>
+                      )}
                     </div>
-                  </div>
-                  {token.balance && (
-                    <div className="text-sm text-gray-500">{token.balance}</div>
-                  )}
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </motion.div>
         </motion.div>
@@ -541,7 +900,14 @@ const ManualTrade: React.FC = () => {
 
         {/* Network Selector */}
         <div className="mb-6 p-4 bg-white dark:bg-boxdark rounded-2xl border dark:border-gray-700 shadow-sm">
-          <label className="block text-sm font-medium mb-2">Network</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium">Network</label>
+            {connectedWallet && (
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Web3 Balance Fetching
+              </div>
+            )}
+          </div>
           <select
             value={selectedNetwork.chain_id}
             onChange={(e) => handleNetworkChange(parseInt(e.target.value))}
@@ -553,13 +919,74 @@ const ManualTrade: React.FC = () => {
               </option>
             ))}
           </select>
-          <div className="mt-2 flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Connected to {selectedNetwork.name}
-            </span>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${balanceLoading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedNetwork.name} {selectedNetwork.isTestnet ? '(Testnet)' : ''}
+                {balanceLoading && ' - Fetching balances...'}
+              </span>
+            </div>
+            {connectedWallet && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>{connectedWallet.substring(0, 6)}...{connectedWallet.substring(connectedWallet.length - 4)}</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Wallet Connection Prompt */}
+        {!connectedWallet && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-6 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Connect Your Wallet</h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Connect your wallet to view token balances and execute trades. Go to the user menu (top right) to connect.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Network Mismatch Warning */}
+        {connectedWallet && walletChainId && walletChainId !== selectedNetwork.chain_id && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 flex-1">
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-blue-800 dark:text-blue-200">Network Mismatch</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Your wallet is on {networkOptions.find(n => n.chain_id === walletChainId)?.name || `Chain ${walletChainId}`}, 
+                    but you've selected {selectedNetwork.name}. 
+                    Balances shown are for your wallet's current network.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={switchWalletNetwork}
+                className="ml-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 flex-shrink-0"
+                title={`Switch wallet to ${selectedNetwork.name}`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m0-4l4-4" />
+                </svg>
+                <span>Switch Network</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Swap Interface */}
         <div className="bg-white dark:bg-boxdark rounded-2xl border dark:border-gray-700 p-6 shadow-lg mb-6">
@@ -567,9 +994,28 @@ const ManualTrade: React.FC = () => {
           <div className="mb-2">
             <div className="flex justify-between items-center mb-3">
               <label className="text-sm font-medium text-gray-600 dark:text-gray-400">You pay</label>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Balance: {sellToken?.balance || '0.00'}
-              </span>
+              <div className="flex items-center space-x-2">
+                {balanceLoading ? (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Balance: {sellToken?.balance || '0.00'}
+                    </span>
+                    {sellToken?.balance && parseFloat(sellToken.balance) > 0 && (
+                      <button
+                        onClick={() => handleMaxClick('sell')}
+                        className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <input
@@ -612,9 +1058,18 @@ const ManualTrade: React.FC = () => {
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <label className="text-sm font-medium text-gray-600 dark:text-gray-400">You receive</label>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Balance: {buyToken?.balance || '0.00'}
-              </span>
+              <div className="flex items-center space-x-2">
+                {balanceLoading ? (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Balance: {buyToken?.balance || '0.00'}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <input
@@ -732,11 +1187,18 @@ const ManualTrade: React.FC = () => {
                 Recent Trades
               </h3>
               <button
-                onClick={fetchTradeHistory}
-                className="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                title="Refresh All Trades"
+                onClick={() => {
+                  fetchTradeHistory()
+                  if (connectedWallet) {
+                    fetchTokenBalances(true) // Force refresh balances
+                  }
+                }}
+                disabled={balanceLoading}
+                className="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 flex items-center space-x-1"
+                title="Refresh Trades & Balances"
               >
-                ↻ Refresh
+                <span className={balanceLoading ? 'animate-spin' : ''}>↻</span>
+                <span>Refresh</span>
               </button>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -751,6 +1213,7 @@ const ManualTrade: React.FC = () => {
                     137: `https://polygonscan.com/tx/${txHash}`,
                     42161: `https://arbiscan.io/tx/${txHash}`,
                     56: `https://bscscan.com/tx/${txHash}`,
+                    97: `https://testnet.bscscan.com/tx/${txHash}`,
                     10143: `https://testnet.monadexplorer.com/tx/${txHash}`,
                   }
                   return explorers[chainId] || `https://etherscan.io/tx/${txHash}`
