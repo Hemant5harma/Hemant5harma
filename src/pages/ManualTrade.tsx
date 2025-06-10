@@ -772,20 +772,20 @@ const ManualTrade: React.FC = () => {
                 const isLoading = balanceLoading && !tokenBalances[token.address.toLowerCase()]
                 
                 return (
-                  <button
-                    key={token.address}
+                <button
+                  key={token.address}
                     onClick={() => selectToken({...token, balance})}
-                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        {token.symbol.charAt(0)}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-sm text-gray-500">{token.name}</div>
-                      </div>
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                      {token.symbol.charAt(0)}
                     </div>
+                    <div className="text-left">
+                      <div className="font-medium">{token.symbol}</div>
+                      <div className="text-sm text-gray-500">{token.name}</div>
+                    </div>
+                  </div>
                     <div className="text-right">
                       {isLoading ? (
                         <div className="w-4 h-4 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -794,9 +794,9 @@ const ManualTrade: React.FC = () => {
                       )}
                       {connectedWallet && (
                         <div className="text-xs text-gray-400">{token.symbol}</div>
-                      )}
+                  )}
                     </div>
-                  </button>
+                </button>
                 )
               })}
             </div>
@@ -922,10 +922,10 @@ const ManualTrade: React.FC = () => {
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${balanceLoading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
                 {selectedNetwork.name} {selectedNetwork.isTestnet ? '(Testnet)' : ''}
                 {balanceLoading && ' - Fetching balances...'}
-              </span>
+            </span>
             </div>
             {connectedWallet && (
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
@@ -1002,9 +1002,9 @@ const ManualTrade: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Balance: {sellToken?.balance || '0.00'}
-                    </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Balance: {sellToken?.balance || '0.00'}
+              </span>
                     {sellToken?.balance && parseFloat(sellToken.balance) > 0 && (
                       <button
                         onClick={() => handleMaxClick('sell')}
@@ -1065,9 +1065,9 @@ const ManualTrade: React.FC = () => {
                     <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
                   </div>
                 ) : (
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Balance: {buyToken?.balance || '0.00'}
-                  </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Balance: {buyToken?.balance || '0.00'}
+              </span>
                 )}
               </div>
             </div>

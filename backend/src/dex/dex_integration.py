@@ -6,6 +6,9 @@ from web3 import Web3
 from dotenv import load_dotenv
 from eth_account import Account, messages
 from web3.middleware import ExtraDataToPOAMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.utils.encryption import encryption_util
+from src.database.queries import get_user_private_key
 
 load_dotenv()
 
@@ -13,20 +16,62 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DexIntegration:
-    def __init__(self, chain_id: int = 10143):
-        # Monad Testnet configuration
-        self.rpc_url = os.getenv("RPC_URL")
+    def __init__(self, chain_id: int = 10143, user_id: int = None, db: AsyncSession = None, rpc_url: str = None):
+        # Configuration
+        self.rpc_url = rpc_url or os.getenv("RPC_URL")
         self.api_key = os.getenv("ZEROX_API_KEY")
-        self.chain_id = chain_id  # Monad Testnet or as provided
-        self.private_key = os.getenv("PRIVATE_KEY")
-        self.native_token = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"  # MON
+        self.chain_id = chain_id
+        self.user_id = user_id
+        self.db = db
+        
+        # Private key will be set based on user or fallback to environment
+        self.private_key = None
+        self.account = None
+        self.wallet_address = None
+        
+        self.native_token = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         self.permit2_address = Web3.to_checksum_address("0x000000000022D473030F116dDEE9F6B43aC78BA3")
         self.web3 = Web3(Web3.HTTPProvider(self.rpc_url))
         self.web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-        assert self.web3.is_connected(), "Failed to connect to Monad Testnet"
-        self.account = Account.from_key(self.private_key)
-        self.wallet_address = self.account.address
+        
+        if not self.web3.is_connected():
+            raise Exception(f"Failed to connect to network {chain_id} at {self.rpc_url}")
+        
         self.base_url = "https://api.0x.org"
+    
+    async def setup_account(self):
+        """Setup account using user's encrypted private key from database or environment fallback"""
+        if self.user_id and self.db:
+            try:
+                encrypted_key = await get_user_private_key(self.db, self.user_id)
+                if encrypted_key:
+                    # Decrypt the private key
+                    self.private_key = encryption_util.decrypt_private_key(encrypted_key)
+                    self.account = Account.from_key(self.private_key)
+                    self.wallet_address = self.account.address
+                    logger.info(f"Using user private key for wallet: {self.wallet_address}")
+                    return
+                else:
+                    logger.warning(f"No private key found for user {self.user_id}")
+            except Exception as e:
+                logger.error(f"Failed to setup user account: {e}")
+        
+        # Fallback to environment private key
+        env_private_key = os.getenv("PRIVATE_KEY")
+        if env_private_key:
+            self.private_key = env_private_key
+            self.account = Account.from_key(self.private_key)
+            self.wallet_address = self.account.address
+            logger.info(f"Using environment private key for wallet: {self.wallet_address}")
+        else:
+            raise Exception("No private key available. Please save your private key in settings or set PRIVATE_KEY environment variable.")
+    
+    @classmethod
+    async def create(cls, chain_id: int = 10143, user_id: int = None, db: AsyncSession = None, rpc_url: str = None):
+        """Factory method to create and setup DexIntegration instance"""
+        instance = cls(chain_id=chain_id, user_id=user_id, db=db, rpc_url=rpc_url)
+        await instance.setup_account()
+        return instance
 
     def get_0x_quote(self, buy_token: str, amount: int, chain_id: int = None):
         """

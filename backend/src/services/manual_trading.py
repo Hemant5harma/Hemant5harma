@@ -11,27 +11,36 @@ from src.py_models.manual_trade import (
     ManualTradeResponse, TokenInfo, WalletBalanceResponse, WalletBalanceRequest,
     NetworkInfo, SupportedNetworksResponse
 )
+from src.utils.encryption import encryption_util
+from src.database.queries import get_user_private_key
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 class ManualTradingService:
     """Manual trading service with multi-chain support"""
     
-    def __init__(self, chain_id: int = None, rpc_url: str = None):
+    def __init__(self, chain_id: int = None, rpc_url: str = None, user_id: int = None, db: AsyncSession = None):
         # Load default configuration
         self.api_key = os.getenv("ZEROX_API_KEY")
-        self.private_key = os.getenv("PRIVATE_KEY")
         self.infura_api_key = os.getenv("INFURA_API_KEY")
         self.base_url = "https://api.0x.org"
+        self.user_id = user_id
+        self.db = db
         
-        # If chain_id and rpc_url are provided, use them; otherwise use defaults
+        # Private key will be set based on user
+        self.private_key = None
+        self.account = None
+        self.wallet_address = None
+        
+        # Store chain info but don't setup network yet (will be done by create_for_network)
         if chain_id and rpc_url:
-            self._setup_network(chain_id, rpc_url)
+            self.chain_id = chain_id
+            self.rpc_url = rpc_url
         else:
             # Default fallback to environment or Ethereum with Infura
             self.chain_id = int(os.getenv("DEFAULT_CHAIN_ID", "1"))  # Default to Ethereum
             self.rpc_url = self._get_infura_rpc_url(self.chain_id)
-            self._setup_network(self.chain_id, self.rpc_url)
         
         # Common token addresses by chain ID
         self.common_tokens_by_chain = {
@@ -87,7 +96,7 @@ class ManualTradingService:
         
         return infura_endpoints.get(chain_id, f"https://mainnet.infura.io/v3/{self.infura_api_key}")
         
-    def _setup_network(self, chain_id: int, rpc_url: str):
+    async def _setup_network(self, chain_id: int, rpc_url: str):
         """Setup network connection"""
         self.chain_id = chain_id
         self.rpc_url = rpc_url
@@ -100,12 +109,39 @@ class ManualTradingService:
         
         if not self.web3.is_connected():
             raise Exception(f"Failed to connect to network {chain_id} at {rpc_url}")
-            
-        self.account = Account.from_key(self.private_key)
-        self.wallet_address = self.account.address
+        
+        # Setup account if we have user_id and db
+        if self.user_id and self.db:
+            await self._setup_user_account()
+        else:
+            # Fallback to environment private key for backwards compatibility
+            env_private_key = os.getenv("PRIVATE_KEY")
+            if env_private_key:
+                self.private_key = env_private_key
+                self.account = Account.from_key(self.private_key)
+                self.wallet_address = self.account.address
+            else:
+                logger.warning("No private key available - some operations will not work")
+    
+    async def _setup_user_account(self):
+        """Setup account using user's encrypted private key from database"""
+        try:
+            encrypted_key = await get_user_private_key(self.db, self.user_id)
+            if encrypted_key:
+                # Decrypt the private key
+                self.private_key = encryption_util.decrypt_private_key(encrypted_key)
+                self.account = Account.from_key(self.private_key)
+                self.wallet_address = self.account.address
+                logger.info(f"Using user private key for wallet: {self.wallet_address}")
+            else:
+                # No private key saved for user
+                raise Exception("No private key found for user. Please save your private key in settings.")
+        except Exception as e:
+            logger.error(f"Failed to setup user account: {e}")
+            raise Exception(f"Failed to setup user account: {str(e)}")
         
     @classmethod
-    def create_for_network(cls, chain_id: int, rpc_url: str):
+    async def create_for_network(cls, chain_id: int, rpc_url: str, user_id: int = None, db: AsyncSession = None):
         """Factory method to create service for specific network"""
         # Always create instance without RPC URL first to get access to _get_infura_rpc_url
         temp_instance = cls.__new__(cls)
@@ -114,10 +150,14 @@ class ManualTradingService:
         # If it's a supported Infura network, use our own Infura URL instead of the provided one
         if chain_id in [1, 137, 42161, 56]:  # Infura supported networks
             actual_rpc_url = temp_instance._get_infura_rpc_url(chain_id)
-            return cls(chain_id=chain_id, rpc_url=actual_rpc_url)
+            instance = cls(chain_id=chain_id, rpc_url=actual_rpc_url, user_id=user_id, db=db)
         else:
             # For other networks (like Monad), use the provided RPC URL
-            return cls(chain_id=chain_id, rpc_url=rpc_url)
+            instance = cls(chain_id=chain_id, rpc_url=rpc_url, user_id=user_id, db=db)
+        
+        # Setup the network (this will handle private key setup)
+        await instance._setup_network(chain_id, actual_rpc_url if chain_id in [1, 137, 42161, 56] else rpc_url)
+        return instance
     
     def get_network_info(self) -> NetworkInfo:
         """Get current network information"""
@@ -216,13 +256,13 @@ class ManualTradingService:
                 logger.error(f"Failed to convert {value} to integer: {e}")
                 raise ValueError(f"Invalid amount format: {value}. Please use a valid number.")
     
-    def get_quote(self, quote_request: QuoteRequest) -> QuoteResponse:
+    async def get_quote(self, quote_request: QuoteRequest) -> QuoteResponse:
         """Get a quote for a trade without executing it"""
         try:
             # Just ensure we're using the right chain - no need to recreate service
             if quote_request.chain_id != self.chain_id:
-                service = self.create_for_network(quote_request.chain_id, quote_request.rpc_url)
-                return service.get_quote(quote_request)
+                service = await self.create_for_network(quote_request.chain_id, quote_request.rpc_url, self.user_id, self.db)
+                return await service.get_quote(quote_request)
             
             sell_token = self._normalize_token_address(quote_request.sell_token)
             buy_token = self._normalize_token_address(quote_request.buy_token)
@@ -276,13 +316,13 @@ class ManualTradingService:
         response.raise_for_status()
         return response.json()
     
-    def execute_manual_trade(self, trade_request: ManualTradeRequest) -> ManualTradeResponse:
+    async def execute_manual_trade(self, trade_request: ManualTradeRequest) -> ManualTradeResponse:
         """Execute a manual trade with any token pair"""
         try:
             # Just ensure we're using the right chain - no need to recreate service
             if trade_request.chain_id != self.chain_id:
-                service = self.create_for_network(trade_request.chain_id, trade_request.rpc_url)
-                return service.execute_manual_trade(trade_request)
+                service = await self.create_for_network(trade_request.chain_id, trade_request.rpc_url, self.user_id, self.db)
+                return await service.execute_manual_trade(trade_request)
             
             sell_token = self._normalize_token_address(trade_request.sell_token)
             buy_token = self._normalize_token_address(trade_request.buy_token)
@@ -444,13 +484,13 @@ class ManualTradingService:
             logger.error(f"Failed to execute Monad trade: {e}")
             return None
     
-    def get_wallet_balances(self, balance_request: WalletBalanceRequest) -> WalletBalanceResponse:
+    async def get_wallet_balances(self, balance_request: WalletBalanceRequest) -> WalletBalanceResponse:
         """Get wallet balances for native token and specified ERC20 tokens"""
         try:
             # Create service instance for the requested network
             if balance_request.chain_id != self.chain_id or balance_request.rpc_url != self.rpc_url:
-                service = self.create_for_network(balance_request.chain_id, balance_request.rpc_url)
-                return service.get_wallet_balances(balance_request)
+                service = await self.create_for_network(balance_request.chain_id, balance_request.rpc_url, self.user_id, self.db)
+                return await service.get_wallet_balances(balance_request)
             
             # Get native token balance
             native_balance = self.web3.eth.get_balance(self.wallet_address)

@@ -8,3 +8,4 @@ web3
 psycopg2-binary
 PyJWT
 requests
+cryptography

@@ -62,18 +62,24 @@ async def get_network_info(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/quote", response_model=QuoteResponse)
-async def get_quote(quote_request: QuoteRequest):
+async def get_quote(
+    quote_request: QuoteRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user)
+):
     """
     Get a quote for a potential trade without executing it.
     This is similar to Uniswap's preview functionality.
     Now supports any blockchain network by specifying chain_id and rpc_url.
     """
     try:
-        trading_service = ManualTradingService.create_for_network(
+        trading_service = await ManualTradingService.create_for_network(
             quote_request.chain_id, 
-            quote_request.rpc_url
+            quote_request.rpc_url,
+            current_user.id,
+            db
         )
-        quote = trading_service.get_quote(quote_request)
+        quote = await trading_service.get_quote(quote_request)
         return quote
     except Exception as e:
         logger.error(f"Failed to get quote: {e}")
@@ -91,11 +97,13 @@ async def execute_trade(
     Now supports any blockchain network by specifying chain_id and rpc_url.
     """
     try:
-        trading_service = ManualTradingService.create_for_network(
+        trading_service = await ManualTradingService.create_for_network(
             trade_request.chain_id, 
-            trade_request.rpc_url
+            trade_request.rpc_url,
+            current_user.id,
+            db
         )
-        result = trading_service.execute_manual_trade(trade_request)
+        result = await trading_service.execute_manual_trade(trade_request)
         
         # Store trade in database for the authenticated user
         trade_data = {
@@ -119,17 +127,23 @@ async def execute_trade(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/wallet/balances", response_model=WalletBalanceResponse)
-async def get_wallet_balances(balance_request: WalletBalanceRequest):
+async def get_wallet_balances(
+    balance_request: WalletBalanceRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user)
+):
     """
     Get wallet balances for native token and specified ERC20 tokens.
     Now supports any blockchain network by specifying chain_id and rpc_url.
     """
     try:
-        trading_service = ManualTradingService.create_for_network(
+        trading_service = await ManualTradingService.create_for_network(
             balance_request.chain_id, 
-            balance_request.rpc_url
+            balance_request.rpc_url,
+            current_user.id,
+            db
         )
-        balances = trading_service.get_wallet_balances(balance_request)
+        balances = await trading_service.get_wallet_balances(balance_request)
         return balances
     except Exception as e:
         logger.error(f"Failed to get wallet balances: {e}")
@@ -147,7 +161,7 @@ async def get_transaction_status(
     Now supports any blockchain network by specifying chain_id and rpc_url.
     """
     try:
-        trading_service = ManualTradingService.create_for_network(chain_id, rpc_url)
+        trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
         status = trading_service.get_transaction_status(tx_hash)
         
         # Update database record if status changed
@@ -216,7 +230,7 @@ async def get_common_tokens(
     Useful for populating dropdown menus in the UI.
     """
     try:
-        trading_service = ManualTradingService.create_for_network(chain_id, rpc_url)
+        trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
         return trading_service._get_common_tokens()
     except Exception as e:
         logger.error(f"Failed to get common tokens: {e}")
@@ -230,9 +244,11 @@ async def health_check(
     """Health check endpoint for manual trading service"""
     try:
         if chain_id and rpc_url:
-            trading_service = ManualTradingService.create_for_network(chain_id, rpc_url)
+            trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
         else:
             trading_service = ManualTradingService()
+            # For backwards compatibility, setup with default network
+            await trading_service._setup_network(trading_service.chain_id, trading_service.rpc_url)
             
         # Check if web3 connection is working
         is_connected = trading_service.web3.is_connected()

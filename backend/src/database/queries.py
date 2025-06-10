@@ -22,6 +22,38 @@ async def get_user_by_address(db: AsyncSession, address: str) -> User:
     result = await db.execute(select(User).where(User.address == address))
     return result.scalars().first()
 
+# Private Key Operations
+async def update_user_private_key(db: AsyncSession, user_id: int, encrypted_private_key: str) -> User:
+    """Update user's encrypted private key"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise ValueError("User not found")
+    
+    user.encrypted_private_key = encrypted_private_key
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def get_user_private_key(db: AsyncSession, user_id: int) -> Optional[str]:
+    """Get user's encrypted private key"""
+    result = await db.execute(select(User.encrypted_private_key).where(User.id == user_id))
+    encrypted_key = result.scalar_one_or_none()
+    return encrypted_key
+
+async def delete_user_private_key(db: AsyncSession, user_id: int) -> bool:
+    """Delete user's private key"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        return False
+    
+    user.encrypted_private_key = None
+    await db.commit()
+    return True
+
 # Bot Operations
 async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
     """

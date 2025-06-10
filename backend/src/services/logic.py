@@ -176,9 +176,9 @@ async def check_bot(bot_id: int):
     """Check bot conditions and execute trades using SQLAlchemy ORM"""
     async with async_session() as db:
         try:
-            # Get the bot
+            # Get the bot with user information
             result = await db.execute(
-                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins))
+                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins), joinedload(Bot.user))
             )
             bot = result.scalars().first()
 
@@ -187,7 +187,13 @@ async def check_bot(bot_id: int):
                 return
 
             chain_id = bot.chain_id  
-            dex = DexIntegration(chain_id=chain_id)
+            # Create DexIntegration with user context for private key
+            dex = await DexIntegration.create(
+                chain_id=chain_id, 
+                user_id=bot.user_id, 
+                db=db, 
+                rpc_url=bot.rpc_url
+            )
             
             # Get all coins for this bot
             coins = bot.coins
