@@ -1,88 +1,154 @@
-import aiohttp
-import time
+import os
 import logging
-from datetime import datetime , timezone
-from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+from typing import Callable, Any, Optional
+import asyncio
+import requests
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from src.database.models.models import Bot
 
 logger = logging.getLogger(__name__)
 
+# Mapping for chain IDs to GeckoTerminal network strings
+CHAIN_ID_TO_NETWORK = {
+    1: "eth",           # Ethereum
+    42161: "arbitrum",  # Arbitrum
+    56: "bsc",          # Binance Smart Chain
+    137: "polygon_pos", # Polygon PoS
+    10: "optimism",     # Optimism
+    43114: "avax",      # Avalanche
+    250: "fantom",      # Fantom
+    25: "cronos",       # Cronos
+    100: "xdai",        # Gnosis Chain (xDAI)
+    1284: "moonbeam",   # Moonbeam
+    1285: "moonriver",  # Moonriver
+    10143: "monad-testnet",     # Monad
+    # Add other chains as needed
+}
+
 class MarketDataService:
-    def __init__(self):
-        self.base_url = "https://api.coingecko.com/api/v3"
-        self.cache = {}
-        self.cache_timeout = 300  # 5 minutes
-
-    async def get_token_data(self, token_id: str) -> Optional[Dict[str, Any]]:
-        """Get market data for a specific token."""
-        # Normalize token_id (e.g., SOL -> solana)
-        if token_id.lower() in ["sol", "solana"]:
-            token_id = "solana"
+    """Market data service with database-driven network configuration"""
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def get_price_for_bot_token(self, bot_id: int, token_address: str):
+        """
+        Fetch token price using bot's network configuration from database.
         
-        # Check cache
-        cached_data = self.cache.get(token_id)
-        if cached_data and (time.time() - cached_data['timestamp']) < self.cache_timeout:
-            return cached_data['data']
-
+        Args:
+            bot_id: The bot ID to get network configuration from
+            token_address: The token contract address
+        
+        Returns:
+            Dictionary with 'usdPrice' and '24hChange', or None if failed
+        """
         try:
-            async with aiohttp.ClientSession() as session:
-                # Get current price and 24h change
-                price_url = f"{self.base_url}/simple/price"
-                params = {"ids": token_id, "vs_currencies": "usd", "include_24hr_change": "true"}
-                
-                async with session.get(price_url, params=params) as response:
-                    if response.status != 200:
-                        logger.error(f"Error fetching price data: {response.status}")
-                        return None
-                        
-                    price_data = await response.json()
-                    if token_id not in price_data:
-                        logger.error(f"Token {token_id} not found in response")
-                        return None
-                        
-                    token_price_data = price_data[token_id]
-                    
-                # Get historical data for 7-day SMA
-                history_url = f"{self.base_url}/coins/{token_id}/market_chart"
-                params = {"vs_currency": "usd", "days": 7, "interval": "daily"}
-                
-                async with session.get(history_url, params=params) as response:
-                    if response.status != 200:
-                        logger.error(f"Error fetching history data: {response.status}")
-                        return None
-                        
-                    history_data = await response.json()
-
-            # Process data
-            prices = [entry[1] for entry in history_data.get('prices', [])]
-            if len(prices) < 2:
-                logger.warning(f"Insufficient price data for {token_id}")
-                return None
-
-            current_price = token_price_data.get('usd')
-            price_change_24h = token_price_data.get('usd_24h_change')
+            # Get bot's network configuration from database
+            result = await self.db.execute(
+                select(Bot.chain_id, Bot.network_name).where(Bot.id == bot_id)
+            )
+            bot_network = result.first()
             
-            if None in [current_price, price_change_24h]:
-                logger.warning(f"Missing price data for {token_id}")
+            if not bot_network:
+                logger.error(f"Bot {bot_id} not found in database")
                 return None
-
-            sma = sum(prices) / len(prices)
-            price_drop = ((prices[-2] - current_price) / prices[-2]) * 100 if prices[-2] > 0 else 0
-
-            result = {
-                "symbol": token_id.upper(),
-                "current_price": current_price,
-                "price_change_24h": price_change_24h,
-                "sma_7day": round(sma, 2),
-                "price_drop_pct": round(price_drop, 2),
-                "last_updated": datetime.now(timezone.utc).isoformat()
-            }
-
-            # Cache the result
-            self.cache[token_id] = {'data': result, 'timestamp': time.time()}
-            return result
-
+            
+            chain_id = bot_network.chain_id
+            
+            # Use the direct price fetching function with bot's chain_id
+            return self.get_current_price_gecko(token_address, chain_id)
+            
         except Exception as e:
-            logger.error(f"Error fetching data for {token_id}: {str(e)}")
+            logger.error(f"Error fetching price for bot {bot_id}, token {token_address}: {e}")
+            return None
+    
+    def get_current_price_gecko(self, token_address: str, chain_id: int = 1):
+        """
+        Fetches token price and 24h change from GeckoTerminal's simple API.
+        
+        Args:
+            token_address: The token contract address
+            chain_id: The blockchain chain ID (will be converted to network string)
+        
+        Returns a dictionary with 'usdPrice' and '24hChange', or None if failed.
+        """
+        # Convert chain_id to network string
+        network = CHAIN_ID_TO_NETWORK.get(chain_id)
+        if not network:
+            logger.error(f"Unsupported chain ID: {chain_id}")
             return None
         
+        url = (
+            f"https://api.geckoterminal.com/api/v2/simple/networks/"
+            f"{network}/token_price/{token_address.lower()}?include_24hr_price_change=true&include_24hr_vol=true"
+        )
+        try:
+            response = requests.get(url, headers={"accept": "application/json"})
+            response.raise_for_status()
+            data = response.json()
+
+            attributes = data.get("data", {}).get("attributes", {})
+    
+            price = attributes.get("token_prices", {}).get(token_address.lower())
+            change_24h = attributes.get("h24_price_change_percentage", {}).get(token_address.lower())
+            if price is not None:
+                return {
+                    "usdPrice": float(price),
+                    "24hChange": float(change_24h) if change_24h is not None else None,
+                }
+            else:
+                logger.error(f"Price data not found in response for {token_address} on {network}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API request failed for {token_address} on {network}: {e}")
+            return None
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Failed to parse response for {token_address} on {network}: {e}")
+            return None
+
+    async def get_price_with_chain_id(self, token_address: str, chain_id: int):
+        """
+        Direct price fetch with chain_id (for backward compatibility)
+        
+        Args:
+            token_address: The token contract address
+            chain_id: The blockchain chain ID
+        
+        Returns:
+            Dictionary with 'usdPrice' and '24hChange', or None if failed
+        """
+        return self.get_current_price_gecko(token_address, chain_id)
+
+
+# Legacy function for backward compatibility
+def get_current_price_gecko(token_address: str, chain_id: int = 1):
+    """
+    Legacy function for backward compatibility.
+    This maintains the same interface as the original dca.py function.
+    """
+    # Create a temporary service instance without database dependency
+    service = MarketDataService(db=None)
+    return service.get_current_price_gecko(token_address, chain_id)
+
+
+async def main():
+    # Example usage
+    token_address = "0xf817257fed379853cde0fa4f97ab987181b1e5ea" # USDC on Arbitrum
+    # For testing the legacy function
+    price_data = get_current_price_gecko(token_address, 10143)
+    if price_data:
+        print(f"Token Address: {token_address}")
+        print(f"Current price: ${price_data['usdPrice']}")
+        change_24h = price_data.get('24hChange')
+        if change_24h is not None:
+            print(f"24h Change: {change_24h}%")
+        else:
+            print("24h Change data not available.")
+    else:
+        print(f"Failed to fetch price data for {token_address}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
         

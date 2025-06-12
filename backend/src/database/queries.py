@@ -127,6 +127,23 @@ async def get_bots_by_chain(db: AsyncSession, chain_id: int) -> List[Bot]:
     result = await db.execute(select(Bot).where(Bot.chain_id == chain_id))
     return result.scalars().all()
 
+async def get_bot_network_info(db: AsyncSession, bot_id: int) -> Optional[dict]:
+    """
+    Retrieves bot's network configuration for market data requests.
+    """
+    result = await db.execute(
+        select(Bot.chain_id, Bot.network_name, Bot.rpc_url).where(Bot.id == bot_id)
+    )
+    bot_network = result.first()
+    
+    if bot_network:
+        return {
+            "chain_id": bot_network.chain_id,
+            "network_name": bot_network.network_name,
+            "rpc_url": bot_network.rpc_url
+        }
+    return None
+
 async def create_or_update_bot_performance(
     db: AsyncSession,
     bot_id: int,

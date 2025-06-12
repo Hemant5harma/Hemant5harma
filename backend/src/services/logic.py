@@ -10,11 +10,8 @@ from src.dex.dex_integration import DexIntegration
 
 from src.database.queries import create_or_update_bot_performance
 
-# Import the price fetching function from dca.py
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from dca import get_current_price_gecko
+# Import the market data service
+from src.services.market_data import MarketDataService, get_current_price_gecko
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,11 +93,14 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
     current_value = 0.0
     current_prices = {}
     
+    # Create market data service instance
+    market_service = MarketDataService(db)
+    
     # Retrieve current prices for each token and compute overall portfolio value
     for token_address, coin_qty in token_amounts.items():
         try:
-            # Use the same price fetching function that works in the trading logic
-            price_data = get_current_price_gecko(token_address, chain_id)
+            # Use the market data service with chain_id
+            price_data = await market_service.get_price_with_chain_id(token_address, chain_id)
             if price_data and "usdPrice" in price_data:
                 price = price_data["usdPrice"]
                 current_prices[token_address] = price
@@ -200,8 +200,11 @@ async def check_bot(bot_id: int):
             
             for coin in coins:
                 try:
-                    # Get current price and check against threshold using GeckoTerminal API
-                    price_data = get_current_price_gecko(coin.token_address, chain_id)
+                    # Create market data service instance
+                    market_service = MarketDataService(db)
+                    
+                    # Get price data for the token using bot's network configuration
+                    price_data = await market_service.get_price_for_bot_token(bot_id, coin.token_address)
                     if not price_data:
                         logger.warning(f"No price data for {coin.token_address}, skipping")
                         continue
