@@ -22,6 +22,38 @@ async def get_user_by_address(db: AsyncSession, address: str) -> User:
     result = await db.execute(select(User).where(User.address == address))
     return result.scalars().first()
 
+# Private Key Operations
+async def update_user_private_key(db: AsyncSession, user_id: int, encrypted_private_key: str) -> User:
+    """Update user's encrypted private key"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise ValueError("User not found")
+    
+    user.encrypted_private_key = encrypted_private_key
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def get_user_private_key(db: AsyncSession, user_id: int) -> Optional[str]:
+    """Get user's encrypted private key"""
+    result = await db.execute(select(User.encrypted_private_key).where(User.id == user_id))
+    encrypted_key = result.scalar_one_or_none()
+    return encrypted_key
+
+async def delete_user_private_key(db: AsyncSession, user_id: int) -> bool:
+    """Delete user's private key"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        return False
+    
+    user.encrypted_private_key = None
+    await db.commit()
+    return True
+
 # Bot Operations
 async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
     """
@@ -128,11 +160,31 @@ async def get_bot_performance(db: AsyncSession, bot_id: int) -> Optional[BotPerf
     return result.scalars().first()
 
 # Coin Operations
-async def create_coin(db: AsyncSession, bot_id: int, token_address: str, amount: float, threshold: float) -> Coin:
+async def create_coin(
+    db: AsyncSession, 
+    bot_id: int, 
+    token_address: str, 
+    amount: float, 
+    threshold: float,
+    condition_type: str = "price_drop",
+    condition_params: dict = None,
+    logic_operator: str = "AND"
+) -> Coin:
     """
-    Creates a new coin entry for the given bot.
+    Creates a new coin entry for the given bot with advanced conditions.
     """
-    coin = Coin(bot_id=bot_id, token_address=token_address, amount=amount, threshold=threshold)
+    if condition_params is None:
+        condition_params = {"threshold": threshold}
+    
+    coin = Coin(
+        bot_id=bot_id, 
+        token_address=token_address, 
+        amount=amount, 
+        threshold=threshold,  # Keep for backward compatibility
+        condition_type=condition_type,
+        condition_params=condition_params,
+        logic_operator=logic_operator
+    )
     db.add(coin)
     await db.commit()
     await db.refresh(coin)

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Switch, Slider, Select, TextInput, PasswordInput, Button } from '@mantine/core';
+import { showNotification } from '@mantine/notifications';
+import { privateKeyApi } from '../utils/privateKeyApi';
+import { validatePrivateKey } from '../utils/privateKeyUtils';
 
 const SettingsPage: React.FC = () => {
   const [generalSettings, setGeneralSettings] = useState({
@@ -28,6 +31,115 @@ const SettingsPage: React.FC = () => {
     apiKey: '',
     secretKey: '',
   });
+
+  const [privateKey, setPrivateKey] = useState({
+    privateKey: '',
+    hasPrivateKey: false,
+    loading: false,
+  });
+
+  // Check private key status on component mount
+  useEffect(() => {
+    checkPrivateKeyStatus();
+  }, []);
+
+  const checkPrivateKeyStatus = async () => {
+    try {
+      setPrivateKey(prev => ({ ...prev, loading: true }));
+      const response = await privateKeyApi.getPrivateKeyStatus();
+      setPrivateKey(prev => ({ 
+        ...prev, 
+        hasPrivateKey: response?.has_private_key || false,
+        loading: false 
+      }));
+    } catch (error: any) {
+      console.error('Failed to check private key status:', error);
+      setPrivateKey(prev => ({ 
+        ...prev, 
+        hasPrivateKey: false,
+        loading: false 
+      }));
+    }
+  };
+
+  const handleSavePrivateKey = async () => {
+    if (!privateKey.privateKey.trim()) {
+      showNotification({
+        title: 'Error',
+        message: 'Please enter a private key',
+        color: 'red',
+      });
+      return;
+    }
+
+    // Validate private key format
+    const validation = validatePrivateKey(privateKey.privateKey);
+    if (!validation.isValid) {
+      showNotification({
+        title: 'Invalid Private Key',
+        message: validation.error,
+        color: 'red',
+      });
+      return;
+    }
+
+    try {
+      setPrivateKey(prev => ({ ...prev, loading: true }));
+      // Use the formatted private key (without 0x prefix, lowercase)
+      await privateKeyApi.savePrivateKey(validation.formatted!);
+      
+      showNotification({
+        title: 'Success',
+        message: 'Private key saved successfully',
+        color: 'green',
+      });
+      
+      setPrivateKey(prev => ({ 
+        ...prev, 
+        hasPrivateKey: true, 
+        privateKey: '', 
+        loading: false 
+      }));
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to save private key',
+        color: 'red',
+      });
+      setPrivateKey(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleDeletePrivateKey = async () => {
+    if (!window.confirm('Are you sure you want to delete your private key? This will disable trading functionality.')) {
+      return;
+    }
+
+    try {
+      setPrivateKey(prev => ({ ...prev, loading: true }));
+      await privateKeyApi.deletePrivateKey();
+      
+      showNotification({
+        title: 'Success',
+        message: 'Private key deleted successfully',
+        color: 'green',
+      });
+      
+      setPrivateKey(prev => ({ 
+        ...prev, 
+        hasPrivateKey: false, 
+        privateKey: '', 
+        loading: false 
+      }));
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to delete private key',
+        color: 'red',
+      });
+      setPrivateKey(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-boxdark text-black dark:text-white min-h-screen p-8">
@@ -138,6 +250,90 @@ const SettingsPage: React.FC = () => {
             onChange={(event) => setSecurity({ ...security, password: event.currentTarget.value })}
             placeholder="Enter new password"
           />
+        </div>
+      </section>
+
+      {/* Private Key Management */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Private Key Management</h2>
+        <div className="space-y-4">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Security Notice
+                </h3>
+                <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                  Your private key is encrypted and stored securely. Never share your private key with anyone. 
+                  This key is required for executing trades on your behalf.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div>
+              <h3 className="font-medium">Private Key Status</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {privateKey.loading ? 'Checking...' : 
+                 privateKey.hasPrivateKey ? 'Private key is saved and encrypted' : 'No private key saved'}
+              </p>
+            </div>
+            <div className="flex items-center">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                privateKey.hasPrivateKey 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              }`}>
+                {privateKey.hasPrivateKey ? 'Configured' : 'Not Configured'}
+              </span>
+            </div>
+          </div>
+
+          {!privateKey.hasPrivateKey && (
+            <div className="space-y-4">
+              <PasswordInput
+                label="Private Key"
+                value={privateKey.privateKey}
+                onChange={(event) => setPrivateKey(prev => ({ ...prev, privateKey: event.currentTarget.value }))}
+                placeholder="Enter your wallet private key (64 hex characters)"
+                description="Your private key will be encrypted before storage"
+              />
+              <Button 
+                onClick={handleSavePrivateKey}
+                loading={privateKey.loading}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Save Private Key
+              </Button>
+            </div>
+          )}
+
+          {privateKey.hasPrivateKey && (
+            <div className="flex space-x-3">
+              <Button
+                onClick={checkPrivateKeyStatus}
+                loading={privateKey.loading}
+                variant="outline"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Refresh Status
+              </Button>
+              <Button
+                onClick={handleDeletePrivateKey}
+                loading={privateKey.loading}
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-700"
+              >
+                Delete Private Key
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 

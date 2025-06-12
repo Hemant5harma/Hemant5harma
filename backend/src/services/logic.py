@@ -11,9 +11,9 @@ from src.dex.dex_integration import DexIntegration
 from src.database.queries import create_or_update_bot_performance
 
 # Import the price fetching function from dca.py
-# import sys
-# import os
-# sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from dca import get_current_price_gecko
 
 logging.basicConfig(level=logging.INFO)
@@ -176,9 +176,9 @@ async def check_bot(bot_id: int):
     """Check bot conditions and execute trades using SQLAlchemy ORM"""
     async with async_session() as db:
         try:
-            # Get the bot
+            # Get the bot with user information
             result = await db.execute(
-                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins))
+                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins), joinedload(Bot.user))
             )
             bot = result.scalars().first()
 
@@ -187,7 +187,13 @@ async def check_bot(bot_id: int):
                 return
 
             chain_id = bot.chain_id  
-            dex = DexIntegration(chain_id=chain_id)
+            # Create DexIntegration with user context for private key
+            dex = await DexIntegration.create(
+                chain_id=chain_id, 
+                user_id=bot.user_id, 
+                db=db, 
+                rpc_url=bot.rpc_url
+            )
             
             # Get all coins for this bot
             coins = bot.coins
@@ -213,9 +219,10 @@ async def check_bot(bot_id: int):
                         f"Token {coin.token_address}: current price ${current_price}, 24h change {change_24h}%, threshold {coin.threshold}%"
                     )
 
-                    # Execute trade only if 24h change is less than negative threshold (i.e., price dropped enough)
-                    if change_24h < -coin.threshold:
-                        logger.info(f"Threshold met! Executing trade for {coin.token_address}")
+                    # Execute trade based on the evaluated condition
+                    condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
+                    if condition_met:
+                        logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
                         # Execute the trade
                         tx_hash = dex.execute_trade(
                             buy_token=coin.token_address,
@@ -237,7 +244,7 @@ async def check_bot(bot_id: int):
                         db.add(trade)
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")
                     else:
-                        logger.info(f"Threshold not met for {coin.token_address}. 24h change {change_24h}% > -{coin.threshold}%")
+                        logger.info(f"Trading condition not met for {coin.token_address}")
 
                 except Exception as e:
                     logger.error(f"Error processing coin {coin.id}: {str(e)}")
@@ -288,3 +295,152 @@ def parse_frequency(frequency_str):
         logger.error(f"Error parsing frequency '{frequency_str}': {str(e)}")
         # Default to 1 day if parsing fails
         return timedelta(days=1)
+
+
+# Condition Evaluators for different trading strategies
+async def evaluate_trading_condition(coin: Coin, price_data: dict, chain_id: int) -> bool:
+    """
+    Evaluate trading condition based on coin's condition_type and parameters
+    """
+    try:
+        condition_type = getattr(coin, 'condition_type', 'price_drop')
+        condition_params = getattr(coin, 'condition_params', {"threshold": coin.threshold})
+        
+        # If condition_params is None or empty, fall back to threshold
+        if not condition_params:
+            condition_params = {"threshold": coin.threshold}
+        
+        logger.info(f"Evaluating condition: {condition_type} with params: {condition_params}")
+        
+        if condition_type == "price_drop":
+            return evaluate_price_drop_condition(coin, price_data, condition_params)
+        elif condition_type == "rsi_oversold":
+            return await evaluate_rsi_condition(coin, price_data, condition_params, chain_id)
+        elif condition_type == "volume_spike":
+            return await evaluate_volume_condition(coin, price_data, condition_params, chain_id)
+        elif condition_type == "support_level":
+            return evaluate_support_level_condition(coin, price_data, condition_params)
+        elif condition_type == "moving_average_cross":
+            return await evaluate_ma_cross_condition(coin, price_data, condition_params, chain_id)
+        else:
+            # Default to price drop for unknown condition types
+            logger.warning(f"Unknown condition type: {condition_type}, defaulting to price_drop")
+            return evaluate_price_drop_condition(coin, price_data, {"threshold": coin.threshold})
+            
+    except Exception as e:
+        logger.error(f"Error evaluating trading condition: {str(e)}")
+        # Fall back to original logic if anything fails
+        change_24h = price_data.get("24hChange")
+        if change_24h is not None:
+            return change_24h < -coin.threshold
+        return False
+
+
+def evaluate_price_drop_condition(coin: Coin, price_data: dict, condition_params: dict) -> bool:
+    """
+    Evaluate price drop condition
+    Expected params: {"threshold": 5.0}
+    """
+    change_24h = price_data.get("24hChange")
+    threshold = condition_params.get("threshold", coin.threshold)
+    
+    if change_24h is None:
+        logger.warning(f"No 24h change data for {coin.token_address}")
+        return False
+    
+    result = change_24h < -threshold
+    logger.info(f"Price drop condition: 24h change {change_24h}% < -{threshold}% = {result}")
+    return result
+
+
+async def evaluate_rsi_condition(coin: Coin, price_data: dict, condition_params: dict, chain_id: int) -> bool:
+    """
+    Evaluate RSI oversold condition
+    Expected params: {"rsi_threshold": 30, "timeframe": "1h"}
+    
+    Note: This is a simplified implementation. In production, you would fetch actual RSI data
+    from a technical analysis API or calculate it from historical price data.
+    """
+    rsi_threshold = condition_params.get("rsi_threshold", 30)
+    timeframe = condition_params.get("timeframe", "1h")
+    
+    # Simplified RSI simulation based on 24h price change
+    # In reality, you'd calculate RSI from price history
+    change_24h = price_data.get("24hChange", 0)
+    
+    # Simulate RSI: if price dropped significantly, assume oversold conditions
+    simulated_rsi = max(10, 50 + (change_24h * 2))  # Rough simulation
+    
+    result = simulated_rsi < rsi_threshold
+    logger.info(f"RSI condition: Simulated RSI {simulated_rsi:.1f} < {rsi_threshold} = {result}")
+    return result
+
+
+async def evaluate_volume_condition(coin: Coin, price_data: dict, condition_params: dict, chain_id: int) -> bool:
+    """
+    Evaluate volume spike condition
+    Expected params: {"volume_multiplier": 2.0, "timeframe": "24h"}
+    """
+    volume_multiplier = condition_params.get("volume_multiplier", 2.0)
+    timeframe = condition_params.get("timeframe", "24h")
+    
+    # Get volume data from price_data if available
+    current_volume = price_data.get("volume", 0)
+    
+    # For simplification, we'll use a heuristic based on price change
+    # In production, you'd compare with historical volume averages
+    change_24h = abs(price_data.get("24hChange", 0))
+    
+    # Assume volume spike if price change is significant
+    volume_spike_threshold = 10  # If price moved more than 10%, assume volume spike
+    result = change_24h > volume_spike_threshold
+    
+    logger.info(f"Volume condition: Price change {change_24h}% indicates volume spike = {result}")
+    return result
+
+
+def evaluate_support_level_condition(coin: Coin, price_data: dict, condition_params: dict) -> bool:
+    """
+    Evaluate support level condition
+    Expected params: {"support_price": 1.25, "tolerance": 0.02}
+    """
+    support_price = condition_params.get("support_price", 0)
+    tolerance = condition_params.get("tolerance", 0.02)  # 2% tolerance
+    
+    current_price = price_data.get("usdPrice", 0)
+    
+    if support_price == 0 or current_price == 0:
+        logger.warning(f"Invalid support price {support_price} or current price {current_price}")
+        return False
+    
+    # Check if current price is at or near support level
+    price_diff = abs(current_price - support_price) / support_price
+    result = price_diff <= tolerance and current_price <= support_price * (1 + tolerance)
+    
+    logger.info(f"Support level condition: Price ${current_price:.4f} near support ${support_price:.4f} (±{tolerance*100}%) = {result}")
+    return result
+
+
+async def evaluate_ma_cross_condition(coin: Coin, price_data: dict, condition_params: dict, chain_id: int) -> bool:
+    """
+    Evaluate moving average crossover condition
+    Expected params: {"fast_ma": 20, "slow_ma": 50, "timeframe": "1h"}
+    
+    Note: This is a simplified implementation. In production, you would calculate
+    actual moving averages from historical price data.
+    """
+    fast_ma = condition_params.get("fast_ma", 20)
+    slow_ma = condition_params.get("slow_ma", 50)
+    timeframe = condition_params.get("timeframe", "1h")
+    
+    # Simplified simulation based on price momentum
+    # In reality, you'd calculate actual MAs from historical data
+    change_24h = price_data.get("24hChange", 0)
+    
+    # Simulate bullish crossover: if price has been dropping but showing recovery signs
+    # Look for oversold conditions that might indicate a bounce
+    momentum_threshold = -5  # If price dropped more than 5% but less than 15%, assume potential crossover
+    result = -15 < change_24h < momentum_threshold
+    
+    logger.info(f"MA Cross condition: 24h change {change_24h}% indicates potential bullish crossover = {result}")
+    return result

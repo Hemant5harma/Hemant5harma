@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
@@ -12,6 +12,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     address = Column(String, unique=True, nullable=False)
+    encrypted_private_key = Column(String, nullable=True)  # Encrypted private key for trading
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
     manual_trades = relationship("ManualTrade", back_populates="user", cascade="all, delete-orphan")
 
@@ -37,7 +38,10 @@ class Coin(Base):
     bot_id = Column(Integer, ForeignKey("bots.id", ondelete="CASCADE"), nullable=False)
     token_address = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    threshold = Column(Float, nullable=False)
+    threshold = Column(Float, nullable=False)  # Keep for backward compatibility
+    condition_type = Column(String, nullable=False, default="price_drop")
+    condition_params = Column(JSON, nullable=False, default=lambda: {"threshold": 5.0})
+    logic_operator = Column(String, nullable=True, default="AND")
     bot = relationship("Bot", back_populates="coins")
     trades = relationship("Trade", back_populates="coin", cascade="all, delete-orphan")
 

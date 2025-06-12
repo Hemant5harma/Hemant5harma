@@ -2,7 +2,6 @@ import React from "react";
 import DarkModeSwitcher from "./DarkModeSwitcher";
 import DropdownNotification from "./DropdownNotification";
 import DropdownUser from "./DropdownUser";
-import SearchBar from "./SearchBar";
 import Logo from "../assets/image/logo.svg";
 import { FaBars, FaTimes } from "react-icons/fa";
 

@@ -620,9 +620,37 @@ export default function BotDetails() {
                         <Text size="xs" className="text-gray-700 dark:text-gray-300">
                           Amount (USDT): {coin.amount}
                         </Text>
-                        <Text size="xs" className="text-gray-700 dark:text-gray-300">
-                          Threshold: {coin.threshold}
-                        </Text>
+                        
+                        {/* Condition Display */}
+                        <div className="bg-gray-100 dark:bg-gray-700 rounded-md p-2 mt-2">
+                          <Text size="xs" fw={500} className="text-gray-600 dark:text-gray-400 mb-1">
+                            Trading Condition:
+                          </Text>
+                          <Text size="xs" className="text-gray-800 dark:text-gray-200">
+                            {coin.condition_type ? 
+                              coin.condition_type.split('_').map((word: string) => 
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                              ).join(' ') 
+                              : 'Price Drop'
+                            }
+                          </Text>
+                          {coin.condition_params && (
+                            <div className="mt-1 space-y-1">
+                              {Object.entries(coin.condition_params).map(([key, value]: [string, any]) => (
+                                <Text key={key} size="xs" className="text-gray-600 dark:text-gray-400">
+                                  {key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}: {
+                                    typeof value === 'number' ? 
+                                      (key.includes('threshold') || key.includes('price') ? 
+                                        (key.includes('tolerance') ? `${(value * 100).toFixed(1)}%` : 
+                                         key.includes('price') ? `$${value.toFixed(4)}` : `${value}%`) :
+                                        value.toString()) :
+                                      value
+                                  }
+                                </Text>
+                              ))}
+                            </div>
+                          )}
+                        </div>
 
                         <Progress value={progressValue} color="indigo" size="xs" radius="xl" mt="xs" />
                       </Flex>

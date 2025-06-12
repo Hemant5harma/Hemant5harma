@@ -52,7 +52,16 @@ async def create_and_start_bot(
     # 2) Create corresponding coins
     coins = []
     for coin in bot.coins:
-        db_coin = await create_coin(db, db_bot.id, coin.token_address, coin.amount, coin.threshold)
+        db_coin = await create_coin(
+            db, 
+            db_bot.id, 
+            coin.token_address, 
+            coin.amount, 
+            coin.threshold,
+            getattr(coin, 'condition_type', 'price_drop'),
+            getattr(coin, 'condition_params', None),
+            getattr(coin, 'logic_operator', 'AND')
+        )
         coins.append(CoinResponse.model_validate(db_coin))
     
     # 3) Update bot data structure

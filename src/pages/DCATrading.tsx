@@ -1,16 +1,24 @@
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Plus, X, ChevronDown, DollarSign, Clock, Tag, AlertCircle, Check } from "lucide-react"
-import ManageBots from "./ManageBots"
-import { apiClient } from "../utils/apiClient"
-import { showNotification } from "@mantine/notifications"
+import React, { useState, useEffect } from 'react';
+import { showNotification } from '@mantine/notifications';
+import { Plus, Tag, AlertCircle, X, Check, ChevronDown, Clock, DollarSign } from 'lucide-react';
+import ConditionBuilder from '../components/ConditionBuilder';
+import ManageBots from "./ManageBots";
+import { apiClient } from "../utils/apiClient";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface DCAState {
   notifications: Notification[]
   dcaSettings: {
-    assets: { symbol: string; name: string; amount: number; threshold: number; token_address: string }[]
+    assets: { 
+      symbol: string; 
+      name: string; 
+      amount: number; 
+      threshold: number; 
+      token_address: string;
+      condition_type?: string;
+      condition_params?: any;
+      logic_operator?: string;
+    }[]
     frequency: string
     botName: string
     chain_id: number
@@ -173,6 +181,9 @@ const DCATrading: React.FC = () => {
         token_address: asset.token_address,
         amount: asset.amount,
         threshold: asset.threshold,
+        condition_type: asset.condition_type || "price_drop",
+        condition_params: asset.condition_params || { threshold: asset.threshold },
+        logic_operator: asset.logic_operator || "AND",
       })),
     }
 
@@ -182,46 +193,26 @@ const DCATrading: React.FC = () => {
     apiClient
       .post("/bots/create", apiData)
       .then((data) => {
-        console.log("Bot created:", data)
-
+        console.log("Bot created successfully:", data)
+        
         showNotification({
-          title: "Bot Created",
-          message: `Bot "${dca.dcaSettings.botName}" has been created successfully on ${selectedNetwork?.label}`,
+          title: "Success!",
+          message: `DCA Bot "${dca.dcaSettings.botName}" created successfully`,
           color: "green",
         })
 
-        const newNotification: Notification = {
-          id: String(Date.now()),
-          type: "success",
-          message: `New DCA bot "${dca.dcaSettings.botName}" created for ${dca.dcaSettings.assets
-            .map((c) => c.symbol)
-            .join(", ")} on ${selectedNetwork?.label}`,
-          timestamp: Date.now(),
-        }
-
-        setDca((prevState) => ({
-          ...prevState,
-          notifications: [newNotification, ...prevState.notifications],
-        }))
-
-        // Reset loading state
+        // Reset form to initial state
+        setDca(initialState)
         setIsCreatingBot(false)
-
-        // Add a small delay before refreshing to ensure the notification is seen
-        setTimeout(() => {
-          window.location.reload()
-        }, 1500)
       })
       .catch((error) => {
         console.error("Error creating bot:", error)
-
+        
         showNotification({
           title: "Error",
-          message: error.message || "Failed to create bot",
+          message: error.response?.data?.detail || "Failed to create bot. Please try again.",
           color: "red",
         })
-
-        // Reset loading state
         setIsCreatingBot(false)
       })
   }
@@ -241,7 +232,14 @@ const DCATrading: React.FC = () => {
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
-        assets: [...prevState.dcaSettings.assets, { ...crypto, amount: 0, threshold: 1 }],
+        assets: [...prevState.dcaSettings.assets, { 
+          ...crypto, 
+          amount: 10, 
+          threshold: 5.0,
+          condition_type: "price_drop",
+          condition_params: { threshold: 5.0 },
+          logic_operator: "AND"
+        }],
       },
     }))
     setShowCryptoModal(false)
@@ -267,13 +265,20 @@ const DCATrading: React.FC = () => {
     }))
   }
 
-  const handleThresholdChange = (symbol: string, threshold: number) => {
+  const handleConditionChange = (symbol: string, conditionData: { condition_type: string; condition_params: any; logic_operator?: string }) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
         assets: prevState.dcaSettings.assets.map((asset) =>
-          asset.symbol === symbol ? { ...asset, threshold } : asset,
+          asset.symbol === symbol ? { 
+            ...asset, 
+            condition_type: conditionData.condition_type,
+            condition_params: conditionData.condition_params,
+            logic_operator: conditionData.logic_operator || "AND",
+            // Update threshold for backward compatibility
+            threshold: conditionData.condition_params?.threshold || asset.threshold
+          } : asset,
         ),
       },
     }))
@@ -411,57 +416,61 @@ const DCATrading: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
                     {dca.dcaSettings.assets.map((asset) => (
                       <motion.div
                         key={asset.symbol}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                        className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
                       >
-                        <div className="flex items-center mb-3 sm:mb-0">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 dark:from-purple-600 dark:to-indigo-700 flex items-center justify-center text-xs font-medium text-white shadow-sm mr-3">
-                            {asset.symbol}
-                          </div>
-                          <div>
-                            <h3 className="font-medium">{asset.name}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{asset.symbol}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex flex-col">
-                            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">Amount (USDT)</label>
-                            <input
-                              type="number"
-                              value={asset.amount}
-                              onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
-                              className="w-28 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                              min="0"
-                              step="0.0001"
-                              placeholder="0.0001"
-                            />
-                           
-                          </div>
-                          <div className="flex flex-col">
-                            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">Threshold (%)</label>
-                            <input
-                              type="number"
-                              value={asset.threshold}
-                              onChange={(e) => handleThresholdChange(asset.symbol, Number(e.target.value))}
-                              className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              min="0.1"
-                              step="0.1"
-                            />
+                        {/* Asset Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 dark:from-purple-600 dark:to-indigo-700 flex items-center justify-center text-sm font-medium text-white shadow-sm mr-3">
+                              {asset.symbol}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{asset.name}</h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
+                            </div>
                           </div>
                           <button
                             onClick={() => handleRemoveCrypto(asset.symbol)}
-                            className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                            className="p-2 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                             aria-label="Remove asset"
                           >
-                            <X size={16} />
+                            <X size={18} />
                           </button>
+                        </div>
+
+                        {/* Amount Input */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-2">Investment Amount (USDT)</label>
+                          <input
+                            type="number"
+                            value={asset.amount}
+                            onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            min="0"
+                            step="0.0001"
+                            placeholder="Enter amount in USDT"
+                          />
+                        </div>
+
+                        {/* Condition Builder */}
+                        <div className="mb-2">
+                          <label className="block text-sm font-medium mb-2">Trading Condition</label>
+                          <ConditionBuilder
+                            value={{
+                              condition_type: asset.condition_type || "price_drop",
+                              condition_params: asset.condition_params || { threshold: asset.threshold },
+                              logic_operator: asset.logic_operator || "AND"
+                            }}
+                            onChange={(conditionData) => handleConditionChange(asset.symbol, conditionData)}
+                            className="mt-2"
+                          />
                         </div>
                       </motion.div>
                     ))}
