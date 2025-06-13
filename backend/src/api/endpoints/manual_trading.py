@@ -33,33 +33,71 @@ def get_trading_service(
         return ManualTradingService.create_for_network(chain_id, rpc_url)
     return ManualTradingService()
 
-@router.get("/networks", response_model=SupportedNetworksResponse)
-async def get_supported_networks():
-    """
-    Get list of supported networks for manual trading.
-    Returns network information including chain IDs and RPC URLs.
-    """
-    try:
-        service = ManualTradingService()
-        return service.get_supported_networks()
-    except Exception as e:
-        logger.error(f"Failed to get supported networks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/networks/{chain_id}/info", response_model=NetworkInfo)
-async def get_network_info(
-    chain_id: int,
-    rpc_url: str = Query(..., description="RPC URL for the network")
-):
-    """
-    Get information about a specific network.
-    """
-    try:
-        service = ManualTradingService.create_for_network(chain_id, rpc_url)
-        return service.get_network_info()
-    except Exception as e:
-        logger.error(f"Failed to get network info: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+# --- Deprecated / Unused endpoints (frontend no longer calls these) ---
+# @router.get("/networks", response_model=SupportedNetworksResponse)
+# async def get_supported_networks():
+#     """
+#     Get list of supported networks for manual trading.
+#     Returns network information including chain IDs and RPC URLs.
+#     """
+#     try:
+#         service = ManualTradingService()
+#         return service.get_supported_networks()
+#     except Exception as e:
+#         logger.error(f"Failed to get supported networks: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/networks/{chain_id}/info", response_model=NetworkInfo)
+# async def get_network_info(
+#     chain_id: int,
+#     rpc_url: str = Query(..., description="RPC URL for the network")
+# ):
+#     """
+#     Get information about a specific network.
+#     """
+#     try:
+#         service = ManualTradingService.create_for_network(chain_id, rpc_url)
+#         return service.get_network_info()
+#     except Exception as e:
+#         logger.error(f"Failed to get network info: {e}")
+#         raise HTTPException(status_code=400, detail=str(e))
+# @router.post("/wallet/balances", response_model=WalletBalanceResponse)
+# async def get_wallet_balances(
+#     balance_request: WalletBalanceRequest,
+#     db: AsyncSession = Depends(get_db_session),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """
+#     Get wallet balances for native token and specified ERC20 tokens.
+#     Now supports any blockchain network by specifying chain_id and rpc_url.
+#     """
+#     try:
+#         trading_service = await ManualTradingService.create_for_network(
+#             balance_request.chain_id, 
+#             balance_request.rpc_url,
+#             current_user.id,
+#             db
+#         )
+#         balances = await trading_service.get_wallet_balances(balance_request)
+#         return balances
+#     except Exception as e:
+#         logger.error(f"Failed to get wallet balances: {e}")
+#         raise HTTPException(status_code=400, detail=str(e))
+# @router.get("/tokens/common")
+# async def get_common_tokens(
+#     chain_id: int = Query(..., description="Chain ID to get tokens for"),
+#     rpc_url: str = Query(..., description="RPC URL for the network")
+# ) -> Dict[str, str]:
+#     """
+#     Get common token addresses for a specific network.
+#     This can be used to pre-fill token selectors.
+#     """
+#     try:
+#         service = ManualTradingService.create_for_network(chain_id, rpc_url)
+#         tokens = service.get_common_tokens()
+#         return tokens
+#     except Exception as e:
+#         logger.error(f"Failed to get common tokens: {e}")
+#         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/quote", response_model=QuoteResponse)
 async def get_quote(
@@ -124,29 +162,6 @@ async def execute_trade(
         return result
     except Exception as e:
         logger.error(f"Failed to execute trade: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/wallet/balances", response_model=WalletBalanceResponse)
-async def get_wallet_balances(
-    balance_request: WalletBalanceRequest,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Get wallet balances for native token and specified ERC20 tokens.
-    Now supports any blockchain network by specifying chain_id and rpc_url.
-    """
-    try:
-        trading_service = await ManualTradingService.create_for_network(
-            balance_request.chain_id, 
-            balance_request.rpc_url,
-            current_user.id,
-            db
-        )
-        balances = await trading_service.get_wallet_balances(balance_request)
-        return balances
-    except Exception as e:
-        logger.error(f"Failed to get wallet balances: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/transaction/{tx_hash}")
@@ -218,22 +233,6 @@ async def get_manual_trade_history(
         ]
     except Exception as e:
         logger.error(f"Failed to get trade history: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/tokens/common")
-async def get_common_tokens(
-    chain_id: int = Query(..., description="Chain ID to get tokens for"),
-    rpc_url: str = Query(..., description="RPC URL for the network")
-) -> Dict[str, str]:
-    """
-    Get a list of common token symbols and their addresses for a specific network.
-    Useful for populating dropdown menus in the UI.
-    """
-    try:
-        trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
-        return trading_service._get_common_tokens()
-    except Exception as e:
-        logger.error(f"Failed to get common tokens: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/health")

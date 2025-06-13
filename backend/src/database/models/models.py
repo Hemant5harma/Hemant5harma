@@ -41,7 +41,6 @@ class Coin(Base):
     threshold = Column(Float, nullable=False)  # Keep for backward compatibility
     condition_type = Column(String, nullable=False, default="price_drop")
     condition_params = Column(JSON, nullable=False, default=lambda: {"threshold": 5.0})
-    logic_operator = Column(String, nullable=True, default="AND")
     bot = relationship("Bot", back_populates="coins")
     trades = relationship("Trade", back_populates="coin", cascade="all, delete-orphan")
 

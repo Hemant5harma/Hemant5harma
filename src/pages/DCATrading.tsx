@@ -17,7 +17,6 @@ interface DCAState {
       token_address: string;
       condition_type?: string;
       condition_params?: any;
-      logic_operator?: string;
     }[]
     frequency: string
     botName: string
@@ -183,7 +182,6 @@ const DCATrading: React.FC = () => {
         threshold: asset.threshold,
         condition_type: asset.condition_type || "price_drop",
         condition_params: asset.condition_params || { threshold: asset.threshold },
-        logic_operator: asset.logic_operator || "AND",
       })),
     }
 
@@ -237,8 +235,7 @@ const DCATrading: React.FC = () => {
           amount: 10, 
           threshold: 5.0,
           condition_type: "price_drop",
-          condition_params: { threshold: 5.0 },
-          logic_operator: "AND"
+          condition_params: { threshold: 5.0 }
         }],
       },
     }))
@@ -265,7 +262,7 @@ const DCATrading: React.FC = () => {
     }))
   }
 
-  const handleConditionChange = (symbol: string, conditionData: { condition_type: string; condition_params: any; logic_operator?: string }) => {
+  const handleConditionChange = (symbol: string, conditionData: { condition_type: string; condition_params: any }) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
@@ -275,7 +272,6 @@ const DCATrading: React.FC = () => {
             ...asset, 
             condition_type: conditionData.condition_type,
             condition_params: conditionData.condition_params,
-            logic_operator: conditionData.logic_operator || "AND",
             // Update threshold for backward compatibility
             threshold: conditionData.condition_params?.threshold || asset.threshold
           } : asset,
@@ -466,7 +462,6 @@ const DCATrading: React.FC = () => {
                             value={{
                               condition_type: asset.condition_type || "price_drop",
                               condition_params: asset.condition_params || { threshold: asset.threshold },
-                              logic_operator: asset.logic_operator || "AND"
                             }}
                             onChange={(conditionData) => handleConditionChange(asset.symbol, conditionData)}
                             className="mt-2"

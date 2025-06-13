@@ -184,8 +184,7 @@ async def create_coin(
     amount: float, 
     threshold: float,
     condition_type: str = "price_drop",
-    condition_params: dict = None,
-    logic_operator: str = "AND"
+    condition_params: dict = None
 ) -> Coin:
     """
     Creates a new coin entry for the given bot with advanced conditions.
@@ -199,8 +198,7 @@ async def create_coin(
         amount=amount, 
         threshold=threshold,  # Keep for backward compatibility
         condition_type=condition_type,
-        condition_params=condition_params,
-        logic_operator=logic_operator
+        condition_params=condition_params
     )
     db.add(coin)
     await db.commit()

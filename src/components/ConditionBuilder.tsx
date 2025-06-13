@@ -45,12 +45,10 @@ interface ConditionBuilderProps {
   value: {
     condition_type: string;
     condition_params: any;
-    logic_operator?: string;
   };
   onChange: (value: {
     condition_type: string;
     condition_params: any;
-    logic_operator?: string;
   }) => void;
   className?: string;
 }
@@ -83,8 +81,7 @@ const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
       setParams(newParams);
       onChange({
         condition_type: conditionValue,
-        condition_params: newParams,
-        logic_operator: value.logic_operator || 'AND'
+        condition_params: newParams
       });
     }
   };
@@ -94,8 +91,7 @@ const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
     setParams(newParams);
     onChange({
       condition_type: value.condition_type,
-      condition_params: newParams,
-      logic_operator: value.logic_operator || 'AND'
+      condition_params: newParams
     });
   };
 

@@ -25,7 +25,6 @@ export interface ConditionParams {
 export interface TradingCondition {
   condition_type: 'price_drop' | 'rsi_oversold' | 'volume_spike' | 'support_level' | 'moving_average_cross';
   condition_params: ConditionParams;
-  logic_operator?: 'AND' | 'OR';
 }
 
 export interface Asset {
@@ -36,7 +35,6 @@ export interface Asset {
   token_address: string;
   condition_type?: string;
   condition_params?: ConditionParams;
-  logic_operator?: string;
 }
 
 export interface ConditionType {
@@ -54,7 +52,6 @@ export interface CoinCreatePayload {
   threshold: number;
   condition_type: string;
   condition_params: ConditionParams;
-  logic_operator: string;
 }
 
 export interface BotCreatePayload {

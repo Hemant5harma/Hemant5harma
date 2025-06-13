@@ -7,7 +7,6 @@ class CoinCreate(BaseModel):
     threshold: float    # Price threshold for action (backward compatibility)
     condition_type: Optional[str] = "price_drop"  # Type of condition
     condition_params: Optional[Dict[str, Any]] = None  # Condition-specific parameters
-    logic_operator: Optional[str] = "AND"  # Logic operator for multiple conditions
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -26,7 +25,6 @@ class CoinResponse(BaseModel):
     threshold: float  # Keep for backward compatibility
     condition_type: str
     condition_params: Dict[str, Any]
-    logic_operator: Optional[str]
 
     class Config:
         from_attributes = True

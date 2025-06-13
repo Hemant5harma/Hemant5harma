@@ -59,8 +59,7 @@ async def create_and_start_bot(
             coin.amount, 
             coin.threshold,
             getattr(coin, 'condition_type', 'price_drop'),
-            getattr(coin, 'condition_params', None),
-            getattr(coin, 'logic_operator', 'AND')
+            getattr(coin, 'condition_params', None)
         )
         coins.append(CoinResponse.model_validate(db_coin))
     
