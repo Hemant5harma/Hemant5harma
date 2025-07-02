@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { TextInput, Select, Switch, Button } from '@mantine/core';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockHistoricalTrades, tradingPairs, initialParameters, Parameters } from '../data/frontmockdata';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import {
+  mockHistoricalTrades,
+  tradingPairs,
+  initialParameters,
+  Parameters,
+} from '../data/frontmockdata';
 import RiskWarning from '../components/RiskWarning';
-
+import { Colors } from '../styles/theme';
 
 // TradingForm component
 interface TradingFormProps {
@@ -33,11 +46,11 @@ const TradingForm: React.FC<TradingFormProps> = ({
   advancedSettingsOpen,
   setAdvancedSettingsOpen,
   onSimulate,
-  simulationResult
+  simulationResult,
 }) => {
   return (
-    <div className="bg-white dark:bg-boxdark p-6 rounded-lg shadow-xl">
-      <h2 className="text-2xl font-bold mb-4">MEV Trading Parameters</h2>
+    <div className="rounded-lg bg-white p-6 shadow-xl dark:bg-boxdark">
+      <h2 className="mb-4 text-2xl font-bold">MEV Trading Parameters</h2>
 
       <div className="space-y-4">
         <TextInput
@@ -46,53 +59,58 @@ const TradingForm: React.FC<TradingFormProps> = ({
           onChange={(e) => setParameters((prev) => ({ ...prev, tokenAddress: e.target.value }))}
           placeholder="0x..."
           classNames={{
-            input: "bg-white dark:bg-boxdark text-black dark:text-white",
-            label: "text-black dark:text-white",
+            input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+            label: 'text-black dark:text-white',
           }}
           className="w-full"
         />
         <TextInput
           label="Buy Amount"
           value={parameters.buyAmount}
-          onChange={(e) => setParameters(prev => ({ ...prev, buyAmount: e.target.value }))}
+          onChange={(e) => setParameters((prev) => ({ ...prev, buyAmount: e.target.value }))}
           placeholder="0.0"
           type="number"
           classNames={{
-            input: "bg-white dark:bg-boxdark text-black dark:text-white",
-            label: "text-black dark:text-white",
+            input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+            label: 'text-black dark:text-white',
           }}
           className="w-full"
         />
         <TextInput
           label="Max Gas Fee"
           value={parameters.maxGasFee}
-          onChange={(e) => setParameters(prev => ({ ...prev, maxGasFee: e.target.value }))}
+          onChange={(e) => setParameters((prev) => ({ ...prev, maxGasFee: e.target.value }))}
           placeholder="0.0"
           type="number"
           classNames={{
-            input: "bg-white dark:bg-boxdark text-black dark:text-white",
-            label: "text-black dark:text-white",
+            input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+            label: 'text-black dark:text-white',
           }}
           className="w-full"
         />
         <Select
           label="Strategy Type"
           value={parameters.strategyType}
-          onChange={(value) => setParameters(prev => ({ ...prev, strategyType: value as Parameters['strategyType'] }))}
+          onChange={(value) =>
+            setParameters((prev) => ({
+              ...prev,
+              strategyType: value as Parameters['strategyType'],
+            }))
+          }
           data={[
             { value: 'aggressive', label: 'Aggressive' },
             { value: 'moderate', label: 'Moderate' },
             { value: 'conservative', label: 'Conservative' },
           ]}
           classNames={{
-            input: "bg-white dark:bg-boxdark text-black dark:text-white",
-            label: "text-black dark:text-white",
+            input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+            label: 'text-black dark:text-white',
           }}
           className="w-full"
         />
 
         <div
-          className="flex items-center justify-between cursor-pointer"
+          className="flex cursor-pointer items-center justify-between"
           onClick={() => setAdvancedSettingsOpen(!advancedSettingsOpen)}
         >
           <span className="font-semibold">Advanced Settings</span>
@@ -100,28 +118,32 @@ const TradingForm: React.FC<TradingFormProps> = ({
         </div>
 
         {advancedSettingsOpen && (
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-4">
             <TextInput
               label="Auto Profit Take Percentage"
               value={parameters.autoProfitTakePercentage}
-              onChange={(e) => setParameters(prev => ({ ...prev, autoProfitTakePercentage: e.target.value }))}
+              onChange={(e) =>
+                setParameters((prev) => ({ ...prev, autoProfitTakePercentage: e.target.value }))
+              }
               placeholder="0.0"
               type="number"
               classNames={{
-                input: "bg-white dark:bg-boxdark text-black dark:text-white",
-                label: "text-black dark:text-white",
+                input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+                label: 'text-black dark:text-white',
               }}
               className="w-full"
             />
             <TextInput
               label="Stop Loss Percentage"
               value={parameters.stopLossPercentage}
-              onChange={(e) => setParameters(prev => ({ ...prev, stopLossPercentage: e.target.value }))}
+              onChange={(e) =>
+                setParameters((prev) => ({ ...prev, stopLossPercentage: e.target.value }))
+              }
               placeholder="0.0"
               type="number"
               classNames={{
-                input: "bg-white dark:bg-boxdark text-black dark:text-white",
-                label: "text-black dark:text-white",
+                input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+                label: 'text-black dark:text-white',
               }}
               className="w-full"
             />
@@ -129,28 +151,34 @@ const TradingForm: React.FC<TradingFormProps> = ({
               label="Enable Backrunning"
               checked={parameters.backrunningEnabled}
               classNames={{
-                input: "bg-white dark:bg-boxdark text-black dark:text-white",
-                label: "text-black dark:text-white",
+                input: 'bg-white dark:bg-boxdark text-black dark:text-white',
+                label: 'text-black dark:text-white',
               }}
-              onChange={(e) => setParameters(prev => ({ ...prev, backrunningEnabled: e.target.checked }))}
+              onChange={(e) =>
+                setParameters((prev) => ({ ...prev, backrunningEnabled: e.target.checked }))
+              }
             />
             <Switch
               label="Enable Sandwich Trading"
               checked={parameters.sandwichTradingEnabled}
-              onChange={(e) => setParameters(prev => ({ ...prev, sandwichTradingEnabled: e.target.checked }))}
+              onChange={(e) =>
+                setParameters((prev) => ({ ...prev, sandwichTradingEnabled: e.target.checked }))
+              }
             />
           </div>
         )}
 
         <Button
           onClick={onSimulate}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="w-full rounded bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
         >
           Simulate Trade
         </Button>
 
         {simulationResult && (
-          <div className={`mt-4 p-4 rounded ${simulationResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          <div
+            className={`mt-4 rounded p-4 ${simulationResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+          >
             {simulationResult.success ? (
               <>
                 <p>{simulationResult.message}</p>
@@ -168,7 +196,7 @@ const TradingForm: React.FC<TradingFormProps> = ({
       </div>
 
       <div className="mt-6">
-        <h3 className="text-xl font-semibold mb-2">Network Stats</h3>
+        <h3 className="mb-2 text-xl font-semibold">Network Stats</h3>
         <p>Current Gas Price: {networkStats.currentGasPrice} Gwei</p>
         <p>Block Height: {networkStats.blockHeight}</p>
         <p>Pending Transactions: {networkStats.pendingTransactions}</p>
@@ -180,15 +208,15 @@ const TradingForm: React.FC<TradingFormProps> = ({
 // PerformanceChart component
 const PerformanceChart: React.FC<{ data: typeof mockHistoricalTrades }> = ({ data }) => {
   return (
-    <div className="bg-white dark:bg-boxdark  p-6 rounded-lg shadow-xl">
-      <h2 className="text-2xl font-bold mb-4">Performance Chart</h2>
+    <div className="rounded-lg bg-white  p-6 shadow-xl dark:bg-boxdark">
+      <h2 className="mb-4 text-2xl font-bold">Performance Chart</h2>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" />
           <YAxis />
           <Tooltip />
-          <Line type="monotone" dataKey="profit" stroke="#8884d8" />
+          <Line type="monotone" dataKey="profit" stroke={Colors.ACCENT} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -198,8 +226,8 @@ const PerformanceChart: React.FC<{ data: typeof mockHistoricalTrades }> = ({ dat
 // TradingPairs component
 const TradingPairs: React.FC<{ pairs: typeof tradingPairs }> = ({ pairs }) => {
   return (
-    <div className="bg-white dark:bg-boxdark  p-6 rounded-lg shadow-xl">
-      <h2 className="text-2xl font-bold mb-4">Trading Pairs</h2>
+    <div className="rounded-lg bg-white  p-6 shadow-xl dark:bg-boxdark">
+      <h2 className="mb-4 text-2xl font-bold">Trading Pairs</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
@@ -214,7 +242,9 @@ const TradingPairs: React.FC<{ pairs: typeof tradingPairs }> = ({ pairs }) => {
               <tr key={index} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : ''}>
                 <td className="px-4 py-2">{pair.name}</td>
                 <td className="px-4 py-2">{pair.volume}</td>
-                <td className={`px-4 py-2 ${pair.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                <td
+                  className={`px-4 py-2 ${pair.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {pair.change}
                 </td>
               </tr>
@@ -232,7 +262,7 @@ const FrontBots: React.FC = () => {
   const [networkStats, setNetworkStats] = useState({
     currentGasPrice: null as string | null,
     blockHeight: null as number | null,
-    pendingTransactions: null as number | null
+    pendingTransactions: null as number | null,
   });
   const [riskWarning, setRiskWarning] = useState(false);
   const [simulationResult, setSimulationResult] = useState<{
@@ -248,7 +278,7 @@ const FrontBots: React.FC = () => {
       setNetworkStats({
         currentGasPrice: (Math.random() * 100).toFixed(2),
         blockHeight: Math.floor(Math.random() * 1000000),
-        pendingTransactions: Math.floor(Math.random() * 10000)
+        pendingTransactions: Math.floor(Math.random() * 10000),
       });
     };
 
@@ -269,14 +299,17 @@ const FrontBots: React.FC = () => {
     if (errors.length > 0) {
       setSimulationResult({
         success: false,
-        errors: errors
+        errors: errors,
       });
     } else {
-      const profitCalc = ((parseFloat(parameters.buyAmount) * parseFloat(parameters.autoProfitTakePercentage || '0')) / 100);
+      const profitCalc =
+        (parseFloat(parameters.buyAmount) *
+          parseFloat(parameters.autoProfitTakePercentage || '0')) /
+        100;
       setSimulationResult({
         success: true,
         message: 'MEV trading parameters validated successfully!',
-        potentialProfit: profitCalc.toFixed(4).toString()
+        potentialProfit: profitCalc.toFixed(4).toString(),
       });
     }
   };
@@ -286,9 +319,9 @@ const FrontBots: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen  text-black dark:text-white p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="min-h-screen  p-6 text-black dark:text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <TradingForm
             parameters={parameters}
             setParameters={setParameters}
@@ -310,4 +343,3 @@ const FrontBots: React.FC = () => {
 };
 
 export default FrontBots;
-

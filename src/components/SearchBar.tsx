@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -7,13 +7,13 @@ interface SearchBarProps {
   showMobileButton?: boolean;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
-  placeholder = "Search crypto, portfolios, bots...", 
+const SearchBar: React.FC<SearchBarProps> = ({
+  placeholder = 'Search crypto, portfolios, bots...',
   onSearch,
-  className = "",
-  showMobileButton = true 
+  className = '',
+  showMobileButton = true,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,17 +27,17 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div className={`flex-1 flex items-center justify-center max-w-2xl mx-8 ${className}`}>
+    <div className={`mx-8 flex max-w-2xl flex-1 items-center justify-center ${className}`}>
       {/* Desktop Search */}
-      <div className="hidden sm:block w-full max-w-md">
+      <div className="hidden w-full max-w-md sm:block">
         <form onSubmit={handleSubmit}>
-          <div className="relative group">
-            <button 
+          <div className="group relative">
+            <button
               type="submit"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 group-hover:scale-110 transition-transform duration-200"
+              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 transition-transform duration-200 group-hover:scale-110"
             >
               <svg
-                className="fill-gray-500 hover:fill-primary dark:fill-gray-400 dark:hover:fill-secondary transition-colors duration-200"
+                className="fill-gray-500 transition-colors duration-200 hover:fill-primary dark:fill-gray-400 dark:hover:fill-secondary"
                 width="20"
                 height="20"
                 viewBox="0 0 20 20"
@@ -64,11 +64,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
               value={searchQuery}
               onChange={handleInputChange}
               placeholder={placeholder}
-              className="w-full bg-white/50 dark:bg-transparent backdrop-blur-sm border border-gray-200/50 dark:border-strokedark/50 rounded-xl pl-11 pr-4 py-3 text-gray-700 dark:text-bodydark placeholder-gray-500 dark:placeholder-bodydark2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-secondary/50 focus:border-primary dark:focus:border-secondary transition-all duration-300 hover:bg-white/70 dark:hover:bg-boxdark/20"
+              className="w-full rounded-xl border border-gray-200/50 bg-white/50 py-3 pl-11 pr-4 text-gray-700 placeholder-gray-500 backdrop-blur-sm transition-all duration-300 hover:bg-white/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-strokedark/50 dark:bg-transparent dark:text-bodydark dark:placeholder-bodydark2 dark:hover:bg-boxdark/20 dark:focus:border-secondary dark:focus:ring-secondary/50"
             />
-            
+
             {/* Search overlay glow effect */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-xl"></div>
+            <div className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100"></div>
           </div>
         </form>
       </div>
@@ -76,20 +76,25 @@ const SearchBar: React.FC<SearchBarProps> = ({
       {/* Mobile search button */}
       {showMobileButton && (
         <div className="sm:hidden">
-          <button 
+          <button
             onClick={() => {
               // Could open a modal or expand search on mobile
-              console.log("Mobile search clicked");
+              console.log('Mobile search clicked');
             }}
-            className="p-2 rounded-xl bg-gray-100/50 dark:bg-transparent backdrop-blur-sm border border-gray-200/50 dark:border-strokedark/50 hover:bg-white dark:hover:bg-boxdark/30 transition-all duration-200 hover:scale-105"
+            className="rounded-xl border border-gray-200/50 bg-gray-100/50 p-2 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white dark:border-strokedark/50 dark:bg-transparent dark:hover:bg-boxdark/30"
           >
             <svg
-              className="w-5 h-5 text-gray-600 dark:text-bodydark"
+              className="h-5 w-5 text-gray-600 dark:text-bodydark"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </button>
         </div>
@@ -98,4 +103,4 @@ const SearchBar: React.FC<SearchBarProps> = ({
   );
 };
 
-export default SearchBar; 
+export default SearchBar;

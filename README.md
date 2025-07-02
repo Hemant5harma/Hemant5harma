@@ -5,20 +5,23 @@ An intelligent DCA (Dollar-Cost Averaging) trading bot platform with multi-condi
 ## 🚀 Features
 
 ### Multi-Condition Trading Strategies
+
 - **Price Drop**: Buy when price drops by specified percentage
-- **RSI Oversold**: Buy when RSI indicates oversold conditions  
+- **RSI Oversold**: Buy when RSI indicates oversold conditions
 - **Volume Spike**: Buy when trading volume increases significantly
 - **Support Level**: Buy when price approaches support levels
 - **Moving Average Cross**: Buy on bullish MA crossover signals
 
 ### Cross-Chain Support
+
 - Ethereum Mainnet
 - Polygon
-- Binance Smart Chain  
+- Binance Smart Chain
 - Monad Testnet
 - Arbitrum, Optimism, Avalanche, and more
 
 ### Advanced Features
+
 - Real-time price monitoring via GeckoTerminal API
 - Flexible condition builder with intuitive UI
 - Comprehensive trading history and analytics
@@ -70,11 +73,10 @@ You can learn more in the [Create React App documentation](https://facebook.gith
 
 To learn React, check out the [React documentation](https://reactjs.org/).
 
-
-
 ## 🛠️ Setup
 
 ### Backend Setup
+
 ```bash
 cd backend
 
@@ -89,6 +91,7 @@ uvicorn src.api.main:app --reload
 ```
 
 ### Frontend Setup
+
 ```bash
 # Install Node.js dependencies
 npm install
@@ -98,6 +101,7 @@ npm start
 ```
 
 ### Testing the Condition System
+
 ```bash
 cd backend
 python test_conditions.py

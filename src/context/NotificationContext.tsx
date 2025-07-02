@@ -40,26 +40,26 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       timestamp: Date.now(),
       read: false,
     };
-    setNotifications(prev => [newNotification, ...prev]);
+    setNotifications((prev) => [newNotification, ...prev]);
   };
 
   const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification,
+      ),
     );
   };
 
   const clearNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
   };
 
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
     <NotificationContext.Provider

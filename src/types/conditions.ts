@@ -3,27 +3,32 @@
 export interface ConditionParams {
   // Price Drop
   threshold?: number;
-  
+
   // RSI Oversold
   rsi_threshold?: number;
-  
+
   // Volume Spike
   volume_multiplier?: number;
-  
+
   // Support Level
   support_price?: number;
   tolerance?: number;
-  
+
   // Moving Average Cross
   fast_ma?: number;
   slow_ma?: number;
-  
+
   // Common
   timeframe?: string;
 }
 
 export interface TradingCondition {
-  condition_type: 'price_drop' | 'rsi_oversold' | 'volume_spike' | 'support_level' | 'moving_average_cross';
+  condition_type:
+    | 'price_drop'
+    | 'rsi_oversold'
+    | 'volume_spike'
+    | 'support_level'
+    | 'moving_average_cross';
   condition_params: ConditionParams;
 }
 
@@ -61,4 +66,4 @@ export interface BotCreatePayload {
   rpc_url?: string;
   network_name?: string;
   coins: CoinCreatePayload[];
-} 
+}

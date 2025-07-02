@@ -7,12 +7,7 @@ interface Props {
   className?: string;
 }
 
-const ClickOutside: React.FC<Props> = ({
-  children,
-  exceptionRef,
-  onClick,
-  className,
-}) => {
+const ClickOutside: React.FC<Props> = ({ children, exceptionRef, onClick, className }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,15 +15,11 @@ const ClickOutside: React.FC<Props> = ({
       let clickedInside: null | boolean = false;
       if (exceptionRef) {
         clickedInside =
-          (wrapperRef.current &&
-            wrapperRef.current.contains(event.target as Node)) ||
+          (wrapperRef.current && wrapperRef.current.contains(event.target as Node)) ||
           (exceptionRef.current && exceptionRef.current === event.target) ||
-          (exceptionRef.current &&
-            exceptionRef.current.contains(event.target as Node));
+          (exceptionRef.current && exceptionRef.current.contains(event.target as Node));
       } else {
-        clickedInside =
-          wrapperRef.current &&
-          wrapperRef.current.contains(event.target as Node);
+        clickedInside = wrapperRef.current && wrapperRef.current.contains(event.target as Node);
       }
 
       if (!clickedInside) onClick();

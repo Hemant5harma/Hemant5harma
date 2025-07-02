@@ -1,0 +1,12 @@
+# Node
+node_modules
+dist
+build
+
+# Python virtual-envs
+venv
+.venv
+**/__pycache__
+
+# Back-end source if you don’t want it formatted
+backend/**

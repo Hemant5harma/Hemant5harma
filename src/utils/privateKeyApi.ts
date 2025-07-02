@@ -15,7 +15,7 @@ export const privateKeyApi = {
   savePrivateKey: async (privateKey: string): Promise<PrivateKeyResponse> => {
     try {
       const response = await apiClient.post('/private-keys/save', {
-        private_key: privateKey
+        private_key: privateKey,
       });
       return response;
     } catch (error: any) {
@@ -41,5 +41,5 @@ export const privateKeyApi = {
     } catch (error: any) {
       throw new Error(error.message || 'Failed to delete private key');
     }
-  }
-}; 
+  },
+};

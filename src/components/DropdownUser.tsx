@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import ClickOutside from "./ClickOutside"
-import UserOne from "../assets/image/user-10.png"
-import { BrowserProvider } from "ethers"
-import { setAuthToken, removeAuthToken } from "../utils/auth"
-import { showNotification } from "@mantine/notifications"
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import ClickOutside from './ClickOutside';
+import UserOne from '../assets/image/user-10.png';
+import { BrowserProvider } from 'ethers';
+import { setAuthToken, removeAuthToken } from '../utils/auth';
+import { showNotification } from '@mantine/notifications';
 
 const DropdownUser = () => {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [account, setAccount] = useState<string | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [account, setAccount] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Check if a wallet is connected when the component mounts.
   useEffect(() => {
@@ -19,223 +19,226 @@ const DropdownUser = () => {
       // Cast window to any so TypeScript won't complain about 'ethereum'
       if ((window as any).ethereum) {
         try {
-          const accounts = await (window as any).ethereum.request({ method: "eth_accounts" })
+          const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
           if (accounts && accounts.length > 0) {
-            setAccount(accounts[0])
+            setAccount(accounts[0]);
             // Check if user is already authenticated
-            const token = localStorage.getItem("auth_token")
+            const token = localStorage.getItem('auth_token');
             if (token) {
-              setIsAuthenticated(true)
+              setIsAuthenticated(true);
             }
           }
         } catch (error) {
-          console.error("Error fetching accounts", error)
+          console.error('Error fetching accounts', error);
         }
       }
     }
-    checkConnection()
-  }, [])
+    checkConnection();
+  }, []);
 
   // One-step wallet connection and authentication
   const connectAndAuthenticateWallet = async () => {
-    if (!((window as any).ethereum)) {
+    if (!(window as any).ethereum) {
       showNotification({
-        title: "MetaMask Not Found",
-        message: "Please install MetaMask to connect your wallet",
-        color: "red",
-      })
-      return
+        title: 'MetaMask Not Found',
+        message: 'Please install MetaMask to connect your wallet',
+        color: 'red',
+      });
+      return;
     }
 
-    setIsConnecting(true)
-    
+    setIsConnecting(true);
+
     try {
       // Step 1: Connect wallet
-      const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" })
+      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts found")
+        throw new Error('No accounts found');
       }
 
-      const walletAddress = accounts[0]
-      setAccount(walletAddress)
+      const walletAddress = accounts[0];
+      setAccount(walletAddress);
 
       showNotification({
-        title: "Wallet Connected",
+        title: 'Wallet Connected',
         message: `Connected to ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`,
-        color: "blue",
-      })
+        color: 'blue',
+      });
 
       // Step 2: Authenticate automatically
-      setIsAuthenticating(true)
-      
+      setIsAuthenticating(true);
+
       // Create a message for the user to sign
-      const message = `Sign this message to authenticate with our application: ${Date.now()}`
+      const message = `Sign this message to authenticate with our application: ${Date.now()}`;
 
       // Request signature from the user
-      const provider = new BrowserProvider((window as any).ethereum)
-      const signer = await provider.getSigner()
-      const signature = await signer.signMessage(message)
+      const provider = new BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
 
       // Send the signature to the backend
-      const response = await fetch("http://127.0.0.1:8000/users/metamask_login", {
-        method: "POST",
+      const response = await fetch('http://127.0.0.1:8000/users/metamask_login', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           address: walletAddress,
           message: message,
           signature: signature,
         }),
-      })
+      });
 
       if (response.ok) {
-        const data = await response.json()
-        setAuthToken(data.access_token) // Store the token
-        setIsAuthenticated(true)
-        
+        const data = await response.json();
+        setAuthToken(data.access_token); // Store the token
+        setIsAuthenticated(true);
+
         showNotification({
-          title: "Authentication Successful",
-          message: "You are now signed in with your wallet!",
-          color: "green",
-        })
-        
-        setDropdownOpen(false)
+          title: 'Authentication Successful',
+          message: 'You are now signed in with your wallet!',
+          color: 'green',
+        });
+
+        setDropdownOpen(false);
       } else {
-        const errorData = await response.json().catch(() => null)
-        const errorMessage = errorData?.detail || "Authentication failed"
-        
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.detail || 'Authentication failed';
+
         showNotification({
-          title: "Authentication Failed",
+          title: 'Authentication Failed',
           message: errorMessage,
-          color: "red",
-        })
+          color: 'red',
+        });
       }
     } catch (error: any) {
-      console.error("Error during wallet connection/authentication:", error)
-      
-      let errorMessage = "Failed to connect wallet"
-      
+      console.error('Error during wallet connection/authentication:', error);
+
+      let errorMessage = 'Failed to connect wallet';
+
       if (error.code === 4001) {
-        errorMessage = "Connection request was rejected"
+        errorMessage = 'Connection request was rejected';
       } else if (error.code === -32002) {
-        errorMessage = "Please check MetaMask for pending connection request"
-      } else if (error.message?.includes("User rejected")) {
-        errorMessage = "Signature request was rejected"
-      } else if (error.message?.includes("fetch")) {
-        errorMessage = "Unable to connect to server"
+        errorMessage = 'Please check MetaMask for pending connection request';
+      } else if (error.message?.includes('User rejected')) {
+        errorMessage = 'Signature request was rejected';
+      } else if (error.message?.includes('fetch')) {
+        errorMessage = 'Unable to connect to server';
       }
-      
+
       showNotification({
-        title: "Connection Failed",
+        title: 'Connection Failed',
         message: errorMessage,
-        color: "red",
-      })
+        color: 'red',
+      });
     } finally {
-      setIsConnecting(false)
-      setIsAuthenticating(false)
+      setIsConnecting(false);
+      setIsAuthenticating(false);
     }
-  }
+  };
 
   // Disconnect wallet function
   const disconnectWallet = () => {
-    setAccount(null)
-    setIsAuthenticated(false)
-    removeAuthToken() // Remove the token
-    setDropdownOpen(false)
-    
+    setAccount(null);
+    setIsAuthenticated(false);
+    removeAuthToken(); // Remove the token
+    setDropdownOpen(false);
+
     showNotification({
-      title: "Wallet Disconnected",
-      message: "Your wallet has been disconnected successfully",
-      color: "blue",
-    })
-  }
+      title: 'Wallet Disconnected',
+      message: 'Your wallet has been disconnected successfully',
+      color: 'blue',
+    });
+  };
 
   // Separate sign-in function for already connected wallets
   const signInWithConnectedWallet = async () => {
-    if (!account) return
+    if (!account) return;
 
-    setIsAuthenticating(true)
-    
+    setIsAuthenticating(true);
+
     try {
       // Create a message for the user to sign
-      const message = `Sign this message to authenticate with our application: ${Date.now()}`
+      const message = `Sign this message to authenticate with our application: ${Date.now()}`;
 
       // Request signature from the user
-      const provider = new BrowserProvider((window as any).ethereum)
-      const signer = await provider.getSigner()
-      const signature = await signer.signMessage(message)
+      const provider = new BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
 
       // Send the signature to the backend
-      const response = await fetch("http://127.0.0.1:8000/users/metamask_login", {
-        method: "POST",
+      const response = await fetch('http://127.0.0.1:8000/users/metamask_login', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           address: account,
           message: message,
           signature: signature,
         }),
-      })
+      });
 
       if (response.ok) {
-        const data = await response.json()
-        setAuthToken(data.access_token) // Store the token
-        setIsAuthenticated(true)
-        
+        const data = await response.json();
+        setAuthToken(data.access_token); // Store the token
+        setIsAuthenticated(true);
+
         showNotification({
-          title: "Authentication Successful",
-          message: "You are now signed in with your wallet!",
-          color: "green",
-        })
-        
-        setDropdownOpen(false)
+          title: 'Authentication Successful',
+          message: 'You are now signed in with your wallet!',
+          color: 'green',
+        });
+
+        setDropdownOpen(false);
       } else {
-        const errorData = await response.json().catch(() => null)
-        const errorMessage = errorData?.detail || "Authentication failed"
-        
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.detail || 'Authentication failed';
+
         showNotification({
-          title: "Authentication Failed",
+          title: 'Authentication Failed',
           message: errorMessage,
-          color: "red",
-        })
+          color: 'red',
+        });
       }
     } catch (error: any) {
-      console.error("Error during authentication:", error)
-      
-      let errorMessage = "Failed to authenticate"
-      
-      if (error.message?.includes("User rejected")) {
-        errorMessage = "Signature request was rejected"
-      } else if (error.message?.includes("fetch")) {
-        errorMessage = "Unable to connect to server"
+      console.error('Error during authentication:', error);
+
+      let errorMessage = 'Failed to authenticate';
+
+      if (error.message?.includes('User rejected')) {
+        errorMessage = 'Signature request was rejected';
+      } else if (error.message?.includes('fetch')) {
+        errorMessage = 'Unable to connect to server';
       }
-      
+
       showNotification({
-        title: "Authentication Failed",
+        title: 'Authentication Failed',
         message: errorMessage,
-        color: "red",
-      })
+        color: 'red',
+      });
     } finally {
-      setIsAuthenticating(false)
+      setIsAuthenticating(false);
     }
-  }
+  };
 
   return (
     <ClickOutside onClick={() => setDropdownOpen(false)} className="relative">
-      <Link onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-4" to="#">
+      <Link
+        onClick={() => setDropdownOpen(!dropdownOpen)}
+        className="flex items-center gap-4"
+        to="#"
+      >
         <span className="hidden text-right lg:block">
           <span className="block text-sm font-medium text-black dark:text-white">
-            {account && isAuthenticated 
-              ? `${account.substring(0, 6)}...${account.substring(account.length - 4)}` 
-              : "Kenji Yamada"
-            }
+            {account && isAuthenticated
+              ? `${account.substring(0, 6)}...${account.substring(account.length - 4)}`
+              : 'Kenji Yamada'}
           </span>
         </span>
 
         <span className="h-12 w-12 rounded-full">
-          <img src={UserOne || "/placeholder.svg"} alt="User" />
+          <img src={UserOne || '/placeholder.svg'} alt="User" />
         </span>
       </Link>
 
@@ -246,7 +249,7 @@ const DropdownUser = () => {
             <li>
               <Link
                 to="/profile"
-                className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out text-gray-700 dark:text-gray-300 hover:text-primary lg:text-base"
+                className="flex items-center gap-3.5 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 lg:text-base"
               >
                 <svg
                   className="fill-current"
@@ -265,7 +268,7 @@ const DropdownUser = () => {
             <li>
               <Link
                 to="/settings"
-                className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out text-gray-700 dark:text-gray-300 hover:text-primary lg:text-base"
+                className="flex items-center gap-3.5 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 lg:text-base"
               >
                 <svg
                   className="fill-current"
@@ -289,25 +292,46 @@ const DropdownUser = () => {
               <button
                 onClick={connectAndAuthenticateWallet}
                 disabled={isConnecting}
-                className="flex items-center gap-3.5 text-sm font-medium w-full justify-center py-2 bg-primary hover:bg-primary/90 disabled:bg-primary/60 text-white rounded transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="flex w-full items-center justify-center gap-3.5 rounded bg-primary py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/60 disabled:opacity-70"
               >
                 {isConnecting ? (
                   <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
-                    {isAuthenticating ? "Authenticating..." : "Connecting..."}
+                    {isAuthenticating ? 'Authenticating...' : 'Connecting...'}
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
                       <path
                         d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
                         stroke="currentColor"
                         strokeWidth="2"
                       />
-                      <path d="M12 8V16M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path
+                        d="M12 8V16M8 12H16"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
                     </svg>
                     Connect & Sign In
                   </>
@@ -319,19 +343,35 @@ const DropdownUser = () => {
                   <button
                     onClick={signInWithConnectedWallet}
                     disabled={isAuthenticating}
-                    className="flex items-center gap-3.5 text-sm font-medium w-full justify-center py-2 bg-secondary hover:bg-secondary/90 disabled:bg-secondary/60 text-white rounded transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="flex w-full items-center justify-center gap-3.5 rounded bg-secondary py-2 text-sm font-medium text-white transition-colors hover:bg-secondary/90 disabled:cursor-not-allowed disabled:bg-secondary/60 disabled:opacity-70"
                   >
                     {isAuthenticating ? (
                       <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Signing In...
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg
+                          className="h-5 w-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
                           <path
                             d="M9 11L12 14L15 11M12 4V14"
                             stroke="currentColor"
@@ -339,20 +379,32 @@ const DropdownUser = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
-                          <path d="M20 20H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          <path
+                            d="M20 20H4"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
                         </svg>
                         Sign In With Wallet
                       </>
                     )}
                   </button>
                 ) : (
-                  <div className="text-sm text-center text-secondary dark:text-secondary font-medium">✓ Authenticated</div>
+                  <div className="text-center text-sm font-medium text-secondary dark:text-secondary">
+                    ✓ Authenticated
+                  </div>
                 )}
                 <button
                   onClick={disconnectWallet}
-                  className="flex items-center gap-3.5 text-sm font-medium w-full justify-center py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white rounded transition-colors"
+                  className="flex w-full items-center justify-center gap-3.5 rounded bg-gray-500 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <path
                       d="M9 11L12 8L15 11M12 8V18"
                       stroke="currentColor"
@@ -368,7 +420,7 @@ const DropdownUser = () => {
             )}
           </div>
 
-          <button className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium duration-300 ease-in-out text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-secondary lg:text-base">
+          <button className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 dark:hover:text-secondary lg:text-base">
             <svg
               className="fill-current"
               width="22"
@@ -385,8 +437,7 @@ const DropdownUser = () => {
         </div>
       )}
     </ClickOutside>
-  )
-}
+  );
+};
 
-export default DropdownUser
-
+export default DropdownUser;

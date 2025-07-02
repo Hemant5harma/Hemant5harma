@@ -17,7 +17,7 @@ export const validatePrivateKey = (privateKey: string): PrivateKeyValidation => 
   if (!privateKey) {
     return {
       isValid: false,
-      error: 'Private key cannot be empty'
+      error: 'Private key cannot be empty',
     };
   }
 
@@ -31,7 +31,7 @@ export const validatePrivateKey = (privateKey: string): PrivateKeyValidation => 
   if (keyWithoutPrefix.length !== 64) {
     return {
       isValid: false,
-      error: `Private key must be exactly 64 hex characters. Current length: ${keyWithoutPrefix.length}`
+      error: `Private key must be exactly 64 hex characters. Current length: ${keyWithoutPrefix.length}`,
     };
   }
 
@@ -40,7 +40,7 @@ export const validatePrivateKey = (privateKey: string): PrivateKeyValidation => 
   if (!hexRegex.test(keyWithoutPrefix)) {
     return {
       isValid: false,
-      error: 'Private key must contain only hex characters (0-9, a-f, A-F)'
+      error: 'Private key must contain only hex characters (0-9, a-f, A-F)',
     };
   }
 
@@ -48,13 +48,13 @@ export const validatePrivateKey = (privateKey: string): PrivateKeyValidation => 
   if (keyWithoutPrefix === '0'.repeat(64)) {
     return {
       isValid: false,
-      error: 'Invalid private key: cannot be all zeros'
+      error: 'Invalid private key: cannot be all zeros',
     };
   }
 
   return {
     isValid: true,
-    formatted: keyWithoutPrefix.toLowerCase()
+    formatted: keyWithoutPrefix.toLowerCase(),
   };
 };
 
@@ -78,7 +78,7 @@ export const maskPrivateKey = (privateKey: string): string => {
   if (!privateKey || privateKey.length < 10) {
     return '••••••••••••••••';
   }
-  
+
   const formatted = formatPrivateKey(privateKey);
   return `${formatted.slice(0, 6)}••••••••••••••••••••••••••••••••••••••••••••••••••••${formatted.slice(-4)}`;
 };
@@ -91,4 +91,4 @@ export const maskPrivateKey = (privateKey: string): string => {
 export const looksLikePrivateKey = (input: string): boolean => {
   const cleanInput = input.trim().replace(/^0x/, '');
   return cleanInput.length >= 32 && /^[0-9a-fA-F]+$/.test(cleanInput);
-}; 
+};

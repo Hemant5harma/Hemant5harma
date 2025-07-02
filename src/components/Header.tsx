@@ -1,9 +1,9 @@
-import React from "react";
-import DarkModeSwitcher from "./DarkModeSwitcher";
-import DropdownNotification from "./DropdownNotification";
-import DropdownUser from "./DropdownUser";
-import Logo from "../assets/image/logo.svg";
-import { FaBars, FaTimes } from "react-icons/fa";
+import React from 'react';
+import DarkModeSwitcher from './DarkModeSwitcher';
+import DropdownNotification from './DropdownNotification';
+import DropdownUser from './DropdownUser';
+import Logo from '../assets/image/logo.svg';
+import { FaBars, FaTimes } from 'react-icons/fa';
 
 interface HeaderProps {
   sidebarOpen?: boolean;
@@ -22,17 +22,17 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
       <div className="flex flex-grow items-center justify-between px-4 py-4 md:px-6 2xl:px-8">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
-          <a href="/" className="flex items-center gap-3 group">
+          <a href="/" className="group flex items-center gap-3">
             <div className="relative">
-              <img 
-                src={Logo} 
-                alt="TradePro Logo" 
-                className="w-10 h-10 group-hover:scale-110 transition-all duration-300 drop-shadow-lg group-hover:drop-shadow-xl"
+              <img
+                src={Logo}
+                alt="TradePro Logo"
+                className="h-10 w-10 drop-shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-xl"
               />
-              <div className="absolute -inset-2 bg-gradient-to-r from-primary to-secondary rounded-xl opacity-0 group-hover:opacity-20 dark:group-hover:opacity-30 transition-opacity duration-300 blur-lg"></div>
+              <div className="absolute -inset-2 rounded-xl bg-gradient-to-r from-primary to-secondary opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-20 dark:group-hover:opacity-30"></div>
             </div>
             <div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:from-secondary group-hover:to-primary transition-all duration-300">
+              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-2xl font-bold text-transparent transition-all duration-300 group-hover:from-secondary group-hover:to-primary">
                 TradePro
               </span>
             </div>
@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="sm:hidden p-2 rounded-lg text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 ml-2"
+              className="ml-2 rounded-lg p-2 text-gray-700 transition-all duration-200 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 sm:hidden"
             >
               {sidebarOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
             </button>

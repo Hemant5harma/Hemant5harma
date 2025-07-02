@@ -18,21 +18,24 @@ export const apiClient = {
         method: 'GET',
         headers: getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
-        
+        const errorMessage =
+          errorData?.detail ||
+          errorData?.message ||
+          `Request failed with status ${response.status}`;
+
         // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
           color: 'red',
         });
-        
+
         throw new Error(errorMessage);
       }
-      
+
       return response.json();
     } catch (error: any) {
       // Only show notification for network errors if no notification was already shown
@@ -44,12 +47,12 @@ export const apiClient = {
         });
         throw new Error('Unable to connect to server');
       }
-      
+
       // Re-throw the error without showing another notification
       throw error;
     }
   },
-  
+
   /**
    * POST request with authentication
    */
@@ -60,21 +63,24 @@ export const apiClient = {
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
-        
+        const errorMessage =
+          errorData?.detail ||
+          errorData?.message ||
+          `Request failed with status ${response.status}`;
+
         // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
           color: 'red',
         });
-        
+
         throw new Error(errorMessage);
       }
-      
+
       return response.json();
     } catch (error: any) {
       // Only show notification for network errors if no notification was already shown
@@ -86,12 +92,12 @@ export const apiClient = {
         });
         throw new Error('Unable to connect to server');
       }
-      
+
       // Re-throw the error without showing another notification
       throw error;
     }
   },
-  
+
   /**
    * PUT request with authentication
    */
@@ -102,21 +108,24 @@ export const apiClient = {
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
-        
+        const errorMessage =
+          errorData?.detail ||
+          errorData?.message ||
+          `Request failed with status ${response.status}`;
+
         // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
           color: 'red',
         });
-        
+
         throw new Error(errorMessage);
       }
-      
+
       return response.json();
     } catch (error: any) {
       // Only show notification for network errors if no notification was already shown
@@ -128,12 +137,12 @@ export const apiClient = {
         });
         throw new Error('Unable to connect to server');
       }
-      
+
       // Re-throw the error without showing another notification
       throw error;
     }
   },
-  
+
   /**
    * DELETE request with authentication
    */
@@ -143,21 +152,24 @@ export const apiClient = {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || errorData?.message || `Request failed with status ${response.status}`;
-        
+        const errorMessage =
+          errorData?.detail ||
+          errorData?.message ||
+          `Request failed with status ${response.status}`;
+
         // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
           color: 'red',
         });
-        
+
         throw new Error(errorMessage);
       }
-      
+
       return response.json();
     } catch (error: any) {
       // Only show notification for network errors if no notification was already shown
@@ -169,7 +181,7 @@ export const apiClient = {
         });
         throw new Error('Unable to connect to server');
       }
-      
+
       // Re-throw the error without showing another notification
       throw error;
     }
@@ -178,10 +190,10 @@ export const apiClient = {
 
 export const fetchBots = async () => {
   try {
-    const data = await apiClient.get("/bots/get");
+    const data = await apiClient.get('/bots/get');
     return data;
   } catch (error) {
-    console.error("Error fetching bots:", error);
+    console.error('Error fetching bots:', error);
     // Don't show additional notification here since apiClient already handles it
     throw error;
   }
@@ -190,14 +202,14 @@ export const fetchBots = async () => {
 export const pauseBot = async (botId: number) => {
   try {
     const data = await apiClient.put(`/bots/${botId}/pause`, {});
-    
+
     // Show success notification
     showNotification({
       title: 'Bot Paused',
       message: `Bot #${botId} has been paused successfully`,
       color: 'green',
     });
-    
+
     return data;
   } catch (error) {
     console.error(`Error pausing bot ${botId}:`, error);
@@ -209,14 +221,14 @@ export const pauseBot = async (botId: number) => {
 export const resumeBot = async (botId: number) => {
   try {
     const data = await apiClient.put(`/bots/${botId}/resume`, {});
-    
+
     // Show success notification
     showNotification({
       title: 'Bot Resumed',
       message: `Bot #${botId} has been resumed successfully`,
       color: 'green',
     });
-    
+
     return data;
   } catch (error) {
     console.error(`Error resuming bot ${botId}:`, error);
@@ -228,14 +240,14 @@ export const resumeBot = async (botId: number) => {
 export const deleteBot = async (botId: number) => {
   try {
     const data = await apiClient.delete(`/bots/${botId}`);
-    
+
     // Show success notification
     showNotification({
       title: 'Bot Deleted',
       message: `Bot #${botId} has been deleted successfully`,
       color: 'green',
     });
-    
+
     return data;
   } catch (error) {
     console.error(`Error deleting bot ${botId}:`, error);

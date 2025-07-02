@@ -1,6 +1,6 @@
-import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 
-const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
 
 if (CLIENT_ID) {
   console.log(CLIENT_ID);
@@ -18,10 +18,7 @@ const GoogleSignIn = () => {
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
       <div>
-        <GoogleLogin
-          onSuccess={onSuccess}
-          onError={onError}
-        />
+        <GoogleLogin onSuccess={onSuccess} onError={onError} />
       </div>
     </GoogleOAuthProvider>
   );

@@ -9,7 +9,17 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
     case 'success':
       return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
@@ -18,7 +28,17 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
     case 'error':
       return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="15" y1="9" x2="9" y2="15"></line>
             <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -28,7 +48,17 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
     case 'warning':
       return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -39,7 +69,17 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
     default:
       return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="16" x2="12" y2="12"></line>
             <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -51,7 +91,8 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
 
 const DropdownNotification = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { notifications, markAsRead, clearNotification, clearAllNotifications, unreadCount } = useNotifications();
+  const { notifications, markAsRead, clearNotification, clearAllNotifications, unreadCount } =
+    useNotifications();
 
   const handleNotificationClick = (id: string) => {
     markAsRead(id);
@@ -92,10 +133,8 @@ const DropdownNotification = () => {
           <div
             className={`absolute -right-27 mt-2.5 flex h-90 w-75 flex-col rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark sm:right-0 sm:w-80`}
           >
-            <div className="px-4.5 py-3 flex justify-between items-center">
-              <h5 className="text-sm font-medium text-bodydark2">
-                Notifications
-              </h5>
+            <div className="flex items-center justify-between px-4.5 py-3">
+              <h5 className="text-sm font-medium text-bodydark2">Notifications</h5>
               {notifications.length > 0 && (
                 <button
                   onClick={clearAllNotifications}
@@ -107,7 +146,7 @@ const DropdownNotification = () => {
             </div>
 
             {notifications.length === 0 ? (
-              <div className="py-8 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 No notifications yet
               </div>
             ) : (
@@ -131,7 +170,9 @@ const DropdownNotification = () => {
                           {notification.message}
                         </p>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(notification.timestamp), {
+                            addSuffix: true,
+                          })}
                         </p>
                       </div>
                       <button
@@ -141,7 +182,17 @@ const DropdownNotification = () => {
                           clearNotification(notification.id);
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <line x1="18" y1="6" x2="6" y2="18"></line>
                           <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>

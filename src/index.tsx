@@ -9,19 +9,17 @@ import store from './store/store';
 import reportWebVitals from './reportWebVitals';
 import { MantineProvider } from '@mantine/core';
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
-    <MantineProvider >
+    <MantineProvider>
       <Provider store={store}>
-        <BrowserRouter basename='/'>
+        <BrowserRouter basename="/">
           <App />
         </BrowserRouter>
       </Provider>
     </MantineProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 reportWebVitals();
