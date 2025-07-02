@@ -3,6 +3,10 @@ FROM node:latest as build-stage
 
 WORKDIR /frontend
 
+# Accept API base URL as build-time argument (defaults to localhost)
+ARG REACT_APP_API_BASE_URL=http://localhost:8000
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+
 # Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
@@ -12,7 +16,7 @@ RUN npm install
 # Copy the rest of the application files to the working directory
 COPY . .
 
-# Build the React application
+# Build the React application with the injected env variable
 RUN npm run build
 
 # Production Stage

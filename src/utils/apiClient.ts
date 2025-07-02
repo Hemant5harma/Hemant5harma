@@ -1,7 +1,9 @@
 import { getAuthHeaders } from './auth';
 import { showNotification } from '@mantine/notifications';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// Use environment variable injected at build time (Create-React-App)
+// Fallback to localhost when not provided, e.g. during local dev without Docker
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
 /**
  * API client with authentication

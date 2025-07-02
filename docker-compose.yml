@@ -1,22 +1,61 @@
 version: "3.9"
 
 services:
+  # PostgreSQL Database Service
+  database:
+    image: postgres:15-alpine
+    container_name: dca_postgres
+    environment:
+      POSTGRES_DB: trading_bot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trading_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: dca_backend
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: trading_bot
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app
     ports:
       - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - ./backend/src:/app/src  # For development hot reload (optional)
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: http://localhost:8000
     container_name: dca_frontend
     ports:
       - "80:80"
     depends_on:
       - backend
-    restart: unless-stopped 
+    restart: unless-stopped
+
+# Named volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local 
