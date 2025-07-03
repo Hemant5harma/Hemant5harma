@@ -5,18 +5,15 @@ services:
   database:
     image: postgres:15-alpine
     container_name: dca_postgres
-    environment:
-      POSTGRES_DB: trading_bot
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      PGDATA: /var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - '5432:5432'
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d trading_bot']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,13 +23,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: dca_backend
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      POSTGRES_DB: trading_bot
-      POSTGRES_HOST: database
-      POSTGRES_PORT: 5432
-      PYTHONPATH: /app
+    env_file:
+      - .env
     ports:
       - '8000:8000'
     depends_on:
@@ -47,12 +39,14 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: http://localhost:8000
+        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL}
     container_name: dca_frontend
     ports:
       - '80:80'
     depends_on:
       - backend
+    env_file:
+      - .env
     restart: unless-stopped
 
 # Named volumes for data persistence
