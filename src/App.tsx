@@ -1,5 +1,5 @@
 import React from 'react';
-import Markup from './router';
+import AppRouter from './AppRouter';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { NotificationProvider } from './context/NotificationContext';
@@ -10,7 +10,7 @@ function App() {
     <MantineProvider>
       <Notifications position="top-right" />
       <NotificationProvider>
-        <Markup />
+        <AppRouter />
       </NotificationProvider>
     </MantineProvider>
   );

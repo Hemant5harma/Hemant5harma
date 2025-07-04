@@ -575,7 +575,7 @@ const ManualTrade: React.FC = () => {
               </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto p-2">
+            <div className="custom-scroll max-h-96 overflow-y-auto p-2">
               {currentTokens.map((token) => {
                 const balance = tokenBalances[token.address.toLowerCase()] || "0.00"
                 const isLoading = balanceLoading && !tokenBalances[token.address.toLowerCase()]
@@ -1065,7 +1065,7 @@ const ManualTrade: React.FC = () => {
               </button>
             </div>
 
-            <div className="max-h-80 space-y-3 overflow-y-auto">
+            <div className="custom-scroll max-h-80 space-y-3 overflow-y-auto">
               {tradeHistory.slice(0, 5).map((trade) => {
                 const sellTokenInfo = Object.values(tokensByNetwork)
                   .flat()

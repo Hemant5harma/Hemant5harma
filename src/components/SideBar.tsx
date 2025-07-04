@@ -106,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
   return (
     <aside className={`flex h-full flex-col bg-transparent`}>
       {/* Navigation Section */}
-      <nav className="scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-8">
+      <nav className="custom-scroll flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-8">
         <div className="mb-6">
           <h3 className="mb-6 px-4 text-xs font-bold uppercase tracking-widest text-gray-500 opacity-75 dark:text-gray-400">
             Navigation

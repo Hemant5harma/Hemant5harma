@@ -495,7 +495,7 @@ const DCATrading: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="max-h-[600px] space-y-4 overflow-y-auto pr-1">
+                  <div className="custom-scroll max-h-[600px] space-y-4 overflow-y-auto pr-1">
                     {dca.dcaSettings.assets.map((asset) => (
                       <motion.div
                         key={asset.symbol}
@@ -708,7 +708,7 @@ const DCATrading: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid max-h-[400px] grid-cols-1 gap-2 overflow-y-auto pr-1">
+              <div className="custom-scroll grid max-h-[400px] grid-cols-1 gap-2 overflow-y-auto pr-1">
                 {filteredCryptocurrencies?.length > 0 ? (
                   filteredCryptocurrencies.map((crypto) => {
                     const isSelected = dca.dcaSettings.assets.some(

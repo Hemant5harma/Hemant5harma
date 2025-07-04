@@ -386,7 +386,7 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-8 dark:bg-boxdark-2">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-8 dark:bg-boxdark">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-6 sm:mb-8">

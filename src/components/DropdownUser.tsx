@@ -395,32 +395,13 @@ const DropdownUser = () => {
                     ✓ Authenticated
                   </div>
                 )}
-                <button
-                  onClick={disconnectWallet}
-                  className="flex w-full items-center justify-center gap-3.5 rounded bg-gray-500 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
-                >
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M9 11L12 8L15 11M12 8V18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path d="M20 4H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  Disconnect Wallet
-                </button>
               </div>
             )}
           </div>
 
-          <button className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 dark:hover:text-secondary lg:text-base">
+          <button
+            onClick={disconnectWallet}
+            className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 dark:hover:text-secondary lg:text-base">
             <svg
               className="fill-current"
               width="22"
