@@ -14,7 +14,8 @@ const generateChartData = (count: number, initialPrice: number, trend: 'up' | 'd
 
 export default function Dashboard() {
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="px-4 py-6 bg-[#FFFFFF] dark:bg-boxdark">
       {/* Crypto Cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <CryptoCard
@@ -53,27 +54,30 @@ export default function Dashboard() {
       <div className="mb-8">
         <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">OVERVIEW</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-boxdark">
+          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
             <p className="text-3xl font-bold text-black dark:text-white">$0</p>
             <p className="text-sm text-gray-600 dark:text-white">Total Balance</p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-boxdark">
+          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
             <p className="text-3xl font-bold text-black dark:text-white">$0</p>
             <p className="text-sm text-gray-600 dark:text-white">Total DEX(s)</p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-boxdark">
+          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
             <p className="text-3xl font-bold text-black dark:text-white">$0</p>
             <p className="text-sm text-gray-600 dark:text-white">Total CEX(s)</p>
           </div>
         </div>
       </div>
 
-      {/* Portfolio Evolution */}
-      <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-boxdark">
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">
-          Portfolio Evolution
-        </h2>
-        <PortfolioChart />
+        {/* Portfolio Evolution */}
+        <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
+          <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">
+            Portfolio Evolution
+          </h2>
+          <div className="bg-[#FAFBFC] p-4 rounded-xl shadow-inner dark:bg-gray-700 dark:shadow-none">
+            <PortfolioChart />
+          </div>
+        </div>
       </div>
     </div>
   );

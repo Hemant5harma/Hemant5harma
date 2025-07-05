@@ -95,7 +95,7 @@ export default function CryptoCard({
   }, []);
 
   return (
-    <div className="font-sans mx-auto w-full max-w-md rounded-lg bg-white p-4 shadow-md dark:bg-boxdark">
+    <div className="font-sans mx-auto w-full max-w-md rounded-lg bg-white p-4 shadow-md dark:bg-gray-800">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="mb-1 text-xl font-bold text-black dark:text-white">{symbol}</h2>

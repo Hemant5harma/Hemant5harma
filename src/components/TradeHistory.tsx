@@ -1,6 +1,6 @@
 const TradeHistory = () => {
   return (
-    <div className="rounded-lg bg-white px-5 pb-2.5 pt-6 shadow-default dark:bg-boxdark sm:px-7.5 xl:pb-2.5">
+    <div className="rounded-lg bg-white px-5 pb-2.5 pt-6 shadow-lg dark:bg-gray-800 sm:px-7.5 xl:pb-2.5">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">Trade History</h4>
       <div className="flex w-full flex-col overflow-auto">
         <div className="flex w-max flex-row rounded-sm bg-gray-2 dark:bg-meta-4">

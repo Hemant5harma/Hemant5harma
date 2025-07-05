@@ -45,8 +45,9 @@ const MyTrades = () => {
   const totalBots = stats?.total_bots ?? 0;
 
   return (
-    <div className="mx-auto">
-      <Breadcrumb pageName="My Trades" />
+    <div className="mx-auto min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className=" bg-[#FFFFFF] dark:bg-boxdark">
+        <Breadcrumb pageName="My Trades" />
 
       {/* Overview widgets */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
@@ -61,7 +62,7 @@ const MyTrades = () => {
         <div className="col-span-3">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {/* Completed Trades */}
-            <div className="rounded-xl border border-stroke bg-white px-7.5 py-6 shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
               <div>
                 <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
                   {isLoading ? '--' : formatNumber(totalTrades)}
@@ -71,7 +72,7 @@ const MyTrades = () => {
             </div>
 
             {/* Active Bots */}
-            <div className="rounded-xl border border-stroke bg-white px-7.5 py-6 shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
               <div>
                 <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
                   {isLoading ? '--' : `${activeBots} `}
@@ -82,13 +83,13 @@ const MyTrades = () => {
             </div>
 
             {/* Placeholder for Open Trades & 7-day profit (not provided by endpoint) */}
-            <div className="rounded-xl border border-stroke bg-white px-7.5 py-6 shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
               <div>
                 <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
                 <span className="text-sm font-medium text-black dark:text-white">Open Trades</span>
               </div>
             </div>
-            <div className="rounded-xl border border-stroke bg-white px-7.5 py-6 shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
               <div>
                 <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
                 <span className="text-sm font-medium text-black dark:text-white">7-day Profit ($)</span>
@@ -99,11 +100,12 @@ const MyTrades = () => {
       </div>
 
       {/* Existing components */}
-      <div className="mt-4 md:mt-6 2xl:mt-7.5">
-        <OpenTrades />
-      </div>
-      <div className="mt-4 md:mt-6 2xl:mt-7.5">
-        <TradeHistory />
+        <div className="mt-4 md:mt-6 2xl:mt-7.5 bg">
+          <OpenTrades />
+        </div>
+        <div className="mt-4 md:mt-6 2xl:mt-7.5">
+          <TradeHistory />
+        </div>
       </div>
     </div>
   );
