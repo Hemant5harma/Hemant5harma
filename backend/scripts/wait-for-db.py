@@ -47,7 +47,10 @@ async def wait_for_database(database_url: str, max_retries: int = 30, delay: int
     return False
 
 def main():
-    raw_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres_password@database:5432/trading_bot")
+    raw_url = os.getenv("DATABASE_URL")
+    if not raw_url:
+        print("❌ DATABASE_URL environment variable is not set")
+        sys.exit(1)
     database_url = normalize_asyncpg_url(raw_url)
     
     print(f"🔍 Waiting for database at: {database_url.split('@')[1] if '@' in database_url else 'Unknown'}")
