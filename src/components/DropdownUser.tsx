@@ -5,6 +5,7 @@ import UserOne from '../assets/image/user-10.png';
 import { BrowserProvider } from 'ethers';
 import { setAuthToken, removeAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
+import { apiClient } from '../utils/apiClient';
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -77,20 +78,13 @@ const DropdownUser = () => {
       const signature = await signer.signMessage(message);
 
       // Send the signature to the backend
-      const response = await fetch('http://127.0.0.1:8000/users/metamask_login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const data = await apiClient.post('/users/metamask_login', {
           address: walletAddress,
           message: message,
           signature: signature,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+        });
+        
         setAuthToken(data.access_token); // Store the token
         setIsAuthenticated(true);
 
@@ -101,9 +95,8 @@ const DropdownUser = () => {
         });
 
         setDropdownOpen(false);
-      } else {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || 'Authentication failed';
+      } catch (error: any) {
+        const errorMessage = error.message || 'Authentication failed';
 
         showNotification({
           title: 'Authentication Failed',
@@ -167,20 +160,13 @@ const DropdownUser = () => {
       const signature = await signer.signMessage(message);
 
       // Send the signature to the backend
-      const response = await fetch('http://127.0.0.1:8000/users/metamask_login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const data = await apiClient.post('/users/metamask_login', {
           address: account,
           message: message,
           signature: signature,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+        });
+        
         setAuthToken(data.access_token); // Store the token
         setIsAuthenticated(true);
 
@@ -191,9 +177,8 @@ const DropdownUser = () => {
         });
 
         setDropdownOpen(false);
-      } else {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || 'Authentication failed';
+      } catch (error: any) {
+        const errorMessage = error.message || 'Authentication failed';
 
         showNotification({
           title: 'Authentication Failed',
