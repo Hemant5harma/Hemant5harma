@@ -8,8 +8,7 @@ class ManualTradeRequest(BaseModel):
     buy_token: str = Field(..., description="Address of the token to buy")
     sell_amount: str = Field(..., description="Amount to sell in wei or token units")
     slippage_bps: Optional[int] = Field(default=100, description="Slippage tolerance in basis points (100 = 1%)")
-    chain_id: int = Field(..., description="Chain ID of the network (e.g., 1 for Ethereum, 137 for Polygon)")
-    rpc_url: str = Field(..., description="RPC URL for the blockchain network")
+    chain_id: int = Field(..., description="Chain ID of the network (e.g., 1 for Ethereum, 137 for Polygon, 10143 for Monad Testnet)")
     
     class Config:
         json_schema_extra = {
@@ -18,8 +17,7 @@ class ManualTradeRequest(BaseModel):
                 "buy_token": "0xA0b86a33E6417aEd136F0b5915b3E6E80B2d2BbF",
                 "sell_amount": "1000000000000000000",
                 "slippage_bps": 100,
-                "chain_id": 1,
-                "rpc_url": "https://ethereum.publicnode.com"
+                "chain_id": 1
             }
         }
 
@@ -29,8 +27,7 @@ class QuoteRequest(BaseModel):
     buy_token: str = Field(..., description="Address of the token to buy")
     sell_amount: str = Field(..., description="Amount to sell in wei or token units")
     slippage_bps: Optional[int] = Field(default=100, description="Slippage tolerance in basis points")
-    chain_id: int = Field(..., description="Chain ID of the network")
-    rpc_url: str = Field(..., description="RPC URL for the blockchain network")
+    chain_id: int = Field(..., description="Chain ID of the network (supports Ethereum, Polygon, Arbitrum, Avalanche, BSC, Base, Optimism, Monad Testnet)")
 
 class QuoteResponse(BaseModel):
     """Response model for trade quotes"""
@@ -71,7 +68,6 @@ class TokenInfo(BaseModel):
 class WalletBalanceRequest(BaseModel):
     """Request model for wallet balance check"""
     chain_id: int = Field(..., description="Chain ID of the network")
-    rpc_url: str = Field(..., description="RPC URL for the blockchain network")
     tokens: Optional[list[str]] = Field(default=None, description="List of token addresses to check (optional)")
 
 class WalletBalanceResponse(BaseModel):

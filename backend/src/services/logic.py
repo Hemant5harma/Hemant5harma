@@ -187,13 +187,8 @@ async def check_bot(bot_id: int):
                 return
 
             chain_id = bot.chain_id  
-            # Create DexIntegration with user context for private key
-            dex = await DexIntegration.create(
-                chain_id=chain_id, 
-                user_id=bot.user_id, 
-                db=db, 
-                rpc_url=bot.rpc_url
-            )
+            # Create DexIntegration instance (new dynamic system)
+            dex = DexIntegration()
             
             # Get all coins for this bot
             coins = bot.coins
@@ -226,11 +221,13 @@ async def check_bot(bot_id: int):
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
                     if condition_met:
                         logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
-                        # Execute the trade
-                        tx_hash = dex.execute_trade(
+                        # Execute the trade using new dynamic system
+                        tx_hash = await dex.execute_trade(
                             buy_token=coin.token_address,
-                            amount=int(coin.amount * 1e18),  # Amount in wei
-                            chain_id=chain_id
+                            sell_amount=int(coin.amount * 1e18),  # Amount in wei
+                            chain_id=chain_id,
+                            user_id=bot.user_id,
+                            db=db
                         )
 
                         # Record the trade with additional data

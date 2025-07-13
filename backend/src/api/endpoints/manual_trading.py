@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from src.services.manual_trading import ManualTradingService
 from src.py_models.manual_trade import (
     QuoteRequest, QuoteResponse, ManualTradeRequest, 
@@ -24,80 +23,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-def get_trading_service(
-    chain_id: Optional[int] = None,
-    rpc_url: Optional[str] = None
-):
-    """Dependency to get trading service instance for specific network"""
-    if chain_id and rpc_url:
-        return ManualTradingService.create_for_network(chain_id, rpc_url)
-    return ManualTradingService()
-
-# --- Deprecated / Unused endpoints (frontend no longer calls these) ---
-# @router.get("/networks", response_model=SupportedNetworksResponse)
-# async def get_supported_networks():
-#     """
-#     Get list of supported networks for manual trading.
-#     Returns network information including chain IDs and RPC URLs.
-#     """
-#     try:
-#         service = ManualTradingService()
-#         return service.get_supported_networks()
-#     except Exception as e:
-#         logger.error(f"Failed to get supported networks: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
-# @router.get("/networks/{chain_id}/info", response_model=NetworkInfo)
-# async def get_network_info(
-#     chain_id: int,
-#     rpc_url: str = Query(..., description="RPC URL for the network")
-# ):
-#     """
-#     Get information about a specific network.
-#     """
-#     try:
-#         service = ManualTradingService.create_for_network(chain_id, rpc_url)
-#         return service.get_network_info()
-#     except Exception as e:
-#         logger.error(f"Failed to get network info: {e}")
-#         raise HTTPException(status_code=400, detail=str(e))
-# @router.post("/wallet/balances", response_model=WalletBalanceResponse)
-# async def get_wallet_balances(
-#     balance_request: WalletBalanceRequest,
-#     db: AsyncSession = Depends(get_db_session),
-#     current_user: User = Depends(get_current_user)
-# ):
-#     """
-#     Get wallet balances for native token and specified ERC20 tokens.
-#     Now supports any blockchain network by specifying chain_id and rpc_url.
-#     """
-#     try:
-#         trading_service = await ManualTradingService.create_for_network(
-#             balance_request.chain_id, 
-#             balance_request.rpc_url,
-#             current_user.id,
-#             db
-#         )
-#         balances = await trading_service.get_wallet_balances(balance_request)
-#         return balances
-#     except Exception as e:
-#         logger.error(f"Failed to get wallet balances: {e}")
-#         raise HTTPException(status_code=400, detail=str(e))
-# @router.get("/tokens/common")
-# async def get_common_tokens(
-#     chain_id: int = Query(..., description="Chain ID to get tokens for"),
-#     rpc_url: str = Query(..., description="RPC URL for the network")
-# ) -> Dict[str, str]:
-#     """
-#     Get common token addresses for a specific network.
-#     This can be used to pre-fill token selectors.
-#     """
-#     try:
-#         service = ManualTradingService.create_for_network(chain_id, rpc_url)
-#         tokens = service.get_common_tokens()
-#         return tokens
-#     except Exception as e:
-#         logger.error(f"Failed to get common tokens: {e}")
-#         raise HTTPException(status_code=400, detail=str(e))
+@router.get("/networks", response_model=SupportedNetworksResponse)
+async def get_supported_networks():
+    """
+    Get list of supported networks for manual trading.
+    Returns network information including chain IDs and RPC URLs.
+    """
+    try:
+        service = ManualTradingService()
+        return service.get_supported_networks()
+    except Exception as e:
+        logger.error(f"Failed to get supported networks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quote", response_model=QuoteResponse)
 async def get_quote(
@@ -107,17 +44,11 @@ async def get_quote(
 ):
     """
     Get a quote for a potential trade without executing it.
-    This is similar to Uniswap's preview functionality.
-    Now supports any blockchain network by specifying chain_id and rpc_url.
+    Frontend specifies chain_id in the request - no need for rpc_url anymore.
     """
     try:
-        trading_service = await ManualTradingService.create_for_network(
-            quote_request.chain_id, 
-            quote_request.rpc_url,
-            current_user.id,
-            db
-        )
-        quote = await trading_service.get_quote(quote_request)
+        service = ManualTradingService()
+        quote = await service.get_quote(quote_request, current_user.id, db)
         return quote
     except Exception as e:
         logger.error(f"Failed to get quote: {e}")
@@ -131,17 +62,11 @@ async def execute_trade(
 ):
     """
     Execute a manual trade with specified sell token, buy token, and amount.
-    This is the main trading endpoint similar to Uniswap's swap function.
-    Now supports any blockchain network by specifying chain_id and rpc_url.
+    Frontend specifies chain_id in the request - supports all 0x networks.
     """
     try:
-        trading_service = await ManualTradingService.create_for_network(
-            trade_request.chain_id, 
-            trade_request.rpc_url,
-            current_user.id,
-            db
-        )
-        result = await trading_service.execute_manual_trade(trade_request)
+        service = ManualTradingService()
+        result = await service.execute_trade(trade_request, current_user.id, db)
         
         # Store trade in database for the authenticated user
         trade_data = {
@@ -168,16 +93,16 @@ async def execute_trade(
 async def get_transaction_status(
     tx_hash: str,
     chain_id: int = Query(..., description="Chain ID of the network"),
-    rpc_url: str = Query(..., description="RPC URL for the network"),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get the status and details of a transaction by hash.
-    Now supports any blockchain network by specifying chain_id and rpc_url.
+    Frontend specifies chain_id - no need for rpc_url anymore.
     """
     try:
-        trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
-        status = trading_service.get_transaction_status(tx_hash)
+        service = ManualTradingService()
+        status = await service.get_transaction_status(tx_hash, chain_id, current_user.id, db)
         
         # Update database record if status changed
         if status.get("status") in ["success", "failed"]:
@@ -189,6 +114,24 @@ async def get_transaction_status(
         return status
     except Exception as e:
         logger.error(f"Failed to get transaction status: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/wallet/balances", response_model=WalletBalanceResponse)
+async def get_wallet_balances(
+    balance_request: WalletBalanceRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get wallet balances for native token and specified ERC20 tokens.
+    Frontend specifies chain_id in the request.
+    """
+    try:
+        service = ManualTradingService()
+        balances = await service.get_wallet_balances(balance_request, current_user.id, db)
+        return balances
+    except Exception as e:
+        logger.error(f"Failed to get wallet balances: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/history")
@@ -204,12 +147,6 @@ async def get_manual_trade_history(
     Can filter by chain_id to show trades from specific networks.
     """
     try:
-        # Use default service to get wallet address
-        # default_service = ManualTradingService()
-        # user = await get_user_by_address(db, default_service.wallet_address)
-        # if not user:
-        #     raise HTTPException(status_code=404, detail="User not found")
-        
         trades = await get_manual_trades_by_user(db, current_user.id, limit, offset, chain_id)
         
         return [
@@ -236,34 +173,18 @@ async def get_manual_trade_history(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/health")
-async def health_check(
-    chain_id: Optional[int] = Query(None, description="Chain ID to check"),
-    rpc_url: Optional[str] = Query(None, description="RPC URL to check")
-):
+async def health_check():
     """Health check endpoint for manual trading service"""
     try:
-        if chain_id and rpc_url:
-            trading_service = await ManualTradingService.create_for_network(chain_id, rpc_url)
-        else:
-            trading_service = ManualTradingService()
-            # For backwards compatibility, setup with default network
-            await trading_service._setup_network(trading_service.chain_id, trading_service.rpc_url)
-            
-        # Check if web3 connection is working
-        is_connected = trading_service.web3.is_connected()
-        latest_block = trading_service.web3.eth.block_number
+        service = ManualTradingService()
+        supported_networks = service.get_supported_networks()
         
         return {
-            "status": "healthy" if is_connected else "unhealthy",
-            "web3_connected": is_connected,
-            "latest_block": latest_block,
-            "wallet_address": trading_service.wallet_address,
-            "chain_id": trading_service.chain_id,
-            "rpc_url": trading_service.rpc_url
+            "status": "healthy",
+            "service": "manual_trading",
+            "supported_networks": len(supported_networks.networks),
+            "networks": [net.name for net in supported_networks.networks]
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        raise HTTPException(status_code=500, detail=str(e))

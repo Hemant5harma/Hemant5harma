@@ -25,7 +25,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-md border border-gray-200 bg-white p-2 text-xs shadow-sm dark:border-gray-600 dark:bg-boxdark">
-        <p className="mb-1 text-gray-600 dark:text-gray-400">{new Date(label).toLocaleDateString()}</p>
+        <p className="mb-1 text-gray-600 dark:text-gray-400">
+          {new Date(label).toLocaleDateString()}
+        </p>
         <p className="font-bold text-gray-800 dark:text-white">${payload[0].value.toFixed(2)}</p>
       </div>
     );

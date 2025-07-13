@@ -62,10 +62,34 @@ export const networkOptions: Network[] = [
   {
     chain_id: 10143,
     name: 'Monad Testnet',
-    shortName: 'Monad',
+    shortName: 'MON',
     rpc_url: 'https://testnet-rpc.monad.xyz', // Monad doesn't use Infura
     network_name: 'Monad Testnet',
     isTestnet: true,
+  },
+  {
+    chain_id: 8453,
+    name: 'Base',
+    shortName: 'ETH',
+    rpc_url: 'https://base-mainnet.infura.io/v3/INFURA_KEY',
+    network_name: 'Base',
+    isTestnet: false,
+  },
+  {
+    chain_id: 10,
+    name: 'Optimism',
+    shortName: 'ETH',
+    rpc_url: 'https://optimism-mainnet.infura.io/v3/INFURA_KEY',
+    network_name: 'Optimism',
+    isTestnet: false,
+  },
+  {
+    chain_id: 43114,
+    name: 'Avalanche',
+    shortName: 'AVAX',
+    rpc_url: 'https://avalanche-mainnet.infura.io/v3/INFURA_KEY',
+    network_name: 'Avalanche',
+    isTestnet: false,
   },
 ];
 
@@ -305,6 +329,87 @@ export const tokensByNetwork: Record<number, Token[]> = {
       decimals: 9,
     },
   ],
+  // Base
+  8453: [
+    {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      decimals: 18,
+    },
+    {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+      decimals: 6,
+    },
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      address: '0xfde4c96c8593536e31f229ea441861537e2fe8b0',
+      decimals: 6,
+    },
+    {
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      address: '0x4200000000000000000000000000000000000006',
+      decimals: 18,
+    },
+  ],
+  // Optimism
+  10: [
+    {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      decimals: 18,
+    },
+    {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      address: '0x7f5c764cbc14f9669b88837ca1490cca17c31607',
+      decimals: 6,
+    },
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      address: '0x94b008aa00579c1307b0ef2c499ad98a8ce58e58',
+      decimals: 6,
+    },
+    {
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      address: '0x4200000000000000000000000000000000000006',
+      decimals: 18,
+    },
+  ],
+  // Avalanche
+  43114: [
+    {
+      symbol: 'AVAX',
+      name: 'Avalanche',
+      address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      decimals: 18,
+    },
+    {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e',
+      decimals: 6,
+    },
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      address: '0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7',
+      decimals: 6,
+    },
+    {
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      address: '0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab',
+      decimals: 18,
+    },
+  ],
 };
 
 // Helper function to get explorer URLs for network addition
@@ -316,6 +421,9 @@ export const getExplorerUrls = (chainId: number): string[] => {
     56: ['https://bscscan.com'],
     97: ['https://testnet.bscscan.com'],
     10143: ['https://testnet.monadexplorer.com'],
+    8453: ['https://basescan.org'],
+    10: ['https://optimistic.etherscan.io'],
+    43114: ['https://snowtrace.io'],
   };
   return explorers[chainId] || ['https://etherscan.io'];
 };
@@ -329,6 +437,9 @@ export const getExplorerTxUrl = (chainId: number, txHash: string): string => {
     56: `https://bscscan.com/tx/${txHash}`,
     97: `https://testnet.bscscan.com/tx/${txHash}`,
     10143: `https://testnet.monadexplorer.com/tx/${txHash}`,
+    8453: `https://basescan.org/tx/${txHash}`,
+    10: `https://optimistic.etherscan.io/tx/${txHash}`,
+    43114: `https://snowtrace.io/tx/${txHash}`,
   };
   return explorers[chainId] || `https://etherscan.io/tx/${txHash}`;
-}; 
+};

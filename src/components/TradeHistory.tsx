@@ -14,22 +14,30 @@ const TradeHistory = () => {
             <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Started</h5>
           </div>
           <div className="min-w-[120px] p-2">
-            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Completed</h5>
+            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">
+              Completed
+            </h5>
           </div>
           <div className="min-w-[140px] p-2">
             <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Amount</h5>
           </div>
           <div className="min-w-[140px] p-2">
-            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Total Executed</h5>
+            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">
+              Total Executed
+            </h5>
           </div>
           <div className="min-w-[120px] p-2">
-            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Total Gained</h5>
+            <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">
+              Total Gained
+            </h5>
           </div>
           <div className="min-w-[120px] p-2">
             <h5 className="text-sm font-medium text-black dark:text-white xsm:text-sm">Profit %</h5>
           </div>
         </div>
-        <div className="flex min-h-[200px] items-center justify-center text-black dark:text-white">No data</div>
+        <div className="flex min-h-[200px] items-center justify-center text-black dark:text-white">
+          No data
+        </div>
       </div>
     </div>
   );

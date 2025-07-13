@@ -15,66 +15,66 @@ const generateChartData = (count: number, initialPrice: number, trend: 'up' | 'd
 export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="px-4 py-6 bg-[#FFFFFF] dark:bg-boxdark">
-      {/* Crypto Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <CryptoCard
-          symbol="BTC"
-          name="Bitcoin"
-          price="$98,804.36"
-          change="1.56"
-          chartData={generateChartData(30, 98804.36, 'up')}
-          high24h="$99,500.00"
-          low24h="$97,800.00"
-          volume24h="1200 BTC"
-        />
-        <CryptoCard
-          symbol="ETH"
-          name="Ethereum"
-          price="$3,416.88"
-          change="2.05"
-          chartData={generateChartData(30, 3416.88, 'up')}
-          high24h="$3,500.00"
-          low24h="$3,300.00"
-          volume24h="5000 ETH"
-        />
-        <CryptoCard
-          symbol="BNB"
-          name="BNB"
-          price="$670.17"
-          change="9.97"
-          chartData={generateChartData(30, 670.17, 'down')}
-          high24h="$700.00"
-          low24h="$650.00"
-          volume24h="10000 BNB"
-        />
-      </div>
+      <div className="bg-[#FFFFFF] px-4 py-6 dark:bg-boxdark">
+        {/* Crypto Cards */}
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CryptoCard
+            symbol="BTC"
+            name="Bitcoin"
+            price="$98,804.36"
+            change="1.56"
+            chartData={generateChartData(30, 98804.36, 'up')}
+            high24h="$99,500.00"
+            low24h="$97,800.00"
+            volume24h="1200 BTC"
+          />
+          <CryptoCard
+            symbol="ETH"
+            name="Ethereum"
+            price="$3,416.88"
+            change="2.05"
+            chartData={generateChartData(30, 3416.88, 'up')}
+            high24h="$3,500.00"
+            low24h="$3,300.00"
+            volume24h="5000 ETH"
+          />
+          <CryptoCard
+            symbol="BNB"
+            name="BNB"
+            price="$670.17"
+            change="9.97"
+            chartData={generateChartData(30, 670.17, 'down')}
+            high24h="$700.00"
+            low24h="$650.00"
+            volume24h="10000 BNB"
+          />
+        </div>
 
-      {/* Overview Section */}
-      <div className="mb-8">
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">OVERVIEW</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-            <p className="text-sm text-gray-600 dark:text-white">Total Balance</p>
-          </div>
-          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-            <p className="text-sm text-gray-600 dark:text-white">Total DEX(s)</p>
-          </div>
-          <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-            <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-            <p className="text-sm text-gray-600 dark:text-white">Total CEX(s)</p>
+        {/* Overview Section */}
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">OVERVIEW</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
+              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+              <p className="text-sm text-gray-600 dark:text-white">Total Balance</p>
+            </div>
+            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
+              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+              <p className="text-sm text-gray-600 dark:text-white">Total DEX(s)</p>
+            </div>
+            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
+              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
+              <p className="text-sm text-gray-600 dark:text-white">Total CEX(s)</p>
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Portfolio Evolution */}
         <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
           <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">
             Portfolio Evolution
           </h2>
-          <div className="bg-[#FAFBFC] p-4 rounded-xl shadow-inner dark:bg-gray-700 dark:shadow-none">
+          <div className="rounded-xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
             <PortfolioChart />
           </div>
         </div>

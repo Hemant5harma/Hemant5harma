@@ -201,9 +201,7 @@ export default function Test() {
           <Button variant="outline" color="cyan">
             Add Token
           </Button>
-          <Button color="primary">
-            Add an API key
-          </Button>
+          <Button color="primary">Add an API key</Button>
         </Group>
       </Stack>
     </Container>

@@ -386,7 +386,8 @@ const DropdownUser = () => {
 
           <button
             onClick={disconnectWallet}
-            className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 dark:hover:text-secondary lg:text-base">
+            className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium text-gray-700 duration-300 ease-in-out hover:text-primary dark:text-gray-300 dark:hover:text-secondary lg:text-base"
+          >
             <svg
               className="fill-current"
               width="22"

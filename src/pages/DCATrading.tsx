@@ -1,6 +1,6 @@
-import type React from "react"
-import { useState, useEffect } from "react"
-import { showNotification } from "@mantine/notifications"
+import type React from 'react';
+import { useState, useEffect } from 'react';
+import { showNotification } from '@mantine/notifications';
 import {
   Plus,
   Tag,
@@ -14,96 +14,96 @@ import {
   TrendingUp,
   Shield,
   Search,
-} from "lucide-react"
-import ConditionBuilder from "../components/ConditionBuilder"
-import ManageBots from "./ManageBots"
-import { apiClient } from "../utils/apiClient"
-import { motion, AnimatePresence } from "framer-motion"
+} from 'lucide-react';
+import ConditionBuilder from '../components/ConditionBuilder';
+import ManageBots from './ManageBots';
+import { apiClient } from '../utils/apiClient';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DCAState {
-  notifications: Notification[]
+  notifications: Notification[];
   dcaSettings: {
     assets: {
-      symbol: string
-      name: string
-      amount: number
-      threshold: number
-      token_address: string
-      condition_type?: string
-      condition_params?: any
-    }[]
-    frequency: string
-    botName: string
-    chain_id: number
-  }
-  availableBalance: number
+      symbol: string;
+      name: string;
+      amount: number;
+      threshold: number;
+      token_address: string;
+      condition_type?: string;
+      condition_params?: any;
+    }[];
+    frequency: string;
+    botName: string;
+    chain_id: number;
+  };
+  availableBalance: number;
 }
 
 interface Notification {
-  id: string
-  type: "buy" | "sell" | "success"
-  message: string
-  timestamp: number
+  id: string;
+  type: 'buy' | 'sell' | 'success';
+  message: string;
+  timestamp: number;
 }
 
 const initialState: DCAState = {
   notifications: [
     {
-      id: "1",
-      type: "buy",
-      message: "Buy opportunity: Price dropped by 10%",
+      id: '1',
+      type: 'buy',
+      message: 'Buy opportunity: Price dropped by 10%',
       timestamp: Date.now() - 86400000,
     },
     {
-      id: "2",
-      type: "sell",
-      message: "Sell opportunity: 50% gain on portfolio",
+      id: '2',
+      type: 'sell',
+      message: 'Sell opportunity: 50% gain on portfolio',
       timestamp: Date.now() - 172800000,
     },
   ],
   dcaSettings: {
     assets: [],
-    frequency: "1 minute",
-    botName: "DCA Bot 1",
+    frequency: '1 minute',
+    botName: 'DCA Bot 1',
     chain_id: 10143,
   },
   availableBalance: 990059.94,
-}
+};
 
 const networkOptions = [
   {
     value: 1,
-    label: "Ethereum Mainnet",
-    shortName: "ETH",
-    rpc_url: "https://eth-mainnet.g.alchemy.com/v2/your-api-key",
-    network_name: "Ethereum Mainnet",
-    color: "from-primary to-secondary",
+    label: 'Ethereum Mainnet',
+    shortName: 'ETH',
+    rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
+    network_name: 'Ethereum Mainnet',
+    color: 'from-primary to-secondary',
   },
   {
     value: 137,
-    label: "Polygon",
-    shortName: "MATIC",
-    rpc_url: "https://polygon-rpc.com",
-    network_name: "Polygon",
-    color: "from-primary to-secondary",
+    label: 'Polygon',
+    shortName: 'MATIC',
+    rpc_url: 'https://polygon-rpc.com',
+    network_name: 'Polygon',
+    color: 'from-primary to-secondary',
   },
   {
     value: 56,
-    label: "Binance Smart Chain",
-    shortName: "BSC",
-    rpc_url: "https://bsc-dataseed.binance.org",
-    network_name: "Binance Smart Chain",
-    color: "from-primary to-secondary",
+    label: 'Binance Smart Chain',
+    shortName: 'BSC',
+    rpc_url: 'https://bsc-dataseed.binance.org',
+    network_name: 'Binance Smart Chain',
+    color: 'from-primary to-secondary',
   },
   {
     value: 10143,
-    label: "Monad Testnet",
-    shortName: "Monad",
-    rpc_url: "https://testnet-rpc.monad.xyz",
-    network_name: "Monad testnet",
-    color: "from-primary to-secondary",
+    label: 'Monad Testnet',
+    shortName: 'Monad',
+    rpc_url: 'https://testnet-rpc.monad.xyz',
+    network_name: 'Monad testnet',
+    color: 'from-primary to-secondary',
   },
-]
+];
 
 const cryptocurrenciesByNetwork: Record<
   number,
@@ -111,187 +111,190 @@ const cryptocurrenciesByNetwork: Record<
 > = {
   1: [
     {
-      symbol: "USDC",
-      name: "USD Coin",
-      token_address: "0xA0b86a33E6441b4dc5029316a4B3D3536aDF38F5",
-      color: "from-primary to-secondary",
+      symbol: 'USDC',
+      name: 'USD Coin',
+      token_address: '0xA0b86a33E6441b4dc5029316a4B3D3536aDF38F5',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "USDT",
-      name: "Tether",
-      token_address: "0xdac17f958d2ee523a2206206994597c13d831ec7",
-      color: "from-primary to-secondary",
+      symbol: 'USDT',
+      name: 'Tether',
+      token_address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WBTC",
-      name: "Wrapped Bitcoin",
-      token_address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      color: "from-primary to-secondary",
+      symbol: 'WBTC',
+      name: 'Wrapped Bitcoin',
+      token_address: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WETH",
-      name: "Wrapped Ethereum",
-      token_address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      color: "from-primary to-secondary",
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      token_address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+      color: 'from-primary to-secondary',
     },
   ],
   137: [
     {
-      symbol: "USDC",
-      name: "USD Coin",
-      token_address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-      color: "from-primary to-secondary",
+      symbol: 'USDC',
+      name: 'USD Coin',
+      token_address: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "USDT",
-      name: "Tether",
-      token_address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-      color: "from-primary to-secondary",
+      symbol: 'USDT',
+      name: 'Tether',
+      token_address: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WBTC",
-      name: "Wrapped Bitcoin",
-      token_address: "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6",
-      color: "from-primary to-secondary",
+      symbol: 'WBTC',
+      name: 'Wrapped Bitcoin',
+      token_address: '0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WETH",
-      name: "Wrapped Ethereum",
-      token_address: "0x7ceb23fd6f88b48c8f58f96b81b6c2f8f2f8f8f8",
-      color: "from-primary to-secondary",
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      token_address: '0x7ceb23fd6f88b48c8f58f96b81b6c2f8f2f8f8f8',
+      color: 'from-primary to-secondary',
     },
   ],
   56: [
     {
-      symbol: "USDC",
-      name: "USD Coin",
-      token_address: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
-      color: "from-primary to-secondary",
+      symbol: 'USDC',
+      name: 'USD Coin',
+      token_address: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "USDT",
-      name: "Tether",
-      token_address: "0x55d398326f99059ff775485246999027b3197955",
-      color: "from-primary to-secondary",
+      symbol: 'USDT',
+      name: 'Tether',
+      token_address: '0x55d398326f99059ff775485246999027b3197955',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "BTCB",
-      name: "Bitcoin BEP20",
-      token_address: "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c",
-      color: "from-primary to-secondary",
+      symbol: 'BTCB',
+      name: 'Bitcoin BEP20',
+      token_address: '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WBNB",
-      name: "Wrapped BNB",
-      token_address: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
-      color: "from-primary to-secondary",
+      symbol: 'WBNB',
+      name: 'Wrapped BNB',
+      token_address: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+      color: 'from-primary to-secondary',
     },
   ],
   10143: [
     {
-      symbol: "USDC",
-      name: "USDC (testnet)",
-      token_address: "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
-      color: "from-primary to-secondary",
+      symbol: 'USDC',
+      name: 'USDC (testnet)',
+      token_address: '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "USDT",
-      name: "USDT (testnet)",
-      token_address: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D",
-      color: "from-primary to-secondary",
+      symbol: 'USDT',
+      name: 'USDT (testnet)',
+      token_address: '0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WBTC",
-      name: "WBTC (testnet)",
-      token_address: "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d",
-      color: "from-primary to-secondary",
+      symbol: 'WBTC',
+      name: 'WBTC (testnet)',
+      token_address: '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WETH",
-      name: "WETH (testnet)",
-      token_address: "0xB5a30b0FDc42e3E9760Cb8449Fb37",
-      color: "from-primary to-secondary",
+      symbol: 'WETH',
+      name: 'WETH (testnet)',
+      token_address: '0xB5a30b0FDc42e3E9760Cb8449Fb37',
+      color: 'from-primary to-secondary',
     },
     {
-      symbol: "WSOL",
-      name: "WSOL (testnet)",
-      token_address: "0x5387C85A4965769f6B0Df430638a1388493486F1",
-      color: "from-primary to-secondary",
+      symbol: 'WSOL',
+      name: 'WSOL (testnet)',
+      token_address: '0x5387C85A4965769f6B0Df430638a1388493486F1',
+      color: 'from-primary to-secondary',
     },
   ],
-}
+};
 
 const frequencyOptions = [
-  { value: "1 minute", label: "Every Minute", icon: "⚡" },
-  { value: "5 minutes", label: "Every 5 Minutes", icon: "🔥" },
-  { value: "15 minutes", label: "Every 15 Minutes", icon: "⏰" },
-  { value: "1 hour", label: "Hourly", icon: "🕐" },
-  { value: "4 hours", label: "Every 4 Hours", icon: "📅" },
-  { value: "1 day", label: "Daily", icon: "🌅" },
-]
+  { value: '1 minute', label: 'Every Minute', icon: '⚡' },
+  { value: '5 minutes', label: 'Every 5 Minutes', icon: '🔥' },
+  { value: '15 minutes', label: 'Every 15 Minutes', icon: '⏰' },
+  { value: '1 hour', label: 'Hourly', icon: '🕐' },
+  { value: '4 hours', label: 'Every 4 Hours', icon: '📅' },
+  { value: '1 day', label: 'Daily', icon: '🌅' },
+];
 
 const DCATrading: React.FC = () => {
-  const [dca, setDca] = useState<DCAState>(initialState)
-  const [showCryptoModal, setShowCryptoModal] = useState(false)
-  const [totalValue, setTotalValue] = useState(0)
-  const [isCreatingBot, setIsCreatingBot] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [dca, setDca] = useState<DCAState>(initialState);
+  const [showCryptoModal, setShowCryptoModal] = useState(false);
+  const [totalValue, setTotalValue] = useState(0);
+  const [isCreatingBot, setIsCreatingBot] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
-    const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0)
-    setTotalValue(newTotalValue)
-  }, [dca.dcaSettings.assets])
+    const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0);
+    setTotalValue(newTotalValue);
+  }, [dca.dcaSettings.assets]);
 
   const validateForm = (): boolean => {
-    const errors: string[] = []
+    const errors: string[] = [];
 
     if (!dca.dcaSettings.botName.trim()) {
-      errors.push("Bot name is required")
+      errors.push('Bot name is required');
     }
 
     if (dca.dcaSettings.assets.length === 0) {
-      errors.push("Please add at least one cryptocurrency")
+      errors.push('Please add at least one cryptocurrency');
     }
 
     if (!dca.dcaSettings.chain_id) {
-      errors.push("Please select a blockchain network")
+      errors.push('Please select a blockchain network');
     }
 
-    setValidationErrors(errors)
-    return errors.length === 0
-  }
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
 
-  const handleUpdateDCASettings = (field: keyof DCAState["dcaSettings"], value: string | number) => {
+  const handleUpdateDCASettings = (
+    field: keyof DCAState['dcaSettings'],
+    value: string | number,
+  ) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
         [field]: value,
-        ...(field === "chain_id" && { assets: [] }),
+        ...(field === 'chain_id' && { assets: [] }),
       },
-    }))
+    }));
 
     // Clear validation errors when user makes changes
     if (validationErrors.length > 0) {
-      setValidationErrors([])
+      setValidationErrors([]);
     }
-  }
+  };
 
   const handleSubmitDCA = () => {
     if (!validateForm()) {
       validationErrors.forEach((error) => {
         showNotification({
-          title: "Validation Error",
+          title: 'Validation Error',
           message: error,
-          color: "red",
-        })
-      })
-      return
+          color: 'red',
+        });
+      });
+      return;
     }
 
-    setIsCreatingBot(true)
-    const selectedNetwork = networkOptions.find((net) => net.value === dca.dcaSettings.chain_id)
+    setIsCreatingBot(true);
+    const selectedNetwork = networkOptions.find((net) => net.value === dca.dcaSettings.chain_id);
 
     const apiData = {
       name: dca.dcaSettings.botName,
@@ -303,40 +306,45 @@ const DCATrading: React.FC = () => {
         token_address: asset.token_address,
         amount: asset.amount,
         threshold: asset.threshold,
-        condition_type: asset.condition_type || "price_drop",
+        condition_type: asset.condition_type || 'price_drop',
         condition_params: asset.condition_params || { threshold: asset.threshold },
       })),
-    }
+    };
 
     apiClient
-      .post("/bots/create", apiData)
+      .post('/bots/create', apiData)
       .then((data) => {
         showNotification({
-          title: "Success! 🎉",
+          title: 'Success! 🎉',
           message: `DCA Bot "${dca.dcaSettings.botName}" created successfully`,
-          color: "green",
-        })
-        setDca(initialState)
-        setIsCreatingBot(false)
+          color: 'green',
+        });
+        setDca(initialState);
+        setIsCreatingBot(false);
       })
       .catch((error) => {
         showNotification({
-          title: "Error",
-          message: error.response?.data?.detail || "Failed to create bot. Please try again.",
-          color: "red",
-        })
-        setIsCreatingBot(false)
-      })
-  }
+          title: 'Error',
+          message: error.response?.data?.detail || 'Failed to create bot. Please try again.',
+          color: 'red',
+        });
+        setIsCreatingBot(false);
+      });
+  };
 
-  const handleAddCrypto = (crypto: { symbol: string; name: string; token_address: string; color?: string }) => {
+  const handleAddCrypto = (crypto: {
+    symbol: string;
+    name: string;
+    token_address: string;
+    color?: string;
+  }) => {
     if (dca.dcaSettings.assets.some((asset) => asset.symbol === crypto.symbol)) {
       showNotification({
-        title: "Already Added",
+        title: 'Already Added',
         message: `${crypto.name} is already in your selection`,
-        color: "blue",
-      })
-      return
+        color: 'blue',
+      });
+      return;
     }
 
     setDca((prevState) => ({
@@ -349,15 +357,15 @@ const DCATrading: React.FC = () => {
             ...crypto,
             amount: 10,
             threshold: 5.0,
-            condition_type: "price_drop",
+            condition_type: 'price_drop',
             condition_params: { threshold: 5.0 },
           },
         ],
       },
-    }))
-    setShowCryptoModal(false)
-    setSearchTerm("")
-  }
+    }));
+    setShowCryptoModal(false);
+    setSearchTerm('');
+  };
 
   const handleRemoveCrypto = (symbol: string) => {
     setDca((prevState) => ({
@@ -366,20 +374,25 @@ const DCATrading: React.FC = () => {
         ...prevState.dcaSettings,
         assets: prevState.dcaSettings.assets.filter((asset) => asset.symbol !== symbol),
       },
-    }))
-  }
+    }));
+  };
 
   const handleAmountChange = (symbol: string, amount: number) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
         ...prevState.dcaSettings,
-        assets: prevState.dcaSettings.assets.map((asset) => (asset.symbol === symbol ? { ...asset, amount } : asset)),
+        assets: prevState.dcaSettings.assets.map((asset) =>
+          asset.symbol === symbol ? { ...asset, amount } : asset,
+        ),
       },
-    }))
-  }
+    }));
+  };
 
-  const handleConditionChange = (symbol: string, conditionData: { condition_type: string; condition_params: any }) => {
+  const handleConditionChange = (
+    symbol: string,
+    conditionData: { condition_type: string; condition_params: any },
+  ) => {
     setDca((prevState) => ({
       ...prevState,
       dcaSettings: {
@@ -395,16 +408,16 @@ const DCATrading: React.FC = () => {
             : asset,
         ),
       },
-    }))
-  }
+    }));
+  };
 
-  const selectedNetwork = networkOptions.find((net) => net.value === dca.dcaSettings.chain_id)
+  const selectedNetwork = networkOptions.find((net) => net.value === dca.dcaSettings.chain_id);
   const filteredCryptocurrencies =
     cryptocurrenciesByNetwork[dca.dcaSettings.chain_id]?.filter(
       (crypto) =>
         crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-    ) || []
+    ) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -424,13 +437,13 @@ const DCATrading: React.FC = () => {
             <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
               DCA Trading Bot
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                {" "}
+                {' '}
                 Creator
               </span>
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-              Create intelligent dollar-cost averaging strategies with advanced conditions and automated execution
-              across multiple blockchains.
+              Create intelligent dollar-cost averaging strategies with advanced conditions and
+              automated execution across multiple blockchains.
             </p>
           </motion.div>
 
@@ -457,7 +470,7 @@ const DCATrading: React.FC = () => {
             </div>
 
             {/* Card Content */}
-            <div className="p-6 sm:p-8 bg-[#FAFBFC] dark:bg-gray-800 shadow-inner dark:shadow-none">
+            <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none sm:p-8">
               <div className="grid gap-8 lg:grid-cols-2">
                 {/* Left Column */}
                 <div className="space-y-6">
@@ -474,7 +487,7 @@ const DCATrading: React.FC = () => {
                     <input
                       type="text"
                       value={dca.dcaSettings.botName}
-                      onChange={(e) => handleUpdateDCASettings("botName", e.target.value)}
+                      onChange={(e) => handleUpdateDCASettings('botName', e.target.value)}
                       className="w-full rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
                       placeholder="Enter a memorable name for your bot"
                     />
@@ -493,7 +506,7 @@ const DCATrading: React.FC = () => {
                     <div className="relative">
                       <select
                         value={dca.dcaSettings.frequency}
-                        onChange={(e) => handleUpdateDCASettings("frequency", e.target.value)}
+                        onChange={(e) => handleUpdateDCASettings('frequency', e.target.value)}
                         className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
                       >
                         {frequencyOptions.map((option) => (
@@ -521,7 +534,9 @@ const DCATrading: React.FC = () => {
                     <div className="relative">
                       <select
                         value={dca.dcaSettings.chain_id}
-                        onChange={(e) => handleUpdateDCASettings("chain_id", Number(e.target.value))}
+                        onChange={(e) =>
+                          handleUpdateDCASettings('chain_id', Number(e.target.value))
+                        }
                         className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
                       >
                         {networkOptions.map((option) => (
@@ -536,7 +551,9 @@ const DCATrading: React.FC = () => {
                     </div>
                     {selectedNetwork && (
                       <div className="mt-2 flex items-center">
-                        <div className={`mr-2 h-3 w-3 rounded-full bg-gradient-to-r ${selectedNetwork.color}`}></div>
+                        <div
+                          className={`mr-2 h-3 w-3 rounded-full bg-gradient-to-r ${selectedNetwork.color}`}
+                        ></div>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
                           Connected to {selectedNetwork.shortName}
                         </span>
@@ -554,7 +571,9 @@ const DCATrading: React.FC = () => {
                 >
                   <div className="mb-4 flex items-center">
                     <DollarSign className="mr-2 h-6 w-6 text-primary dark:text-primary" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Investment Summary</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Investment Summary
+                    </h3>
                   </div>
 
                   <div className="mb-6">
@@ -567,22 +586,28 @@ const DCATrading: React.FC = () => {
                             maximumFractionDigits: 6,
                           })}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Total per execution</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Total per execution
+                    </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Assets Selected:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{dca.dcaSettings.assets.length}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {dca.dcaSettings.assets.length}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Frequency:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{dca.dcaSettings.frequency}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {dca.dcaSettings.frequency}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Network:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {selectedNetwork?.shortName || "None"}
+                        {selectedNetwork?.shortName || 'None'}
                       </span>
                     </div>
                   </div>
@@ -593,7 +618,7 @@ const DCATrading: React.FC = () => {
                         <AlertCircle className="mr-2 h-4 w-4 flex-shrink-0 text-red-500 dark:text-red-400" />
                         <div className="text-sm text-red-700 dark:text-red-300">
                           <div className="font-medium">Please fix the following:</div>
-                          <ul className="mt-1 list-disc list-inside space-y-1">
+                          <ul className="mt-1 list-inside list-disc space-y-1">
                             {validationErrors.map((error, index) => (
                               <li key={index}>{error}</li>
                             ))}
@@ -614,11 +639,15 @@ const DCATrading: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-8 overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
           >
-            <div className="p-6 sm:p-8 bg-[#FAFBFC] dark:bg-gray-800 shadow-inner dark:shadow-none">
+            <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none sm:p-8">
               <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Selected Assets</h2>
-                  <p className="text-gray-600 dark:text-gray-400">Configure your cryptocurrency investments</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Selected Assets
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Configure your cryptocurrency investments
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowCryptoModal(true)}
@@ -638,7 +667,9 @@ const DCATrading: React.FC = () => {
                   <div className="mb-4 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 p-4 dark:from-primary/30 dark:to-secondary/30">
                     <AlertCircle className="h-8 w-8 text-primary dark:text-primary" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">No Assets Selected</h3>
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+                    No Assets Selected
+                  </h3>
                   <p className="mb-4 max-w-sm text-gray-600 dark:text-gray-400">
                     Start building your DCA strategy by adding cryptocurrencies to invest in
                   </p>
@@ -656,7 +687,7 @@ const DCATrading: React.FC = () => {
                     {dca.dcaSettings.assets.map((asset, index) => {
                       const cryptoData = cryptocurrenciesByNetwork[dca.dcaSettings.chain_id]?.find(
                         (crypto) => crypto.symbol === asset.symbol,
-                      )
+                      );
 
                       return (
                         <motion.div
@@ -671,13 +702,19 @@ const DCATrading: React.FC = () => {
                           <div className="mb-6 flex items-center justify-between">
                             <div className="flex items-center">
                               <div
-                                className={`mr-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cryptoData?.color || "from-primary to-secondary"} text-white shadow-lg`}
+                                className={`mr-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cryptoData?.color || 'from-primary to-secondary'} text-white shadow-lg`}
                               >
-                                <span className="text-sm font-bold">{asset.symbol.substring(0, 3)}</span>
+                                <span className="text-sm font-bold">
+                                  {asset.symbol.substring(0, 3)}
+                                </span>
                               </div>
                               <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{asset.name}</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  {asset.name}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {asset.symbol}
+                                </p>
                               </div>
                             </div>
                             <button
@@ -697,7 +734,9 @@ const DCATrading: React.FC = () => {
                             <input
                               type="number"
                               value={asset.amount}
-                              onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
+                              onChange={(e) =>
+                                handleAmountChange(asset.symbol, Number(e.target.value))
+                              }
                               className="w-full rounded-lg border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
                               min="0"
                               step="0.0001"
@@ -712,15 +751,19 @@ const DCATrading: React.FC = () => {
                             </label>
                             <ConditionBuilder
                               value={{
-                                condition_type: asset.condition_type || "price_drop",
-                                condition_params: asset.condition_params || { threshold: asset.threshold },
+                                condition_type: asset.condition_type || 'price_drop',
+                                condition_params: asset.condition_params || {
+                                  threshold: asset.threshold,
+                                },
                               }}
-                              onChange={(conditionData) => handleConditionChange(asset.symbol, conditionData)}
+                              onChange={(conditionData) =>
+                                handleConditionChange(asset.symbol, conditionData)
+                              }
                               className="rounded-lg border-2 border-gray-200 bg-[#FAFBFC] shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:shadow-none"
                             />
                           </div>
                         </motion.div>
-                      )
+                      );
                     })}
                   </AnimatePresence>
                 </div>
@@ -740,8 +783,8 @@ const DCATrading: React.FC = () => {
               disabled={isCreatingBot || dca.dcaSettings.assets.length === 0}
               className={`group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-secondary p-1 shadow-xl transition-all duration-300 ${
                 isCreatingBot || dca.dcaSettings.assets.length === 0
-                  ? "cursor-not-allowed opacity-60"
-                  : "hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
+                  ? 'cursor-not-allowed opacity-60'
+                  : 'hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98]'
               }`}
             >
               <div className="rounded-xl bg-gradient-to-r from-primary to-secondary px-8 py-4 text-center">
@@ -759,7 +802,9 @@ const DCATrading: React.FC = () => {
                   )}
                 </div>
                 {!isCreatingBot && (
-                  <p className="mt-1 text-sm text-purple-100">Start automated trading with your configured strategy</p>
+                  <p className="mt-1 text-sm text-purple-100">
+                    Start automated trading with your configured strategy
+                  </p>
                 )}
               </div>
             </button>
@@ -797,9 +842,11 @@ const DCATrading: React.FC = () => {
               {/* Modal Header */}
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Select Cryptocurrency</h2>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Select Cryptocurrency
+                  </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Choose from {selectedNetwork?.label || "available"} assets
+                    Choose from {selectedNetwork?.label || 'available'} assets
                   </p>
                 </div>
                 <button
@@ -828,7 +875,9 @@ const DCATrading: React.FC = () => {
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {filteredCryptocurrencies?.length > 0 ? (
                   filteredCryptocurrencies.map((crypto) => {
-                    const isSelected = dca.dcaSettings.assets.some((asset) => asset.symbol === crypto.symbol)
+                    const isSelected = dca.dcaSettings.assets.some(
+                      (asset) => asset.symbol === crypto.symbol,
+                    );
 
                     return (
                       <button
@@ -836,20 +885,26 @@ const DCATrading: React.FC = () => {
                         onClick={() => !isSelected && handleAddCrypto(crypto)}
                         className={`flex w-full items-center justify-between rounded-xl p-4 text-left transition-all duration-200 ${
                           isSelected
-                            ? "cursor-default bg-primary/10 dark:bg-primary/20"
-                            : "bg-[#FAFBFC] hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none"
+                            ? 'cursor-default bg-primary/10 dark:bg-primary/20'
+                            : 'bg-[#FAFBFC] hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none'
                         }`}
                         disabled={isSelected}
                       >
                         <div className="flex items-center">
                           <div
-                            className={`mr-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${crypto.color || "from-primary to-secondary"} text-white shadow-sm`}
+                            className={`mr-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${crypto.color || 'from-primary to-secondary'} text-white shadow-sm`}
                           >
-                            <span className="text-xs font-bold">{crypto.symbol.substring(0, 3)}</span>
+                            <span className="text-xs font-bold">
+                              {crypto.symbol.substring(0, 3)}
+                            </span>
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">{crypto.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{crypto.symbol}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {crypto.name}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {crypto.symbol}
+                            </p>
                           </div>
                         </div>
                         {isSelected && (
@@ -859,14 +914,16 @@ const DCATrading: React.FC = () => {
                           </div>
                         )}
                       </button>
-                    )
+                    );
                   })
                 ) : (
                   <div className="py-12 text-center">
                     <div className="mb-3 inline-flex rounded-full bg-[#FAFBFC] p-3 shadow-sm dark:bg-gray-700 dark:shadow-none">
                       <AlertCircle className="h-6 w-6 text-gray-500 dark:text-gray-400" />
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400">No cryptocurrencies found for this network</p>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No cryptocurrencies found for this network
+                    </p>
                   </div>
                 )}
               </div>
@@ -885,7 +942,7 @@ const DCATrading: React.FC = () => {
         )}
       </AnimatePresence>
     </div>
-  )
-}
+  );
+};
 
-export default DCATrading
+export default DCATrading;

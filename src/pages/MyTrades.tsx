@@ -49,58 +49,68 @@ const MyTrades = () => {
       <div className=" bg-[#FFFFFF] dark:bg-boxdark">
         <Breadcrumb pageName="My Trades" />
 
-      {/* Overview widgets */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-        {/* Total Volume */}
-        <div className="relative flex items-center justify-center xl:flex-col">
-          <h3 className="mb-4 text-xl font-semibold text-black dark:text-white">Total Volume</h3>
-          <p className="text-title-md font-bold text-primary">
-            {isLoading ? '--' : `${formatNumber(totalVolume, 2)} USD`}
-          </p>
-        </div>
+        {/* Overview widgets */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+          {/* Total Volume */}
+          <div className="relative flex items-center justify-center xl:flex-col">
+            <h3 className="mb-4 text-xl font-semibold text-black dark:text-white">Total Volume</h3>
+            <p className="text-title-md font-bold text-primary">
+              {isLoading ? '--' : `${formatNumber(totalVolume, 2)} USD`}
+            </p>
+          </div>
 
-        <div className="col-span-3">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {/* Completed Trades */}
-            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
-              <div>
-                <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
-                  {isLoading ? '--' : formatNumber(totalTrades)}
-                </h4>
-                <span className="text-sm font-medium text-black dark:text-white">Completed Trades</span>
+          <div className="col-span-3">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {/* Completed Trades */}
+              <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
+                <div>
+                  <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
+                    {isLoading ? '--' : formatNumber(totalTrades)}
+                  </h4>
+                  <span className="text-sm font-medium text-black dark:text-white">
+                    Completed Trades
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Active Bots */}
-            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
-              <div>
-                <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
-                  {isLoading ? '--' : `${activeBots} `}
-                  <span className="text-sm font-medium text-black dark:text-white">/{totalBots}</span>
-                </h4>
-                <span className="text-sm font-medium text-black dark:text-white">Active Bots</span>
+              {/* Active Bots */}
+              <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
+                <div>
+                  <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">
+                    {isLoading ? '--' : `${activeBots} `}
+                    <span className="text-sm font-medium text-black dark:text-white">
+                      /{totalBots}
+                    </span>
+                  </h4>
+                  <span className="text-sm font-medium text-black dark:text-white">
+                    Active Bots
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Placeholder for Open Trades & 7-day profit (not provided by endpoint) */}
-            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
-              <div>
-                <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
-                <span className="text-sm font-medium text-black dark:text-white">Open Trades</span>
+              {/* Placeholder for Open Trades & 7-day profit (not provided by endpoint) */}
+              <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
+                <div>
+                  <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
+                  <span className="text-sm font-medium text-black dark:text-white">
+                    Open Trades
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
-              <div>
-                <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
-                <span className="text-sm font-medium text-black dark:text-white">7-day Profit ($)</span>
+              <div className="rounded-2xl border border-gray-200 bg-[#FFFFFF] px-7.5 py-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
+                <div>
+                  <h4 className="mb-2 text-title-md font-bold text-black dark:text-white">--</h4>
+                  <span className="text-sm font-medium text-black dark:text-white">
+                    7-day Profit ($)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Existing components */}
-        <div className="mt-4 md:mt-6 2xl:mt-7.5 bg">
+        {/* Existing components */}
+        <div className="bg mt-4 md:mt-6 2xl:mt-7.5">
           <OpenTrades />
         </div>
         <div className="mt-4 md:mt-6 2xl:mt-7.5">
