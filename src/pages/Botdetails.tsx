@@ -58,11 +58,11 @@ const tokenAddressToName: Record<string, { symbol: string; name: string }> = {
   '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c': { symbol: 'WBNB', name: 'Wrapped BNB' },
 
   // Monad Testnet
-  '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea': { symbol: 'USDC', name: 'USDC (testnet)' },
-  '0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D': { symbol: 'USDT', name: 'USDT (testnet)' },
-  '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d': { symbol: 'WBTC', name: 'WBTC (testnet)' },
-  '0xB5a30b0FDc42e3E9760Cb8449Fb37': { symbol: 'WETH', name: 'WETH (testnet)' },
-  '0x5387C85A4965769f6B0Df430638a1388493486F1': { symbol: 'WSOL', name: 'WSOL (testnet)' },
+  '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea': { symbol: 'USDC', name: 'USD Coin' },
+  '0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D': { symbol: 'USDT', name: 'Tether' },
+  '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d': { symbol: 'WBTC', name: 'Wrapped Bitcoin' },
+  '0xB5a30b0FDc42e3E9760Cb8449Fb37': { symbol: 'WETH', name: 'Wrapped Ethereum' },
+  '0x5387C85A4965769f6B0Df430638a1388493486F1': { symbol: 'WSOL', name: 'Wrapped SOL' },
 };
 
 // Helper function to get token info from address
@@ -74,6 +74,58 @@ const getTokenInfo = (tokenAddress: string) => {
       name: `Token ${tokenAddress.substring(0, 6)}`,
     }
   );
+};
+
+// Helper function to format numbers with proper decimals
+const formatAmount = (amount: number | string, decimals: number = 6) => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '0.00';
+  
+  // For very small numbers, use more decimals
+  if (num < 0.01) {
+    return num.toFixed(8);
+  }
+  // For normal numbers, use specified decimals
+  return num.toFixed(decimals);
+};
+
+// Helper function to format currency values with smart decimal handling
+const formatCurrency = (amount: number | string, currency: string = 'USD') => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num) || num === 0) return '$0.00';
+  
+  // For very small values, show more decimal places
+  if (Math.abs(num) < 0.01) {
+    return `$${num.toFixed(8)}`;
+  }
+  // For small values, show 4 decimal places
+  else if (Math.abs(num) < 1) {
+    return `$${num.toFixed(4)}`;
+  }
+  // For normal values, use standard currency formatting
+  else {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  }
+};
+
+// Helper function to calculate total value with debugging
+const calculateTotalValue = (amount: number | string, price: number | string) => {
+  const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const priceNum = typeof price === 'string' ? parseFloat(price) : price;
+  
+  if (isNaN(amountNum) || isNaN(priceNum)) return 0;
+  
+  const totalValue = amountNum * priceNum;
+  
+  // Debug logging to help identify issues
+  console.log(`Trade calculation: ${amountNum} × ${priceNum} = ${totalValue}`);
+  
+  return totalValue;
 };
 
 export default function BotDetails() {
@@ -483,7 +535,7 @@ export default function BotDetails() {
                       APY
                     </Text>
                     <Text size="lg" fw={700} className="text-green-600 dark:text-green-400">
-                      {performance.apy.toFixed(2)}%
+                      {performance.apy.toFixed(1)}%
                     </Text>
                   </Flex>
                 </Card>
@@ -551,14 +603,12 @@ export default function BotDetails() {
                                 {getTokenInfo(trade.token_address).name}
                               </Badge>
                             </Table.Td>
-                            <Table.Td className="dark:border-gray-700">{trade.amount}</Table.Td>
+                            <Table.Td className="dark:border-gray-700">{formatAmount(trade.amount)}</Table.Td>
                             <Table.Td className="dark:border-gray-700">
-                              ${trade.trade_price ? trade.trade_price.toFixed(2) : 'N/A'}
+                              {formatCurrency(trade.trade_price)}
                             </Table.Td>
                             <Table.Td className="dark:border-gray-700">
-                              {trade.trade_price
-                                ? `${(trade.amount / trade.trade_price).toFixed(2)} ${getTokenInfo(trade.token_address).name}`
-                                : 'N/A'}
+                              {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
                             </Table.Td>
                           </Table.Tr>
                         ))}
@@ -589,7 +639,7 @@ export default function BotDetails() {
                           {getTokenInfo(trade.token_address).name}
                         </Badge>
                         <Text size="sm" fw={600} className="dark:text-white">
-                          ${trade.trade_price ? trade.trade_price.toFixed(2) : 'N/A'}
+                          {formatCurrency(trade.trade_price)}
                         </Text>
                       </Flex>
 
@@ -599,7 +649,7 @@ export default function BotDetails() {
                             Amount (USDT)
                           </Text>
                           <Text size="sm" className="dark:text-white">
-                            {trade.amount}
+                            {formatAmount(trade.amount)}
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={6}>
@@ -607,9 +657,7 @@ export default function BotDetails() {
                             Total Value
                           </Text>
                           <Text size="sm" className="dark:text-white">
-                            {trade.trade_price
-                              ? `${(trade.amount / trade.trade_price).toFixed(2)} ${getTokenInfo(trade.token_address).name}`
-                              : 'N/A'}
+                            {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
                           </Text>
                         </Grid.Col>
                       </Grid>

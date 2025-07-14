@@ -52,14 +52,6 @@ export const networkOptions: Network[] = [
     isTestnet: false,
   },
   {
-    chain_id: 97,
-    name: 'BSC Testnet',
-    shortName: 'tBNB',
-    rpc_url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
-    network_name: 'BSC Testnet',
-    isTestnet: true,
-  },
-  {
     chain_id: 10143,
     name: 'Monad Testnet',
     shortName: 'MON',
@@ -102,12 +94,6 @@ export const tokensByNetwork: Record<number, Token[]> = {
       name: 'Ethereum',
       address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
       decimals: 18,
-    },
-    {
-      symbol: 'USDC',
-      name: 'USD Coin',
-      address: '0xa0b86a33e6441b4dc5029316a4b3d3536adf38f5',
-      decimals: 6,
     },
     {
       symbol: 'USDT',
@@ -263,39 +249,6 @@ export const tokensByNetwork: Record<number, Token[]> = {
       decimals: 18,
     },
   ],
-  // BSC Testnet
-  97: [
-    {
-      symbol: 'tBNB',
-      name: 'Testnet BNB',
-      address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
-      decimals: 18,
-    },
-    {
-      symbol: 'USDT',
-      name: 'Tether (testnet)',
-      address: '0x7ef95a0fee0dd31b22626fa2e10ee6a223f8a684',
-      decimals: 18,
-    },
-    {
-      symbol: 'USDC',
-      name: 'USD Coin (testnet)',
-      address: '0x64544969ed7ebf5f083679233325356ebe738930',
-      decimals: 18,
-    },
-    {
-      symbol: 'BUSD',
-      name: 'BUSD (testnet)',
-      address: '0xed24fc36d5ee211ea25a80239fb8c4cfd80f12ee',
-      decimals: 18,
-    },
-    {
-      symbol: 'CAKE',
-      name: 'PancakeSwap (testnet)',
-      address: '0xfae44cf6309598c2557bb265bf0401d594db97da',
-      decimals: 18,
-    },
-  ],
   // Monad Testnet
   10143: [
     {
@@ -419,7 +372,6 @@ export const getExplorerUrls = (chainId: number): string[] => {
     137: ['https://polygonscan.com'],
     42161: ['https://arbiscan.io'],
     56: ['https://bscscan.com'],
-    97: ['https://testnet.bscscan.com'],
     10143: ['https://testnet.monadexplorer.com'],
     8453: ['https://basescan.org'],
     10: ['https://optimistic.etherscan.io'],
@@ -435,7 +387,6 @@ export const getExplorerTxUrl = (chainId: number, txHash: string): string => {
     137: `https://polygonscan.com/tx/${txHash}`,
     42161: `https://arbiscan.io/tx/${txHash}`,
     56: `https://bscscan.com/tx/${txHash}`,
-    97: `https://testnet.bscscan.com/tx/${txHash}`,
     10143: `https://testnet.monadexplorer.com/tx/${txHash}`,
     8453: `https://basescan.org/tx/${txHash}`,
     10: `https://optimistic.etherscan.io/tx/${txHash}`,

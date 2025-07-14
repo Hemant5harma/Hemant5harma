@@ -306,28 +306,17 @@ async def get_one_bot(
 ):
     """
     Gets details of a single bot, including nested performance data and network info.
+    Uses real-time calculation for consistent performance metrics.
     """
     bot = await get_bot_by_id(db, bot_id)
     if not bot or bot.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Bot not found or not yours")
 
-    # Retrieve performance record
-    perf_record = await get_bot_performance(db, bot_id)
+    # Use real-time performance calculation (same as bot list)
+    performance_data = await calculate_bot_performance(bot.id, db)
     
     # Convert DB coins to pydantic responses
     coins = [CoinResponse.model_validate(c) for c in await get_coins_by_bot(db, bot.id)]
-
-    # Build performance data if exists
-    performance_data = None
-    if perf_record:
-        performance_data = {
-            "total_trades": perf_record.total_trades,
-            "total_volume": perf_record.total_volume,
-            "apy": perf_record.apy,
-            "three_month_perf": perf_record.three_month_perf,
-            "six_month_perf": perf_record.six_month_perf,
-            "total_perf": perf_record.total_perf,
-        }
 
     # Return the final BotResponse with multi-chain support
     return BotResponse.model_validate({

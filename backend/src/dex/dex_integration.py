@@ -309,7 +309,7 @@ class DexIntegrationLegacy:
         instance = cls(chain_id=chain_id, user_id=user_id, db=db, rpc_url=rpc_url)
         await instance.setup_account()
         return instance
-    
+
     def get_0x_quote(self, buy_token: str, amount: int, chain_id: int = None):
         """Legacy quote method - converts to async"""
         import asyncio
@@ -323,7 +323,7 @@ class DexIntegrationLegacy:
         return loop.run_until_complete(
             self.dex.get_quote(buy_token, amount, actual_chain_id, self.user_id, self.db)
         )
-    
+
     def execute_trade(self, buy_token: str, amount: int, chain_id: int = None):
         """Legacy execute method - converts to async"""
         import asyncio

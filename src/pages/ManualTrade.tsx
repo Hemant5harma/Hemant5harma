@@ -19,8 +19,6 @@ import {
   Zap,
   TrendingUp,
   Shield,
-  Wallet,
-  AlertTriangle,
   Info,
   ExternalLink,
   Search,
@@ -142,8 +140,8 @@ const getTokenInfo = (address: string, chainId: number) => {
 };
 
 const ManualTrade: React.FC = () => {
-  // All state management (keeping the same)
-  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networkOptions[4]);
+  // Simplified state management (removed balance-related state)
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networkOptions[0]);
   const [sellToken, setSellToken] = useState<Token | null>(null);
   const [buyToken, setBuyToken] = useState<Token | null>(null);
   const [sellAmount, setSellAmount] = useState<string>('');
@@ -157,13 +155,9 @@ const ManualTrade: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [quoteError, setQuoteError] = useState<string>('');
-  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
-  const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({});
-  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
-  const [walletChainId, setWalletChainId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // All useEffect hooks and functions (keeping the same logic)
+  // Simplified useEffect hooks (removed wallet connection logic)
   useEffect(() => {
     const tokens = tokensByNetwork[selectedNetwork.chain_id] || [];
     if (tokens.length >= 2) {
@@ -172,163 +166,6 @@ const ManualTrade: React.FC = () => {
     }
     fetchTradeHistory();
   }, [selectedNetwork]);
-
-  useEffect(() => {
-    checkWalletConnection();
-    if ((window as any).ethereum) {
-      const handleAccountsChanged = (accounts: string[]) => {
-        if (accounts.length > 0) {
-          setConnectedWallet(accounts[0]);
-        } else {
-          setConnectedWallet(null);
-          setTokenBalances({});
-        }
-      };
-
-      const handleChainChanged = (chainId: string) => {
-        const newChainId = Number.parseInt(chainId, 16);
-        setWalletChainId(newChainId);
-        setTokenBalances({});
-        setTimeout(() => {
-          fetchTokenBalances(true);
-        }, 1000);
-      };
-      (window as any).ethereum.on('accountsChanged', handleAccountsChanged);
-      (window as any).ethereum.on('chainChanged', handleChainChanged);
-
-      return () => {
-        if ((window as any).ethereum.removeListener) {
-          (window as any).ethereum.removeListener('accountsChanged', handleAccountsChanged);
-          (window as any).ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-      };
-      }
-  }, []);
-
-  const checkWalletConnection = async () => {
-    if ((window as any).ethereum) {
-      try {
-        const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
-        if (accounts && accounts.length > 0) {
-          setConnectedWallet(accounts[0]);
-        }
-      } catch (error) {
-        console.error('Error checking wallet connection:', error);
-      }
-    }
-  };
-
-  const fetchTokenBalances = async (forceRefresh = false) => {
-    if (!connectedWallet) return;
-    if (forceRefresh) {
-      setTokenBalances({});
-    }
-    setBalanceLoading(true);
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Balance fetch timeout after 30 seconds')), 30000);
-    });
-    try {
-      await Promise.race([fetchBalancesFromWeb3(), timeoutPromise]);
-    } catch (error) {
-      console.error('Failed to fetch token balances:', error);
-      setTokenBalances({});
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-
-  const fetchBalancesFromWeb3 = async () => {
-    if (!connectedWallet || !(window as any).ethereum) return;
-    try {
-      const { BrowserProvider, Contract, isAddress, formatUnits } = await import('ethers');
-
-      // Initialize provider from injected wallet
-      const provider = new BrowserProvider((window as any).ethereum);
-
-      // getNetwork().chainId is bigint in ethers v6 – convert safely to number
-      const network = await provider.getNetwork();
-      const walletChainId = Number(network.chainId);
-      const walletNetwork = networkOptions.find((net) => net.chain_id === walletChainId);
-      const tokensToFetch = tokensByNetwork[walletChainId] || [];
-
-      if (!walletNetwork || tokensToFetch.length === 0) {
-        setTokenBalances({});
-        return;
-      }
-
-      const balances: Record<string, string> = {};
-      try {
-        const nativeBalance = await provider.getBalance(connectedWallet);
-        const nativeAmount = formatUnits(nativeBalance, 18);
-        balances['0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'] = parseFloat(nativeAmount).toFixed(6);
-      } catch (error) {
-        balances['0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'] = '0.00';
-      }
-
-      const erc20Abi = ['function balanceOf(address owner) view returns (uint256)'];
-      for (const token of tokensToFetch) {
-        if (token.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') continue;
-        if (!isAddress(token.address)) {
-          balances[token.address] = '0.00';
-          continue;
-        }
-        try {
-          const contract = new Contract(token.address, erc20Abi, provider);
-          const balance = await contract.balanceOf(connectedWallet);
-          const decimals = token.decimals ?? 18;
-          const amount = parseFloat(formatUnits(balance, decimals));
-          balances[token.address.toLowerCase()] = amount.toFixed(6);
-        } catch (error) {
-          balances[token.address.toLowerCase()] = '0.00';
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
-      setTokenBalances(balances);
-      setWalletChainId(walletChainId);
-    } catch (error) {
-      console.error('Web3 balance fetch failed:', error);
-      throw error;
-    }
-  };
-
-  useEffect(() => {
-    if (connectedWallet) {
-      fetchTokenBalances();
-    } else {
-      setTokenBalances({});
-      setWalletChainId(null);
-    }
-  }, [connectedWallet]);
-
-  useEffect(() => {
-    if (sellToken && tokenBalances[sellToken.address.toLowerCase()]) {
-      setSellToken({
-        ...sellToken,
-        balance: tokenBalances[sellToken.address.toLowerCase()],
-      });
-    }
-    if (buyToken && tokenBalances[buyToken.address.toLowerCase()]) {
-      setBuyToken({
-        ...buyToken,
-        balance: tokenBalances[buyToken.address.toLowerCase()],
-      });
-    }
-  }, [tokenBalances]);
-
-  const handleMaxClick = (tokenType: 'sell' | 'buy') => {
-    const token = tokenType === 'sell' ? sellToken : buyToken;
-    if (!token || !token.balance) return;
-    const balance = Number.parseFloat(token.balance);
-    if (tokenType === 'sell') {
-      if (token.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
-        const maxAmount = Math.max(0, balance - 0.01);
-        setSellAmount(maxAmount.toString());
-      } else {
-        setSellAmount(balance.toString());
-      }
-    }
-  };
 
   const fetchSupportedNetworks = async () => {
     try {
@@ -528,83 +365,6 @@ const ManualTrade: React.FC = () => {
       setSellAmount('');
       setBuyAmount('');
       setQuote(null);
-      const tokens = tokensByNetwork[networkId];
-      if (tokens) {
-        tokens.forEach((token) => {
-          token.balance = undefined;
-        });
-      }
-      if (connectedWallet) {
-        fetchTokenBalances(true);
-      }
-    }
-  };
-
-  const switchWalletNetwork = async () => {
-    if (!(window as any).ethereum || !connectedWallet) {
-      showNotification({
-        title: 'Wallet Error',
-        message: 'No wallet connected or MetaMask not available',
-        color: 'red',
-      });
-      return;
-    }
-
-    try {
-      const chainIdHex = `0x${selectedNetwork.chain_id.toString(16)}`;
-      await (window as any).ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: chainIdHex }],
-      });
-      showNotification({
-        title: 'Network Switched! ✅',
-        message: `Successfully switched to ${selectedNetwork.name}`,
-        color: 'green',
-      });
-      setTimeout(() => {
-        fetchTokenBalances(true);
-      }, 1000);
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
-        try {
-          await (window as any).ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: `0x${selectedNetwork.chain_id.toString(16)}`,
-                chainName: selectedNetwork.name,
-                nativeCurrency: {
-                  name: selectedNetwork.shortName,
-                  symbol: selectedNetwork.shortName,
-                  decimals: 18,
-                },
-                rpcUrls: [selectedNetwork.rpc_url],
-                blockExplorerUrls: getExplorerUrls(selectedNetwork.chain_id),
-              },
-            ],
-          });
-          showNotification({
-            title: 'Network Added! ✅',
-            message: `Successfully added and switched to ${selectedNetwork.name}`,
-            color: 'green',
-          });
-          setTimeout(() => {
-            fetchTokenBalances(true);
-          }, 1500);
-        } catch (addError: any) {
-          showNotification({
-            title: 'Network Error',
-            message: `Failed to add ${selectedNetwork.name}: ${addError.message}`,
-            color: 'red',
-          });
-        }
-      } else {
-        showNotification({
-          title: 'Network Error',
-          message: `Failed to switch to ${selectedNetwork.name}: ${switchError.message}`,
-          color: 'red',
-        });
-      }
     }
   };
 
@@ -666,44 +426,30 @@ const ManualTrade: React.FC = () => {
             <div className="max-h-96 overflow-y-auto bg-[#FAFBFC] p-2 shadow-inner dark:bg-gray-800 dark:shadow-none">
               {filteredTokens.length > 0 ? (
                 <div className="space-y-1">
-                  {filteredTokens.map((token) => {
-                    const balance = tokenBalances[token.address.toLowerCase()] || '0.00';
-                    const isLoading = balanceLoading && !tokenBalances[token.address.toLowerCase()];
-
-                    return (
-                      <button
-                        key={token.address}
-                        onClick={() => selectToken({ ...token, balance })}
-                        className="flex w-full items-center justify-between rounded-xl bg-[#FAFBFC] p-4 transition-all duration-200 hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-sm font-bold text-white shadow-lg">
-                            {token.symbol.substring(0, 2)}
+                  {filteredTokens.map((token) => (
+                    <button
+                      key={token.address}
+                      onClick={() => selectToken(token)}
+                      className="flex w-full items-center justify-between rounded-xl bg-[#FAFBFC] p-4 transition-all duration-200 hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-sm font-bold text-white shadow-lg">
+                          {token.symbol.substring(0, 2)}
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {token.symbol}
                           </div>
-                          <div className="text-left">
-                            <div className="font-semibold text-gray-900 dark:text-white">
-                              {token.symbol}
-                            </div>
-                            <div className="max-w-32 truncate text-sm text-gray-500 dark:text-gray-400">
-                              {token.name}
-                            </div>
+                          <div className="max-w-32 truncate text-sm text-gray-500 dark:text-gray-400">
+                            {token.name}
                           </div>
                         </div>
-                        <div className="text-right">
-                          {isLoading ? (
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-primary"></div>
-                          ) : (
-                            <>
-                              <div className="font-semibold text-gray-900 dark:text-white">
-                                {parseFloat(balance).toFixed(6)}
-                              </div>
-                              <div className="text-xs text-gray-400">{token.symbol}</div>
-                            </>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-400">Select</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               ) : (
                 <div className="py-12 text-center">
@@ -870,12 +616,10 @@ const ManualTrade: React.FC = () => {
                   <TrendingUp className="h-5 w-5" />
                   <span className="font-semibold">Network</span>
                 </div>
-                {connectedWallet && (
-                  <div className="flex items-center space-x-2 text-sm text-purple-100">
-                    <Wallet className="h-4 w-4" />
-                    <span className="hidden sm:inline">Connected</span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2 text-sm text-purple-100">
+                  <Info className="h-4 w-4" />
+                  <span className="hidden sm:inline">Trading Network</span>
+                </div>
               </div>
             </div>
 
@@ -899,91 +643,18 @@ const ManualTrade: React.FC = () => {
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div
-                    className={`h-2 w-2 rounded-full ${balanceLoading ? 'animate-pulse bg-yellow-500' : 'bg-green-500'}`}
-                  />
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
                   <span className="text-sm text-gray-600 dark:text-gray-400">
                     {selectedNetwork.name}
-                    {balanceLoading && ' - Loading balances...'}
                   </span>
                 </div>
-                {connectedWallet && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    <span className="font-mono">
-                      {connectedWallet.substring(0, 6)}...
-                      {connectedWallet.substring(connectedWallet.length - 4)}
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span>Ready to Trade</span>
+                </div>
               </div>
             </div>
           </motion.div>
-
-          {/* Wallet Connection Prompt */}
-          {!connectedWallet && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="mb-6 overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-            >
-              <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none">
-                <div className="flex items-start space-x-4">
-                  <div className="rounded-full bg-yellow-100 p-3 dark:bg-yellow-900/30">
-                    <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                      Connect Your Wallet
-                    </h3>
-                    <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                      Connect your wallet to view token balances and execute trades. Go to the user
-                      menu (top right) to connect.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Network Mismatch Warning */}
-          {connectedWallet && walletChainId && walletChainId !== selectedNetwork.chain_id && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="mb-6 overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-            >
-              <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none">
-                <div className="flex items-start space-x-4">
-                  <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
-                    <Info className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-blue-800 dark:text-blue-200">
-                      Network Mismatch
-                    </h4>
-                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
-                      Your wallet is on{' '}
-                      <span className="font-semibold">
-                        {networkOptions.find((n) => n.chain_id === walletChainId)?.name ||
-                          `Chain ${walletChainId}`}
-                      </span>
-                      , but you've selected{' '}
-                      <span className="font-semibold">{selectedNetwork.name}</span>.
-                    </p>
-                    <button
-                      onClick={switchWalletNetwork}
-                      className="mt-3 inline-flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                    >
-                      <span>Switch Network</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
 
           {/* Main Swap Interface */}
           <motion.div
@@ -1000,32 +671,6 @@ const ManualTrade: React.FC = () => {
                     <DollarSign className="mr-2 h-4 w-4" />
                     You Pay
                   </label>
-                  <div className="flex items-center space-x-2">
-                    {balanceLoading ? (
-                      <div className="flex items-center space-x-1">
-                        <div className="h-3 w-3 animate-spin rounded-full border border-gray-400 border-t-transparent" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          Balance:{' '}
-                          {sellToken?.balance
-                            ? parseFloat(sellToken.balance).toFixed(6)
-                            : '0.000000'}{' '}
-                          {sellToken?.symbol}
-                        </span>
-                        {sellToken?.balance && Number.parseFloat(sellToken.balance) > 0 && (
-                          <button
-                            onClick={() => handleMaxClick('sell')}
-                            className="rounded-lg bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50"
-                          >
-                            MAX
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
                 </div>
                 <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
                   <input
@@ -1073,20 +718,6 @@ const ManualTrade: React.FC = () => {
                     <TrendingUp className="mr-2 h-4 w-4" />
                     You Receive
                   </label>
-                  <div className="flex items-center space-x-2">
-                    {balanceLoading ? (
-                      <div className="flex items-center space-x-1">
-                        <div className="h-3 w-3 animate-spin rounded-full border border-gray-400 border-t-transparent" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Balance:{' '}
-                        {buyToken?.balance ? parseFloat(buyToken.balance).toFixed(6) : '0.000000'}{' '}
-                        {buyToken?.symbol}
-                      </span>
-                    )}
-                  </div>
                 </div>
                 <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
                   <input
@@ -1138,10 +769,10 @@ const ManualTrade: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none"
+                  className="mb-6 rounded-2xl bg-red-50 p-4 shadow-inner dark:bg-red-900/20 dark:shadow-none"
                 >
                   <div className="flex items-start space-x-3">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+                    <X className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
                     <span className="text-sm font-medium text-red-700 dark:text-red-300">
                       {quoteError}
                     </span>
@@ -1287,16 +918,10 @@ const ManualTrade: React.FC = () => {
                     <span className="font-semibold">Recent Trades</span>
                   </div>
                   <button
-                    onClick={() => {
-                      fetchTradeHistory();
-                      if (connectedWallet) {
-                        fetchTokenBalances(true);
-                      }
-                    }}
-                    disabled={balanceLoading}
-                    className="flex items-center space-x-2 rounded-lg bg-white/20 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/30 disabled:opacity-50"
+                    onClick={fetchTradeHistory}
+                    className="flex items-center space-x-2 rounded-lg bg-white/20 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/30"
                   >
-                    <RefreshCw className={`h-4 w-4 ${balanceLoading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className="h-4 w-4" />
                     <span>Refresh</span>
                   </button>
                 </div>

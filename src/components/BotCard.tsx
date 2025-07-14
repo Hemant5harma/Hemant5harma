@@ -77,25 +77,34 @@ const getTokenInfo = (tokenAddress: string) => {
   );
 };
 
-// Sample data for the chart
+// Improved chart data generation for more realistic performance visualization
 const generateChartData = (perf: number) => {
   const data = [];
   const now = new Date();
   const direction = perf >= 0 ? 1 : -1;
-  const volatility = Math.abs(perf) / 10;
-
+  
+  // Increase volatility for more visible variation
+  const baseVolatility = Math.max(2, Math.abs(perf) / 5);
+  
   let value = 100;
+  const trendStrength = Math.abs(perf) / 100; // Trend strength based on performance
+  
   for (let i = 30; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
 
-    // Create a somewhat realistic price movement based on performance
-    const change = Math.random() * volatility * direction + (direction * volatility) / 2;
-    value = value + change;
+    // Create more realistic market-like movements
+    // Combine trend + random walk + occasional larger moves
+    const randomWalk = (Math.random() - 0.5) * baseVolatility;
+    const trend = direction * trendStrength * 0.3;
+    const occasionalSpike = Math.random() < 0.1 ? (Math.random() - 0.5) * baseVolatility * 2 : 0;
+    
+    const change = randomWalk + trend + occasionalSpike;
+    value = Math.max(50, value + change); // Prevent value from going too low
 
     data.push({
       date: date.toISOString(),
-      value: value,
+      value: Number(value.toFixed(2)),
     });
   }
 

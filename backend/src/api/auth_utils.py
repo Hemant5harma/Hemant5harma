@@ -11,7 +11,7 @@ from fastapi.security import OAuth2PasswordBearer
 # You can store your secret key in a .env file
 SECRET_KEY = "YOUR_SECRET_KEY"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
+ACCESS_TOKEN_EXPIRE_MINUTES = 360  # 1 hour
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
