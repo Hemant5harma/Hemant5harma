@@ -1,16 +1,16 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../utils/apiClient';
 import { showNotification } from '@mantine/notifications';
 import {
   networkOptions,
   tokensByNetwork,
-  getExplorerUrls,
   getExplorerTxUrl,
   type Token,
   type Network,
 } from '../data/networkData';
+import { BlockchainIndicator } from '../components/BlockchainIndicator';
 import {
   ChevronDown,
   ArrowUpDown,
@@ -102,10 +102,15 @@ const formatPrice = (price: string | number) => {
   }
 };
 
-// Helper function to get token symbol and decimals from address
+// Helper function to get token symbol and decimals from address (supports both EVM and Solana)
 const getTokenInfo = (address: string, chainId: number) => {
   const tokens = tokensByNetwork[chainId] || [];
-  const token = tokens.find((t) => t.address.toLowerCase() === address.toLowerCase());
+  
+  // For Solana (chain 900), use case-sensitive comparison since Solana addresses are case-sensitive
+  // For EVM chains, use case-insensitive comparison
+  const token = chainId === 900 
+    ? tokens.find((t) => t.address === address)
+    : tokens.find((t) => t.address.toLowerCase() === address.toLowerCase());
 
   if (token) {
     return {
@@ -115,26 +120,35 @@ const getTokenInfo = (address: string, chainId: number) => {
     };
   }
 
-  // Fallback for common addresses
+  // Fallback for common native token addresses
   if (address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
     // Native token fallback based on chain
-    const nativeTokens: Record<number, { symbol: string; decimals: number }> = {
-      1: { symbol: 'ETH', decimals: 18 },
-      137: { symbol: 'MATIC', decimals: 18 },
-      56: { symbol: 'BNB', decimals: 18 },
-      42161: { symbol: 'ETH', decimals: 18 },
-      8453: { symbol: 'ETH', decimals: 18 },
-      10: { symbol: 'ETH', decimals: 18 },
-      43114: { symbol: 'AVAX', decimals: 18 },
-      10143: { symbol: 'MON', decimals: 18 },
+    const nativeTokens: Record<number, { symbol: string; decimals: number; name: string }> = {
+      1: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
+      137: { symbol: 'MATIC', decimals: 18, name: 'Polygon' },
+      56: { symbol: 'BNB', decimals: 18, name: 'Binance Coin' },
+      42161: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
+      8453: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
+      10: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
+      43114: { symbol: 'AVAX', decimals: 18, name: 'Avalanche' },
+      10143: { symbol: 'MON', decimals: 18, name: 'Monad' },
     };
-    return nativeTokens[chainId] || { symbol: 'ETH', decimals: 18 };
+    return nativeTokens[chainId] || { symbol: 'ETH', decimals: 18, name: 'Ethereum' };
   }
 
-  // Unknown token fallback
+  // Fallback for Solana native token (SOL)
+  if (chainId === 900 && address === 'So11111111111111111111111111111111111111112') {
+    return { symbol: 'SOL', decimals: 9, name: 'Solana' };
+  }
+
+  // Unknown token fallback - adjust display for Solana vs EVM addresses
+  const displaySymbol = chainId === 900 
+    ? address.substring(0, 4) + '...' + address.substring(address.length - 4)  // Solana addresses are longer
+    : address.substring(0, 6) + '...';  // EVM addresses
+
   return {
-    symbol: address.substring(0, 6) + '...',
-    decimals: 18,
+    symbol: displaySymbol,
+    decimals: chainId === 900 ? 9 : 18,  // Solana tokens typically use 9 decimals, EVM uses 18
     name: 'Unknown Token',
   };
 };
@@ -155,6 +169,7 @@ const ManualTrade: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [quoteError, setQuoteError] = useState<string>('');
+  // Search state
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Simplified useEffect hooks (removed wallet connection logic)
@@ -191,20 +206,7 @@ const ManualTrade: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (sellAmount && Number.parseFloat(sellAmount) > 0 && sellToken && buyToken) {
-      const timeoutId = setTimeout(() => {
-        fetchQuote();
-      }, 800);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setBuyAmount('');
-      setQuote(null);
-      setQuoteError('');
-    }
-  }, [sellAmount, sellToken, buyToken, slippage, selectedNetwork]);
-
-  const fetchQuote = async () => {
+  const fetchQuote = useCallback(async () => {
     if (!sellAmount || !sellToken || !buyToken) return;
     if (sellToken.address.toLowerCase() === buyToken.address.toLowerCase()) {
       setQuoteError('Cannot swap the same token. Please select different tokens.');
@@ -247,7 +249,20 @@ const ManualTrade: React.FC = () => {
     } finally {
       setQuoteLoading(false);
     }
-  };
+  }, [sellAmount, sellToken, buyToken, slippage, selectedNetwork]);
+
+  useEffect(() => {
+    if (sellAmount && Number.parseFloat(sellAmount) > 0 && sellToken && buyToken) {
+      const timeoutId = setTimeout(() => {
+        fetchQuote();
+      }, 800);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setBuyAmount('');
+      setQuote(null);
+      setQuoteError('');
+    }
+  }, [sellAmount, sellToken, buyToken, slippage, selectedNetwork, fetchQuote]);
 
   const executeSwap = async () => {
     if (!quote || !sellToken || !buyToken) return;
@@ -340,13 +355,13 @@ const ManualTrade: React.FC = () => {
     }
   };
 
-  const openTokenSelector = (type: 'sell' | 'buy') => {
+  const openTokenSelector = useCallback((type: 'sell' | 'buy') => {
     setTokenSelectorType(type);
     setIsTokenSelectorOpen(true);
     setSearchTerm('');
-  };
+  }, []);
 
-  const selectToken = (token: Token) => {
+  const selectToken = useCallback((token: Token) => {
     if (tokenSelectorType === 'sell') {
       setSellToken(token);
     } else {
@@ -354,7 +369,7 @@ const ManualTrade: React.FC = () => {
     }
     setIsTokenSelectorOpen(false);
     setSearchTerm('');
-  };
+  }, [tokenSelectorType]);
 
   const handleNetworkChange = (networkId: number) => {
     const network = networkOptions.find((n) => n.chain_id === networkId);
@@ -368,25 +383,27 @@ const ManualTrade: React.FC = () => {
     }
   };
 
-  const currentTokens = tokensByNetwork[selectedNetwork.chain_id] || [];
-  const filteredTokens = currentTokens.filter(
-    (token) =>
-      token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredTokens = useMemo(() => {
+    const currentTokens = tokensByNetwork[selectedNetwork.chain_id] || [];
+    return currentTokens.filter(
+      (token) =>
+        token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        token.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [selectedNetwork.chain_id, searchTerm]);
 
   const TokenSelector = () => (
     <AnimatePresence>
       {isTokenSelectorOpen && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           onClick={() => setIsTokenSelectorOpen(false)}
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            initial={false}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             className="max-h-[80vh] w-full max-w-lg overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-2xl dark:bg-gray-800 dark:shadow-none"
@@ -417,6 +434,7 @@ const ManualTrade: React.FC = () => {
                   placeholder="Search tokens..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
                   className="w-full rounded-xl border-2 border-gray-200 bg-[#FAFBFC] py-3 pl-10 pr-4 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
                 />
               </div>
@@ -654,6 +672,20 @@ const ManualTrade: React.FC = () => {
                 </div>
               </div>
             </div>
+          </motion.div>
+
+          {/* Blockchain Indicator */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="mb-6"
+          >
+            <BlockchainIndicator 
+              chainId={selectedNetwork.chain_id} 
+              showDetails={true}
+              status="connected"
+            />
           </motion.div>
 
           {/* Main Swap Interface */}

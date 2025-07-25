@@ -9,7 +9,7 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from eth_account import Account, messages
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.encryption import encryption_util
-from src.database.queries import get_user_private_key
+from src.database.queries import get_user_private_key_by_type
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +51,10 @@ class DexIntegration:
         if not web3.is_connected():
             raise Exception(f"Failed to connect to {chain_info['name']} network")
         
-        # Setup user account
-        encrypted_key = await get_user_private_key(db, user_id)
+        # Setup user account - use ETH private key for EVM chains
+        encrypted_key = await get_user_private_key_by_type(db, user_id, 'eth')
         if not encrypted_key:
-            raise Exception("No private key found for user")
+            raise Exception("No ETH private key found for user. Please add your ETH private key in Settings.")
         
         private_key = encryption_util.decrypt_private_key(encrypted_key)
         account = Account.from_key(private_key)
@@ -243,10 +243,29 @@ class DexIntegration:
             logger.error(f"Permit2 signing failed: {e}")
             return ""
     
-    async def get_transaction_status(self, tx_hash: str, chain_id: int, user_id: int, db: AsyncSession) -> Dict[str, Any]:
-        """Get transaction status - dynamic chain"""
+    async def get_transaction_status(self, tx_hash: str, chain_id: int) -> Dict[str, Any]:
+        """Get transaction status using public RPC - no authentication needed"""
         try:
-            web3, account, wallet_address = await self._setup_for_request(chain_id, user_id, db)
+            if chain_id not in self.supported_chains:
+                return {
+                    "transaction_hash": tx_hash,
+                    "status": "error",
+                    "error": f"Unsupported chain ID: {chain_id}",
+                    "chain_id": chain_id
+                }
+            
+            # Setup Web3 connection for status checking (no auth needed)
+            chain_info = self.supported_chains[chain_id]
+            web3 = Web3(Web3.HTTPProvider(chain_info["rpc"]))
+            web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+            
+            if not web3.is_connected():
+                return {
+                    "transaction_hash": tx_hash,
+                    "status": "error",
+                    "error": f"Failed to connect to {chain_info['name']} network",
+                    "chain_id": chain_id
+                }
             
             # First try to get receipt
             try:

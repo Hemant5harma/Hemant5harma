@@ -83,22 +83,83 @@ class PrivateKeyEncryption:
             raise Exception("Failed to decrypt private key")
     
     def validate_private_key(self, private_key: str) -> bool:
-        """Validate that a private key is in correct format (64 hex characters)"""
+        """Validate that a private key is in correct format (EVM or Solana)"""
+        try:
+            # Check if it's an EVM private key (64 hex characters)
+            if self._is_evm_private_key(private_key):
+                return True
+            
+            # Check if it's a Solana private key (Base58 encoded)
+            if self._is_solana_private_key(private_key):
+                return True
+            
+            return False
+            
+        except (ValueError, TypeError):
+            return False
+    
+    def _is_evm_private_key(self, private_key: str) -> bool:
+        """Check if private key is valid EVM format (64 hex characters)"""
         try:
             # Remove 0x prefix if present
-            if private_key.startswith('0x'):
-                private_key = private_key[2:]
+            key = private_key[2:] if private_key.startswith('0x') else private_key
             
             # Check if it's exactly 64 hex characters
-            if len(private_key) != 64:
+            if len(key) != 64:
                 return False
             
             # Try to convert to int to verify it's valid hex
-            int(private_key, 16)
+            int(key, 16)
             return True
             
         except (ValueError, TypeError):
             return False
+    
+    def _is_solana_private_key(self, private_key: str) -> bool:
+        """Check if private key is valid Solana format"""
+        try:
+            import base58
+            
+            # Solana private keys are typically:
+            # 1. Base58 encoded bytes (44-88 characters)
+            # 2. Array of 64 bytes when decoded
+            # 3. Or array of 32 bytes for seed
+            
+            if not isinstance(private_key, str):
+                return False
+            
+            # Check length (Base58 encoded should be reasonable length)
+            if len(private_key) < 32 or len(private_key) > 88:
+                return False
+            
+            # Try to decode as Base58
+            decoded = base58.b58decode(private_key)
+            
+            # Solana private keys are typically 32 or 64 bytes
+            if len(decoded) not in [32, 64]:
+                return False
+            
+            return True
+            
+        except Exception:
+            # If base58 is not available or decoding fails, try as hex
+            try:
+                # Some Solana keys might be in hex format (64 bytes = 128 hex chars)
+                if len(private_key) == 128:
+                    int(private_key, 16)
+                    return True
+                return False
+            except (ValueError, TypeError):
+                return False
+    
+    def get_private_key_type(self, private_key: str) -> str:
+        """Determine the type of private key (evm, solana, or unknown)"""
+        if self._is_evm_private_key(private_key):
+            return "evm"
+        elif self._is_solana_private_key(private_key):
+            return "solana"
+        else:
+            return "unknown"
 
 # Global instance
 encryption_util = PrivateKeyEncryption() 

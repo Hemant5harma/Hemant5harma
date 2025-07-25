@@ -9,3 +9,7 @@ psycopg2-binary
 PyJWT
 requests
 cryptography
+solana
+solders
+base58
+PyNaCl

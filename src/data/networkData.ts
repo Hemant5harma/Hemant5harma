@@ -83,6 +83,14 @@ export const networkOptions: Network[] = [
     network_name: 'Avalanche',
     isTestnet: false,
   },
+  {
+    chain_id: 900,
+    name: 'Solana',
+    shortName: 'SOL',
+    rpc_url: 'https://api.mainnet-beta.solana.com',
+    network_name: 'Solana',
+    isTestnet: false,
+  },
 ];
 
 // Real token addresses by network
@@ -363,6 +371,51 @@ export const tokensByNetwork: Record<number, Token[]> = {
       decimals: 18,
     },
   ],
+  // Solana Mainnet
+  900: [
+    {
+      symbol: 'SOL',
+      name: 'Solana',
+      address: 'So11111111111111111111111111111111111111112',
+      decimals: 9,
+    },
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      address: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+      decimals: 6,
+    },
+    {
+      symbol: 'RAY',
+      name: 'Raydium',
+      address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+      decimals: 6,
+    },
+    {
+      symbol: 'SRM',
+      name: 'Serum',
+      address: 'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt',
+      decimals: 6,
+    },
+    {
+      symbol: 'ORCA',
+      name: 'Orca',
+      address: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
+      decimals: 6,
+    },
+    {
+      symbol: 'MNGO',
+      name: 'Mango',
+      address: 'MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac',
+      decimals: 6,
+    },
+    {
+      symbol: 'STEP',
+      name: 'Step Finance',
+      address: 'StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT',
+      decimals: 9,
+    },
+  ],
 };
 
 // Helper function to get explorer URLs for network addition
@@ -376,6 +429,7 @@ export const getExplorerUrls = (chainId: number): string[] => {
     8453: ['https://basescan.org'],
     10: ['https://optimistic.etherscan.io'],
     43114: ['https://snowtrace.io'],
+    900: ['https://explorer.solana.com'],
   };
   return explorers[chainId] || ['https://etherscan.io'];
 };
@@ -391,6 +445,7 @@ export const getExplorerTxUrl = (chainId: number, txHash: string): string => {
     8453: `https://basescan.org/tx/${txHash}`,
     10: `https://optimistic.etherscan.io/tx/${txHash}`,
     43114: `https://snowtrace.io/tx/${txHash}`,
+    900: `https://explorer.solana.com/tx/${txHash}`,
   };
   return explorers[chainId] || `https://etherscan.io/tx/${txHash}`;
 };

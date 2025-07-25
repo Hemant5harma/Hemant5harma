@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services.manual_trading import ManualTradingService
+from src.dex.unified_dex_router import UnifiedDexRouter
 from src.py_models.manual_trade import (
     QuoteRequest, QuoteResponse, ManualTradeRequest, 
     ManualTradeResponse, WalletBalanceResponse, WalletBalanceRequest,
@@ -27,11 +27,11 @@ router = APIRouter()
 async def get_supported_networks():
     """
     Get list of supported networks for manual trading.
-    Returns network information including chain IDs and RPC URLs.
+    Returns network information including chain IDs and RPC URLs (EVM + Solana).
     """
     try:
-        service = ManualTradingService()
-        return service.get_supported_networks()
+        router = UnifiedDexRouter()
+        return router.get_supported_networks()
     except Exception as e:
         logger.error(f"Failed to get supported networks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -47,8 +47,8 @@ async def get_quote(
     Frontend specifies chain_id in the request - no need for rpc_url anymore.
     """
     try:
-        service = ManualTradingService()
-        quote = await service.get_quote(quote_request, current_user.id, db)
+        router = UnifiedDexRouter()
+        quote = await router.get_quote(quote_request, current_user.id, db)
         return quote
     except Exception as e:
         logger.error(f"Failed to get quote: {e}")
@@ -65,8 +65,36 @@ async def execute_trade(
     Frontend specifies chain_id in the request - supports all 0x networks.
     """
     try:
-        service = ManualTradingService()
-        result = await service.execute_trade(trade_request, current_user.id, db)
+        router = UnifiedDexRouter()
+        result = await router.execute_manual_trade(trade_request, current_user.id, db)
+        
+        # Try to get immediate transaction status (with short delay for blockchain processing)
+        import asyncio
+        initial_status = "pending"
+        try:
+            # Wait based on network type (Solana is faster than EVM)
+            if trade_request.chain_id == 900:  # Solana
+                await asyncio.sleep(1)  # Shorter delay for Solana
+            else:  # EVM networks
+                await asyncio.sleep(2)  # Standard delay for EVM
+            
+            # Check transaction status
+            status_result = await router.get_transaction_status(result.transaction_hash, trade_request.chain_id)
+            blockchain_status = status_result.get("status")
+            logger.info(f"Immediate status check for {result.transaction_hash} (chain {trade_request.chain_id}): {blockchain_status}")
+            
+            # Map blockchain status to our status
+            if blockchain_status in ["confirmed", "success", "finalized"]:
+                initial_status = "success"
+                logger.info(f"Trade {result.transaction_hash} confirmed immediately")
+            elif blockchain_status in ["failed", "error"]:
+                initial_status = "failed"
+                logger.info(f"Trade {result.transaction_hash} failed immediately")
+            else:
+                logger.info(f"Trade {result.transaction_hash} still pending after immediate check")
+        except Exception as e:
+            logger.info(f"Could not get immediate status for {result.transaction_hash}: {e}")
+            # Continue with pending status
         
         # Store trade in database for the authenticated user
         trade_data = {
@@ -77,12 +105,15 @@ async def execute_trade(
             "transaction_hash": result.transaction_hash,
             "gas_used": result.gas_used,
             "gas_price": result.gas_price,
-            "status": result.status,
+            "status": initial_status,
             "slippage_bps": trade_request.slippage_bps,
             "chain_id": trade_request.chain_id,
             "network_name": result.network_name
         }
         await create_manual_trade(db, current_user.id, trade_data)
+        
+        # Update the result status to reflect what we stored
+        result.status = initial_status
         
         return result
     except Exception as e:
@@ -101,8 +132,8 @@ async def get_transaction_status(
     Frontend specifies chain_id - no need for rpc_url anymore.
     """
     try:
-        service = ManualTradingService()
-        status = await service.get_transaction_status(tx_hash, chain_id, current_user.id, db)
+        router = UnifiedDexRouter()
+        status = await router.get_transaction_status(tx_hash, chain_id)
         
         # Update database record if status changed
         if status.get("status") in ["success", "failed"]:
@@ -127,8 +158,8 @@ async def get_wallet_balances(
     Frontend specifies chain_id in the request.
     """
     try:
-        service = ManualTradingService()
-        balances = await service.get_wallet_balances(balance_request, current_user.id, db)
+        router = UnifiedDexRouter()
+        balances = await router.get_wallet_balances(balance_request, current_user.id, db)
         return balances
     except Exception as e:
         logger.error(f"Failed to get wallet balances: {e}")
@@ -145,9 +176,36 @@ async def get_manual_trade_history(
     """
     Get manual trade history for the current user.
     Can filter by chain_id to show trades from specific networks.
+    Automatically checks and updates pending transaction statuses.
     """
     try:
         trades = await get_manual_trades_by_user(db, current_user.id, limit, offset, chain_id)
+        
+        # Check and update status for pending trades
+        router = UnifiedDexRouter()
+        for trade in trades:
+            if trade.status == "pending":
+                try:
+                    logger.info(f"Checking status for pending trade {trade.id} (tx: {trade.transaction_hash}, chain: {trade.chain_id})")
+                    # Check transaction status on blockchain
+                    status_result = await router.get_transaction_status(trade.transaction_hash, trade.chain_id)
+                    blockchain_status = status_result.get("status")
+                    logger.info(f"Blockchain returned status '{blockchain_status}' for trade {trade.id}")
+                    
+                    # Map blockchain status to our status
+                    if blockchain_status in ["confirmed", "success", "finalized"]:
+                        await update_manual_trade_status(db, trade.transaction_hash, "success", str(status_result.get("gas_used", "")))
+                        trade.status = "success"  # Update in-memory object for response
+                        logger.info(f"Updated trade {trade.id} status to success")
+                    elif blockchain_status in ["failed", "error"]:
+                        await update_manual_trade_status(db, trade.transaction_hash, "failed", str(status_result.get("gas_used", "")))
+                        trade.status = "failed"  # Update in-memory object for response
+                        logger.info(f"Updated trade {trade.id} status to failed")
+                    else:
+                        logger.info(f"Trade {trade.id} still pending (status: {blockchain_status})")
+                except Exception as e:
+                    logger.warning(f"Failed to check status for trade {trade.id}: {e}")
+                    # Continue with other trades even if one fails
         
         return [
             {

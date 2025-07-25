@@ -54,6 +54,69 @@ async def delete_user_private_key(db: AsyncSession, user_id: int) -> bool:
     await db.commit()
     return True
 
+# Separate ETH and Solana Private Key Operations
+async def update_user_private_key_by_type(db: AsyncSession, user_id: int, encrypted_private_key: str, key_type: str) -> User:
+    """Update user's encrypted private key for specific blockchain"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise ValueError("User not found")
+    
+    if key_type == 'eth':
+        user.encrypted_eth_private_key = encrypted_private_key
+    elif key_type == 'solana':
+        user.encrypted_solana_private_key = encrypted_private_key
+    else:
+        raise ValueError(f"Invalid key type: {key_type}")
+    
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def get_user_private_key_by_type(db: AsyncSession, user_id: int, key_type: str) -> Optional[str]:
+    """Get user's encrypted private key for specific blockchain"""
+    if key_type == 'eth':
+        result = await db.execute(select(User.encrypted_eth_private_key).where(User.id == user_id))
+    elif key_type == 'solana':
+        result = await db.execute(select(User.encrypted_solana_private_key).where(User.id == user_id))
+    else:
+        raise ValueError(f"Invalid key type: {key_type}")
+    
+    encrypted_key = result.scalar_one_or_none()
+    return encrypted_key
+
+async def get_user_private_key_status(db: AsyncSession, user_id: int) -> dict:
+    """Get status of both ETH and Solana private keys"""
+    result = await db.execute(
+        select(User.encrypted_eth_private_key, User.encrypted_solana_private_key)
+        .where(User.id == user_id)
+    )
+    eth_key, solana_key = result.first() or (None, None)
+    
+    return {
+        'eth_key': eth_key is not None,
+        'solana_key': solana_key is not None
+    }
+
+async def delete_user_private_key_by_type(db: AsyncSession, user_id: int, key_type: str) -> bool:
+    """Delete user's private key for specific blockchain"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        return False
+    
+    if key_type == 'eth':
+        user.encrypted_eth_private_key = None
+    elif key_type == 'solana':
+        user.encrypted_solana_private_key = None
+    else:
+        raise ValueError(f"Invalid key type: {key_type}")
+    
+    await db.commit()
+    return True
+
 # Bot Operations
 async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
     """

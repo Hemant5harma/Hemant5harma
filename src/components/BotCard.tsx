@@ -36,6 +36,7 @@ const networkOptions = [
   { value: 137, label: 'Polygon', shortName: 'MATIC' },
   { value: 56, label: 'Binance Smart Chain', shortName: 'BSC' },
   { value: 10143, label: 'Monad Testnet', shortName: 'Monad' },
+  { value: 900, label: 'Solana', shortName: 'SOL' },
 ];
 
 // Token address to name mapping
@@ -64,6 +65,12 @@ const tokenAddressToName: Record<string, { symbol: string; name: string }> = {
   '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d': { symbol: 'WBTC', name: 'WBTC (testnet)' },
   '0xB5a30b0FDc42e3E9760Cb8449Fb37': { symbol: 'WETH', name: 'WETH (testnet)' },
   '0x5387C85A4965769f6B0Df430638a1388493486F1': { symbol: 'WSOL', name: 'WSOL (testnet)' },
+
+  // Solana Mainnet
+  'So11111111111111111111111111111111111111112': { symbol: 'SOL', name: 'Solana' },
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { symbol: 'USDT', name: 'Tether' },
+  '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R': { symbol: 'RAY', name: 'Raydium' },
+  'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt': { symbol: 'SRM', name: 'Serum' },
 };
 
 // Helper function to get token info from address

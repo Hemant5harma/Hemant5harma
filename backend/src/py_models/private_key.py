@@ -1,32 +1,30 @@
 from pydantic import BaseModel, validator
-from typing import Optional
+from typing import Optional, Literal
 
 class PrivateKeyRequest(BaseModel):
     private_key: str
+    key_type: Literal['eth', 'solana']
     
     @validator('private_key')
     def validate_private_key_format(cls, v):
-        """Validate private key format"""
+        """Validate private key format - basic validation, specific validation done by encryption util"""
         if not v:
             raise ValueError('Private key cannot be empty')
         
-        # Remove 0x prefix if present
-        clean_key = v[2:] if v.startswith('0x') else v
-        
-        # Check if it's exactly 64 hex characters
-        if len(clean_key) != 64:
-            raise ValueError('Private key must be exactly 64 hex characters')
-        
-        try:
-            # Verify it's valid hex
-            int(clean_key, 16)
-        except ValueError:
-            raise ValueError('Private key must contain only hex characters (0-9, a-f)')
+        # Basic length check - will be validated more thoroughly by encryption util
+        clean_key = v.strip()
+        if len(clean_key) < 32:
+            raise ValueError('Private key appears to be too short')
         
         return v
 
 class PrivateKeyResponse(BaseModel):
     has_private_key: bool
+    message: str
+
+class PrivateKeyStatusResponse(BaseModel):
+    eth_key: bool
+    solana_key: bool  
     message: str
 
 class PrivateKeyDeleteResponse(BaseModel):

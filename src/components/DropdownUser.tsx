@@ -7,6 +7,7 @@ import { setAuthToken, removeAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
 import { apiClient } from '../utils/apiClient';
 
+
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [account, setAccount] = useState<string | null>(null);
@@ -383,6 +384,8 @@ const DropdownUser = () => {
               </div>
             )}
           </div>
+
+
 
           <button
             onClick={disconnectWallet}

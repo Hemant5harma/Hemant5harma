@@ -6,7 +6,11 @@ from src.api.dependencies import get_db_session
 from src.api.auth_utils import create_access_token, get_current_user
 from web3 import Web3
 from eth_account.messages import encode_defunct
-from src.py_models.auth import AuthLoginRequest
+from src.py_models.auth import AuthLoginRequest, SolanaAuthLoginRequest
+import base58
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -63,3 +67,65 @@ async def metamask_login(auth_request: AuthLoginRequest, db: AsyncSession = Depe
         user = await create_user(db, auth_request.address)
     token = create_access_token(address=user.address)
     return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/solana_login")
+async def solana_login(auth_request: SolanaAuthLoginRequest, db: AsyncSession = Depends(get_db_session)):
+    """
+    Authenticate a Solana wallet by verifying the signature of a message.
+    """
+    try:
+        # Import Solana libraries
+        from solders.keypair import Keypair
+        from solders.pubkey import Pubkey
+        import nacl.signing
+        import nacl.encoding
+        
+        # Validate the Solana address format
+        try:
+            pubkey = Pubkey.from_string(auth_request.address)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid Solana address format")
+        
+        # Convert signature from hex to bytes
+        try:
+            signature_bytes = bytes.fromhex(auth_request.signature)
+            if len(signature_bytes) != 64:
+                raise ValueError("Signature must be 64 bytes")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid signature format: {str(e)}")
+        
+        # Convert message to bytes
+        message_bytes = auth_request.message.encode('utf-8')
+        
+        # Verify the signature
+        try:
+            verify_key = nacl.signing.VerifyKey(bytes(pubkey))
+            verify_key.verify(message_bytes, signature_bytes)
+        except nacl.exceptions.BadSignatureError:
+            raise HTTPException(status_code=400, detail="Invalid signature - message verification failed")
+        except Exception as e:
+            logger.error(f"Signature verification error: {e}")
+            raise HTTPException(status_code=400, detail="Signature verification failed")
+        
+        # Create or get user
+        user = await get_user_by_address(db, auth_request.address)
+        if not user:
+            user = await create_user(db, auth_request.address)
+        
+        # Generate JWT token
+        token = create_access_token(address=user.address)
+        
+        logger.info(f"Successful Solana login for address: {auth_request.address}")
+        return {"access_token": token, "token_type": "bearer"}
+        
+    except HTTPException:
+        raise
+    except ImportError as e:
+        logger.error(f"Missing Solana dependencies: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Solana authentication not available - missing dependencies"
+        )
+    except Exception as e:
+        logger.error(f"Solana login error: {e}")
+        raise HTTPException(status_code=500, detail="Authentication failed")

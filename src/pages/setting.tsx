@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { showNotification } from '@mantine/notifications';
-import { privateKeyApi } from '../utils/privateKeyApi';
-import { validatePrivateKey } from '../utils/privateKeyUtils';
+import { privateKeyApi, PrivateKeyStatusResponse } from '../utils/privateKeyApi';
 
 // Custom components to replace Mantine components for better dark mode support
 const CustomSwitch: React.FC<{
@@ -24,27 +23,27 @@ const CustomSwitch: React.FC<{
   </button>
 );
 
-const CustomSelect: React.FC<{
+const CustomPasswordInput: React.FC<{
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  multiple?: boolean;
-}> = ({ label, value, onChange, options, multiple = false }) => (
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-    <select
+  placeholder?: string;
+  description?: string;
+}> = ({ label, value, onChange, placeholder, description }) => (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      {label}
+    </label>
+    <input
+      type="password"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      multiple={multiple}
-      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400"
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
+    />
+    {description && (
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
+    )}
   </div>
 );
 
@@ -53,157 +52,97 @@ const CustomTextInput: React.FC<{
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: string;
   description?: string;
-}> = ({ label, value, onChange, placeholder, type = 'text', description }) => (
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+  type?: string;
+}> = ({ label, value, onChange, placeholder, description, type = 'text' }) => (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      {label}
+    </label>
     <input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
+      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
     />
-    {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
+    {description && (
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
+    )}
   </div>
 );
 
-const CustomPasswordInput: React.FC<{
+const CustomSelect: React.FC<{
   label: string;
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
+  options: { value: string; label: string }[];
   description?: string;
-}> = ({ label, value, onChange, placeholder, description }) => {
-  const [showPassword, setShowPassword] = useState(false);
+}> = ({ label, value, onChange, options, description }) => (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      {label}
+    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+    {description && (
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
+    )}
+  </div>
+);
 
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-      <div className="relative">
-        <input
-          type={showPassword ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-        >
-          {showPassword ? (
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-              />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-              />
-            </svg>
-          )}
-        </button>
-      </div>
-      {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
-    </div>
-  );
-};
-
-const CustomSlider: React.FC<{
+const CustomRange: React.FC<{
   label: string;
   value: number;
   onChange: (value: number) => void;
   min?: number;
   max?: number;
-}> = ({ label, value, onChange, min = 0, max = 100 }) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{value}%</span>
-    </div>
-    <div className="relative">
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="custom-slider h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
-        style={{
-          background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
-        }}
-      />
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          .custom-slider::-webkit-slider-thumb {
-            appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          }
-          .custom-slider::-moz-range-thumb {
-            appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          }
-        `,
-        }}
-      />
-    </div>
+  step?: number;
+  description?: string;
+}> = ({ label, value, onChange, min = 0, max = 100, step = 1, description }) => (
+  <div>
+    <label className="mb-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
+      {label}
+      <span className="text-blue-600 dark:text-blue-400">{value}</span>
+    </label>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseInt(e.target.value))}
+      className="w-full accent-blue-600"
+    />
+    {description && (
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
+    )}
   </div>
 );
 
 const CustomButton: React.FC<{
-  onClick: () => void;
-  loading?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
   children: React.ReactNode;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary' | 'danger';
+  loading?: boolean;
   disabled?: boolean;
   className?: string;
-}> = ({
-  onClick,
-  loading = false,
-  variant = 'primary',
-  children,
-  disabled = false,
-  className = '',
-}) => {
-  const baseClasses =
-    'px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed';
-
+}> = ({ children, onClick, variant = 'primary', loading = false, disabled = false, className = '' }) => {
+  const baseClasses = 'inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:cursor-not-allowed disabled:opacity-50';
+  
   const variantClasses = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-    secondary:
-      'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-    danger:
-      'border border-red-300 bg-white text-red-700 hover:bg-red-50 focus:ring-red-500 dark:border-red-600 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-900',
+    secondary: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+    danger: 'border border-red-300 bg-white text-red-700 hover:bg-red-50 focus:ring-red-500 dark:border-red-600 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-900',
   };
 
   return (
@@ -254,13 +193,19 @@ const SettingsPage: React.FC = () => {
     secretKey: '',
   });
 
-  const [privateKey, setPrivateKey] = useState({
-    privateKey: '',
-    hasPrivateKey: false,
+  const [ethPrivateKey, setEthPrivateKey] = useState({
+    key: '',
+    hasKey: false,
     loading: false,
   });
 
-  // Check private key status on component mount
+  const [solanaPrivateKey, setSolanaPrivateKey] = useState({
+    key: '',
+    hasKey: false,
+    loading: false,
+  });
+
+  // Check private key status on mount
   useEffect(() => {
     checkPrivateKeyStatus();
   }, []);
@@ -279,103 +224,17 @@ const SettingsPage: React.FC = () => {
 
   const checkPrivateKeyStatus = async () => {
     try {
-      setPrivateKey((prev) => ({ ...prev, loading: true }));
-      const response = await privateKeyApi.getPrivateKeyStatus();
-      setPrivateKey((prev) => ({
-        ...prev,
-        hasPrivateKey: response?.has_private_key || false,
-        loading: false,
-      }));
+      setEthPrivateKey(prev => ({ ...prev, loading: true }));
+      setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
+      
+      const response: PrivateKeyStatusResponse = await privateKeyApi.getPrivateKeyStatus();
+      
+      setEthPrivateKey(prev => ({ ...prev, hasKey: response.eth_key, loading: false }));
+      setSolanaPrivateKey(prev => ({ ...prev, hasKey: response.solana_key, loading: false }));
     } catch (error: any) {
       console.error('Failed to check private key status:', error);
-      setPrivateKey((prev) => ({
-        ...prev,
-        hasPrivateKey: false,
-        loading: false,
-      }));
-    }
-  };
-
-  const handleSavePrivateKey = async () => {
-    if (!privateKey.privateKey.trim()) {
-      showNotification({
-        title: 'Error',
-        message: 'Please enter a private key',
-        color: 'red',
-      });
-      return;
-    }
-
-    // Validate private key format
-    const validation = validatePrivateKey(privateKey.privateKey);
-    if (!validation.isValid) {
-      showNotification({
-        title: 'Invalid Private Key',
-        message: validation.error,
-        color: 'red',
-      });
-      return;
-    }
-
-    try {
-      setPrivateKey((prev) => ({ ...prev, loading: true }));
-      // Use the formatted private key (without 0x prefix, lowercase)
-      await privateKeyApi.savePrivateKey(validation.formatted!);
-
-      showNotification({
-        title: 'Success',
-        message: 'Private key saved successfully',
-        color: 'green',
-      });
-
-      setPrivateKey((prev) => ({
-        ...prev,
-        hasPrivateKey: true,
-        privateKey: '',
-        loading: false,
-      }));
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to save private key',
-        color: 'red',
-      });
-      setPrivateKey((prev) => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleDeletePrivateKey = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete your private key? This will disable trading functionality.',
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setPrivateKey((prev) => ({ ...prev, loading: true }));
-      await privateKeyApi.deletePrivateKey();
-
-      showNotification({
-        title: 'Success',
-        message: 'Private key deleted successfully',
-        color: 'green',
-      });
-
-      setPrivateKey((prev) => ({
-        ...prev,
-        hasPrivateKey: false,
-        privateKey: '',
-        loading: false,
-      }));
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to delete private key',
-        color: 'red',
-      });
-      setPrivateKey((prev) => ({ ...prev, loading: false }));
+      setEthPrivateKey(prev => ({ ...prev, loading: false }));
+      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -395,6 +254,124 @@ const SettingsPage: React.FC = () => {
         message: error.message || 'Failed to save settings',
         color: 'red',
       });
+    }
+  };
+
+  // Private key management functions
+  const handleSaveEthPrivateKey = async () => {
+    if (!ethPrivateKey.key.trim()) {
+      showNotification({
+        title: 'Error',
+        message: 'Please enter an ETH private key',
+        color: 'red',
+      });
+      return;
+    }
+
+    // Basic ETH private key validation
+    const cleanKey = ethPrivateKey.key.trim().replace(/^0x/, '');
+    if (cleanKey.length !== 64 || !/^[0-9a-fA-F]+$/.test(cleanKey)) {
+      showNotification({
+        title: 'Invalid ETH Private Key',
+        message: 'ETH private key must be 64 hex characters',
+        color: 'red',
+      });
+      return;
+    }
+
+    setEthPrivateKey(prev => ({ ...prev, loading: true }));
+    try {
+      await privateKeyApi.savePrivateKey(cleanKey, 'eth');
+      setEthPrivateKey(prev => ({ ...prev, hasKey: true, key: '', loading: false }));
+      showNotification({
+        title: 'Success',
+        message: 'ETH private key saved successfully',
+        color: 'green',
+      });
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to save ETH private key',
+        color: 'red',
+      });
+      setEthPrivateKey(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSaveSolanaPrivateKey = async () => {
+    if (!solanaPrivateKey.key.trim()) {
+      showNotification({
+        title: 'Error',
+        message: 'Please enter a Solana private key',
+        color: 'red',
+      });
+      return;
+    }
+
+    setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
+    try {
+      await privateKeyApi.savePrivateKey(solanaPrivateKey.key.trim(), 'solana');
+      setSolanaPrivateKey(prev => ({ ...prev, hasKey: true, key: '', loading: false }));
+      showNotification({
+        title: 'Success',
+        message: 'Solana private key saved successfully',
+        color: 'green',
+      });
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to save Solana private key',
+        color: 'red',
+      });
+      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleDeleteEthPrivateKey = async () => {
+    if (!window.confirm('Are you sure you want to delete your ETH private key?')) {
+      return;
+    }
+
+    setEthPrivateKey(prev => ({ ...prev, loading: true }));
+    try {
+      await privateKeyApi.deletePrivateKey('eth');
+      setEthPrivateKey(prev => ({ ...prev, hasKey: false, loading: false }));
+      showNotification({
+        title: 'Success',
+        message: 'ETH private key deleted successfully',
+        color: 'green',
+      });
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to delete ETH private key',
+        color: 'red',
+      });
+      setEthPrivateKey(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleDeleteSolanaPrivateKey = async () => {
+    if (!window.confirm('Are you sure you want to delete your Solana private key?')) {
+      return;
+    }
+
+    setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
+    try {
+      await privateKeyApi.deletePrivateKey('solana');
+      setSolanaPrivateKey(prev => ({ ...prev, hasKey: false, loading: false }));
+      showNotification({
+        title: 'Success',
+        message: 'Solana private key deleted successfully',
+        color: 'green',
+      });
+    } catch (error: any) {
+      showNotification({
+        title: 'Error',
+        message: error.message || 'Failed to delete Solana private key',
+        color: 'red',
+      });
+      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -418,7 +395,7 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* Quick Navigation for Mobile */}
-        <div className="mb-6 sm:hidden">
+        <div className="mb-6 block sm:hidden">
           <div className="rounded-xl border bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-boxdark">
             <h3 className="mb-3 text-sm font-medium text-gray-900 dark:text-white">
               Quick Navigation
@@ -448,23 +425,11 @@ const SettingsPage: React.FC = () => {
               >
                 Security
               </button>
-              <button
-                onClick={() => scrollToSection('private-key')}
-                className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              >
-                Private Key
-              </button>
-              <button
-                onClick={() => scrollToSection('api-keys')}
-                className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              >
-                API Keys
-              </button>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-6">
           {/* General Settings */}
           <section
             id="general-settings"
@@ -480,14 +445,12 @@ const SettingsPage: React.FC = () => {
                     Dark Mode
                   </span>
                   <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    Switch between light and dark themes
+                    Switch between light and dark theme
                   </p>
                 </div>
                 <CustomSwitch
                   checked={generalSettings.darkMode}
-                  onChange={(checked) =>
-                    setGeneralSettings({ ...generalSettings, darkMode: checked })
-                  }
+                  onChange={(checked) => setGeneralSettings({ ...generalSettings, darkMode: checked })}
                 />
               </div>
               <CustomSelect
@@ -498,7 +461,9 @@ const SettingsPage: React.FC = () => {
                   { value: 'en', label: 'English' },
                   { value: 'es', label: 'Spanish' },
                   { value: 'fr', label: 'French' },
+                  { value: 'de', label: 'German' },
                 ]}
+                description="Select your preferred language"
               />
             </div>
           </section>
@@ -512,40 +477,39 @@ const SettingsPage: React.FC = () => {
               Trading Preferences
             </h2>
             <div className="space-y-4 sm:space-y-6">
-              <CustomSlider
+              <CustomRange
                 label="Risk Level"
                 value={tradingPreferences.riskLevel}
-                onChange={(value) =>
-                  setTradingPreferences({ ...tradingPreferences, riskLevel: value })
-                }
+                onChange={(value) => setTradingPreferences({ ...tradingPreferences, riskLevel: value })}
+                min={0}
+                max={100}
+                description="Set your risk tolerance (0 = Conservative, 100 = Aggressive)"
               />
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm font-medium text-gray-900 dark:text-white sm:text-base">
-                    Auto Trade
+                    Auto-Trading
                   </span>
                   <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    Enable automatic trading based on your preferences
+                    Enable automatic bot trading execution
                   </p>
                 </div>
                 <CustomSwitch
                   checked={tradingPreferences.autoTrade}
-                  onChange={(checked) =>
-                    setTradingPreferences({ ...tradingPreferences, autoTrade: checked })
-                  }
+                  onChange={(checked) => setTradingPreferences({ ...tradingPreferences, autoTrade: checked })}
                 />
               </div>
               <CustomSelect
                 label="Preferred Markets"
                 value={tradingPreferences.preferredMarkets}
-                onChange={(value) =>
-                  setTradingPreferences({ ...tradingPreferences, preferredMarkets: value })
-                }
+                onChange={(value) => setTradingPreferences({ ...tradingPreferences, preferredMarkets: value })}
                 options={[
                   { value: 'crypto', label: 'Cryptocurrency' },
                   { value: 'forex', label: 'Forex' },
                   { value: 'stocks', label: 'Stocks' },
+                  { value: 'commodities', label: 'Commodities' },
                 ]}
+                description="Choose your primary trading market"
               />
             </div>
           </section>
@@ -565,7 +529,7 @@ const SettingsPage: React.FC = () => {
                     Email Notifications
                   </span>
                   <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    Receive trade alerts via email
+                    Receive updates via email
                   </p>
                 </div>
                 <CustomSwitch
@@ -645,100 +609,160 @@ const SettingsPage: React.FC = () => {
             <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white sm:mb-6 sm:text-xl">
               Private Key Management
             </h2>
-            <div className="space-y-4 sm:space-y-6">
-              {/* Security Notice */}
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-yellow-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      Security Notice
-                    </h3>
-                    <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300 sm:text-sm">
-                      Your private key is encrypted and stored securely. Never share your private
-                      key with anyone. This key is required for executing trades on your behalf.
-                    </p>
-                  </div>
+            
+            {/* Security Notice */}
+            <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-yellow-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Security Notice
+                  </h3>
+                  <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300 sm:text-sm">
+                    Your private keys are encrypted and stored securely. Never share your private
+                    keys with anyone. These keys are required for executing trades on your behalf.
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Private Key Status */}
-              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            {/* ETH Private Key */}
+            <div className="mb-6">
+              <h3 className="mb-4 text-base font-medium text-gray-900 dark:text-white">
+                🔷 Ethereum (ETH) Private Key
+              </h3>
+              
+              <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white sm:text-base">
-                    Private Key Status
-                  </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
-                    {privateKey.loading
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                    ETH Key Status
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {ethPrivateKey.loading
                       ? 'Checking...'
-                      : privateKey.hasPrivateKey
-                        ? 'Private key is saved and encrypted'
-                        : 'No private key saved'}
+                      : ethPrivateKey.hasKey
+                        ? 'ETH private key is saved and encrypted'
+                        : 'No ETH private key saved'}
                   </p>
                 </div>
                 <div className="flex items-center">
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      privateKey.hasPrivateKey
+                      ethPrivateKey.hasKey
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                         : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                     }`}
                   >
-                    {privateKey.hasPrivateKey ? 'Configured' : 'Not Configured'}
+                    {ethPrivateKey.hasKey ? 'Configured' : 'Not Configured'}
                   </span>
                 </div>
               </div>
 
-              {/* Private Key Input */}
-              {!privateKey.hasPrivateKey && (
+              {!ethPrivateKey.hasKey && (
                 <div className="space-y-4">
                   <CustomPasswordInput
-                    label="Private Key"
-                    value={privateKey.privateKey}
-                    onChange={(value) => setPrivateKey((prev) => ({ ...prev, privateKey: value }))}
-                    placeholder="Enter your wallet private key (64 hex characters)"
-                    description="Your private key will be encrypted before storage"
+                    label="ETH Private Key"
+                    value={ethPrivateKey.key}
+                    onChange={(value) => setEthPrivateKey((prev) => ({ ...prev, key: value }))}
+                    placeholder="Enter your ETH wallet private key (64 hex characters)"
+                    description="Your ETH private key will be encrypted before storage"
                   />
                   <CustomButton
-                    onClick={handleSavePrivateKey}
-                    loading={privateKey.loading}
+                    onClick={handleSaveEthPrivateKey}
+                    loading={ethPrivateKey.loading}
                     className="w-full sm:w-auto"
                   >
-                    Save Private Key
+                    Save ETH Private Key
                   </CustomButton>
                 </div>
               )}
 
-              {/* Private Key Actions */}
-              {privateKey.hasPrivateKey && (
+              {ethPrivateKey.hasKey && (
                 <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0">
                   <CustomButton
-                    onClick={checkPrivateKeyStatus}
-                    loading={privateKey.loading}
-                    variant="secondary"
-                    className="w-full sm:w-auto"
-                  >
-                    Refresh Status
-                  </CustomButton>
-                  <CustomButton
-                    onClick={handleDeletePrivateKey}
-                    loading={privateKey.loading}
+                    onClick={handleDeleteEthPrivateKey}
+                    loading={ethPrivateKey.loading}
                     variant="danger"
                     className="w-full sm:w-auto"
                   >
-                    Delete Private Key
+                    Delete ETH Private Key
+                  </CustomButton>
+                </div>
+              )}
+            </div>
+
+            {/* Solana Private Key */}
+            <div>
+              <h3 className="mb-4 text-base font-medium text-gray-900 dark:text-white">
+                ✨ Solana (SOL) Private Key
+              </h3>
+              
+              <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                    SOL Key Status
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {solanaPrivateKey.loading
+                      ? 'Checking...'
+                      : solanaPrivateKey.hasKey
+                        ? 'Solana private key is saved and encrypted'
+                        : 'No Solana private key saved'}
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      solanaPrivateKey.hasKey
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}
+                  >
+                    {solanaPrivateKey.hasKey ? 'Configured' : 'Not Configured'}
+                  </span>
+                </div>
+              </div>
+
+              {!solanaPrivateKey.hasKey && (
+                <div className="space-y-4">
+                  <CustomPasswordInput
+                    label="Solana Private Key"
+                    value={solanaPrivateKey.key}
+                    onChange={(value) => setSolanaPrivateKey((prev) => ({ ...prev, key: value }))}
+                    placeholder="Enter your Solana wallet private key (Base58 or hex format)"
+                    description="Your Solana private key will be encrypted before storage"
+                  />
+                  <CustomButton
+                    onClick={handleSaveSolanaPrivateKey}
+                    loading={solanaPrivateKey.loading}
+                    className="w-full sm:w-auto"
+                  >
+                    Save Solana Private Key
+                  </CustomButton>
+                </div>
+              )}
+
+              {solanaPrivateKey.hasKey && (
+                <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0">
+                  <CustomButton
+                    onClick={handleDeleteSolanaPrivateKey}
+                    loading={solanaPrivateKey.loading}
+                    variant="danger"
+                    className="w-full sm:w-auto"
+                  >
+                    Delete Solana Private Key
                   </CustomButton>
                 </div>
               )}
@@ -754,6 +778,32 @@ const SettingsPage: React.FC = () => {
               API Keys
             </h2>
             <div className="space-y-4 sm:space-y-6">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-blue-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      API Key Information
+                    </h3>
+                    <p className="mt-1 text-xs text-blue-700 dark:text-blue-300 sm:text-sm">
+                      API keys are used for external integrations and advanced trading features.
+                      Keep them secure and never share them publicly.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <CustomTextInput
                 label="API Key"
                 value={apiKeys.apiKey}
@@ -766,24 +816,30 @@ const SettingsPage: React.FC = () => {
                 value={apiKeys.secretKey}
                 onChange={(value) => setApiKeys({ ...apiKeys, secretKey: value })}
                 placeholder="Enter your secret key"
-                description="Keep your secret key confidential"
+                description="Keep this secret and secure"
               />
             </div>
           </section>
 
           {/* Save Button */}
-          <div className="flex justify-end">
-            <CustomButton onClick={handleSaveSettings} className="w-full sm:w-auto">
-              Save Settings
+          <div className="sticky bottom-4 flex justify-center sm:bottom-6">
+            <CustomButton
+              onClick={handleSaveSettings}
+              className="shadow-lg"
+            >
+              Save All Settings
             </CustomButton>
           </div>
         </div>
 
-        {/* Floating Save Button for Mobile */}
+        {/* Floating Save Button (Mobile) */}
         {showFloatingSave && (
-          <div className="fixed bottom-4 left-4 right-4 z-50 sm:hidden">
-            <CustomButton onClick={handleSaveSettings} className="w-full shadow-lg">
-              💾 Save Settings
+          <div className="fixed bottom-4 right-4 z-10 sm:hidden">
+            <CustomButton
+              onClick={handleSaveSettings}
+              className="shadow-xl"
+            >
+              Save
             </CustomButton>
           </div>
         )}

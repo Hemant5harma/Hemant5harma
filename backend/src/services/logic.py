@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
-from src.dex.dex_integration import DexIntegration
+from src.dex.unified_dex_router import UnifiedDexRouter
 
 from src.database.queries import create_or_update_bot_performance
 
@@ -187,8 +187,8 @@ async def check_bot(bot_id: int):
                 return
 
             chain_id = bot.chain_id  
-            # Create DexIntegration instance (new dynamic system)
-            dex = DexIntegration()
+            # Create UnifiedDexRouter instance (supports both EVM and Solana)
+            dex_router = UnifiedDexRouter()
             
             # Get all coins for this bot
             coins = bot.coins
@@ -221,10 +221,14 @@ async def check_bot(bot_id: int):
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
                     if condition_met:
                         logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
-                        # Execute the trade using new dynamic system
-                        tx_hash = await dex.execute_trade(
+                        # Determine appropriate unit conversion based on blockchain type
+                        # For EVM chains, amounts are denominated in wei (10**18)
+                        # For Solana, amounts should be in lamports (10**9)
+                        unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
+
+                        tx_hash = await dex_router.execute_bot_trade(
                             buy_token=coin.token_address,
-                            sell_amount=int(coin.amount * 1e18),  # Amount in wei
+                            sell_amount=int(coin.amount * unit_multiplier),
                             chain_id=chain_id,
                             user_id=bot.user_id,
                             db=db

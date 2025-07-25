@@ -12,7 +12,8 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     address = Column(String, unique=True, nullable=False)
-    encrypted_private_key = Column(String, nullable=True)  # Encrypted private key for trading
+    encrypted_eth_private_key = Column(String, nullable=True)  # ETH private key
+    encrypted_solana_private_key = Column(String, nullable=True)  # Solana private key
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
     manual_trades = relationship("ManualTrade", back_populates="user", cascade="all, delete-orphan")
 

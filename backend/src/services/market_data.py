@@ -17,7 +17,8 @@ CHAIN_ID_TO_NETWORK = {
     56: "bsc",          # Binance Smart Chain
     137: "polygon_pos", # Polygon PoS
     10: "optimism",     # Optimism
-    43114: "avax",      # Avalanche
+    43114: "avax", 
+    900: "solana",     # Avalanche
     250: "fantom",      # Fantom
     25: "cronos",       # Cronos
     100: "xdai",        # Gnosis Chain (xDAI)
@@ -80,9 +81,18 @@ class MarketDataService:
             logger.error(f"Unsupported chain ID: {chain_id}")
             return None
         
+        # GeckoTerminal expects hex addresses lower-cased for EVM chains, but
+        # Solana (base58) mint addresses are case-sensitive. Lower-casing them
+        # will produce an invalid address and the API will return no data. We
+        # therefore only apply the `.lower()` transformation for non-Solana
+        # networks.
+
+        is_solana = chain_id == 900 or network == "solana"
+        address_for_query = token_address if is_solana else token_address.lower()
+
         url = (
             f"https://api.geckoterminal.com/api/v2/simple/networks/"
-            f"{network}/token_price/{token_address.lower()}?include_24hr_price_change=true&include_24hr_vol=true"
+            f"{network}/token_price/{address_for_query}?include_24hr_price_change=true&include_24hr_vol=true"
         )
         try:
             response = requests.get(url, headers={"accept": "application/json"})
@@ -90,9 +100,15 @@ class MarketDataService:
             data = response.json()
 
             attributes = data.get("data", {}).get("attributes", {})
-    
-            price = attributes.get("token_prices", {}).get(token_address.lower())
-            change_24h = attributes.get("h24_price_change_percentage", {}).get(token_address.lower())
+
+            # Keys from the API are lower-cased for EVM; for Solana they match
+            # the exact mint address. Try both to be safe.
+            key_lower = token_address.lower()
+            price_dict = attributes.get("token_prices", {})
+            change_dict = attributes.get("h24_price_change_percentage", {})
+
+            price = price_dict.get(key_lower) or price_dict.get(token_address)
+            change_24h = change_dict.get(key_lower) or change_dict.get(token_address)
             if price is not None:
                 return {
                     "usdPrice": float(price),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TextInput, Select, Switch, Button } from '@mantine/core';
+import { BlockchainAddressInput } from '../components/BlockchainAddressInput';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import {
   LineChart,
@@ -53,15 +54,12 @@ const TradingForm: React.FC<TradingFormProps> = ({
       <h2 className="mb-4 text-2xl font-bold">MEV Trading Parameters</h2>
 
       <div className="space-y-4">
-        <TextInput
+        <BlockchainAddressInput
           label="Token Address"
           value={parameters.tokenAddress}
-          onChange={(e) => setParameters((prev) => ({ ...prev, tokenAddress: e.target.value }))}
-          placeholder="0x..."
-          classNames={{
-            input: 'bg-white dark:bg-boxdark text-black dark:text-white',
-            label: 'text-black dark:text-white',
-          }}
+          onChange={(value) => setParameters((prev) => ({ ...prev, tokenAddress: value }))}
+          chainId={1} // Default to Ethereum for MEV trading
+          placeholder="Enter token contract address..."
           className="w-full"
         />
         <TextInput

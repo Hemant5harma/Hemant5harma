@@ -103,6 +103,14 @@ const networkOptions = [
     network_name: 'Monad testnet',
     color: 'from-primary to-secondary',
   },
+  {
+    value: 900,
+    label: 'Solana',
+    shortName: 'SOL',
+    rpc_url: 'https://api.mainnet-beta.solana.com',
+    network_name: 'Solana',
+    color: 'from-primary to-secondary',
+  },
 ];
 
 const cryptocurrenciesByNetwork: Record<
@@ -216,6 +224,51 @@ const cryptocurrenciesByNetwork: Record<
       symbol: 'WSOL',
       name: 'WSOL (testnet)',
       token_address: '0x5387C85A4965769f6B0Df430638a1388493486F1',
+      color: 'from-primary to-secondary',
+    },
+  ],
+  // Solana Mainnet
+  900: [
+    {
+      symbol: 'SOL',
+      name: 'Solana',
+      token_address: 'So11111111111111111111111111111111111111112',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      token_address: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'RAY',
+      name: 'Raydium',
+      token_address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'SRM',
+      name: 'Serum',
+      token_address: 'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'ORCA',
+      name: 'Orca',
+      token_address: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'MNGO',
+      name: 'Mango',
+      token_address: 'MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac',
+      color: 'from-primary to-secondary',
+    },
+    {
+      symbol: 'STEP',
+      name: 'Step Finance',
+      token_address: 'StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT',
       color: 'from-primary to-secondary',
     },
   ],
