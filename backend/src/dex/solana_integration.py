@@ -54,28 +54,51 @@ class SolanaIntegration:
         
         private_key = encryption_util.decrypt_private_key(encrypted_key)
         
-        # Handle Solana private key format
+        # Handle Solana private key format with better error handling
         try:
-            # Try to decode as base58 (Solana format)
+            decoded_key = None
+            
+            # Try to decode as base58 (Solana format) - most common
             if len(private_key) == 88:  # Base58 encoded private key
-                decoded_key = base58.b58decode(private_key)
-            else:
-                # Convert from hex to base58 if needed
+                try:
+                    decoded_key = base58.b58decode(private_key)
+                    logger.info("Private key decoded as base58 format")
+                except Exception as e:
+                    logger.warning(f"Failed to decode as base58: {e}")
+            
+            # If base58 failed or not base58 length, try hex format
+            if decoded_key is None:
+                # Handle hex format
                 if private_key.startswith('0x'):
                     private_key = private_key[2:]
-                # Pad to 64 characters if needed
-                private_key = private_key.zfill(64)
-                decoded_key = bytes.fromhex(private_key)
+                
+                # Validate hex format
+                try:
+                    # Check if it's valid hex
+                    int(private_key, 16)
+                    # Pad to 64 characters if needed
+                    private_key = private_key.zfill(64)
+                    decoded_key = bytes.fromhex(private_key)
+                    logger.info("Private key decoded as hex format")
+                except ValueError as e:
+                    raise ValueError(f"Invalid hex format in private key: {str(e)}")
             
             # Handle different key lengths
-            if len(decoded_key) == 32:
+            if decoded_key is None:
+                raise ValueError("Could not decode private key in any supported format")
+            elif len(decoded_key) == 32:
                 keypair = Keypair.from_seed(decoded_key)
+                logger.info("Created keypair from 32-byte seed")
             elif len(decoded_key) == 64:
                 keypair = Keypair.from_bytes(decoded_key)
+                logger.info("Created keypair from 64-byte keypair bytes")
             else:
-                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes")
+                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes (expected 32 or 64)")
                 
         except Exception as e:
+            logger.error(f"Private key processing failed: {e}")
+            logger.error(f"Private key length: {len(private_key)}")
+            logger.error(f"Private key starts with: {private_key[:10]}...")
             raise Exception(f"Failed to load Solana keypair: {str(e)}")
         
         wallet_pubkey = str(keypair.pubkey())
@@ -115,6 +138,7 @@ class SolanaIntegration:
         Returns:
             Dict containing quote data compatible with DexIntegration format
         """
+        client = None
         try:
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
             
@@ -160,7 +184,8 @@ class SolanaIntegration:
             logger.error(f"Solana quote failed: {e}")
             raise Exception(f"Solana quote failed: {str(e)}")
         finally:
-            await client.close()
+            if client:
+                await client.close()
     
     async def execute_trade(self, buy_token: str, sell_amount: int, chain_id: int, user_id: int, db: AsyncSession, sell_token: str = None) -> str:
         """
@@ -177,6 +202,7 @@ class SolanaIntegration:
         Returns:
             Transaction signature (equivalent to transaction hash)
         """
+        client = None
         try:
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
             
@@ -272,7 +298,8 @@ class SolanaIntegration:
             logger.error(f"Solana trade execution failed: {e}")
             raise Exception(f"Solana trade execution failed: {str(e)}")
         finally:
-            await client.close()
+            if client:
+                await client.close()
     
     async def _confirm_transaction(self, client: AsyncClient, signature: str, max_retries: int = 30) -> bool:
         """Confirm Solana transaction"""

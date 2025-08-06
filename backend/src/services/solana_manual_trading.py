@@ -104,28 +104,51 @@ class SolanaManualTradingService:
         
         private_key = encryption_util.decrypt_private_key(encrypted_key)
         
-        # Handle Solana private key format conversion
+        # Handle Solana private key format conversion with better error handling
         try:
-            # Try to decode as base58 (Solana format)
+            decoded_key = None
+            
+            # Try to decode as base58 (Solana format) - most common
             if len(private_key) == 88:  # Base58 encoded private key
-                decoded_key = base58.b58decode(private_key)
-            else:
-                # Convert from hex to bytes if needed
+                try:
+                    decoded_key = base58.b58decode(private_key)
+                    logger.info("Private key decoded as base58 format")
+                except Exception as e:
+                    logger.warning(f"Failed to decode as base58: {e}")
+            
+            # If base58 failed or not base58 length, try hex format
+            if decoded_key is None:
+                # Handle hex format
                 if private_key.startswith('0x'):
                     private_key = private_key[2:]
-                # Pad to 64 characters if needed
-                private_key = private_key.zfill(64)
-                decoded_key = bytes.fromhex(private_key)
+                
+                # Validate hex format
+                try:
+                    # Check if it's valid hex
+                    int(private_key, 16)
+                    # Pad to 64 characters if needed
+                    private_key = private_key.zfill(64)
+                    decoded_key = bytes.fromhex(private_key)
+                    logger.info("Private key decoded as hex format")
+                except ValueError as e:
+                    raise ValueError(f"Invalid hex format in private key: {str(e)}")
             
             # Handle different key lengths
-            if len(decoded_key) == 32:
+            if decoded_key is None:
+                raise ValueError("Could not decode private key in any supported format")
+            elif len(decoded_key) == 32:
                 keypair = Keypair.from_seed(decoded_key)
+                logger.info("Created keypair from 32-byte seed")
             elif len(decoded_key) == 64:
                 keypair = Keypair.from_bytes(decoded_key)
+                logger.info("Created keypair from 64-byte keypair bytes")
             else:
-                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes")
+                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes (expected 32 or 64)")
                 
         except Exception as e:
+            logger.error(f"Private key processing failed: {e}")
+            logger.error(f"Private key length: {len(private_key)}")
+            logger.error(f"Private key starts with: {private_key[:10]}...")
             raise Exception(f"Failed to load Solana keypair: {str(e)}")
         
         wallet_pubkey = str(keypair.pubkey())
@@ -153,6 +176,7 @@ class SolanaManualTradingService:
     
     async def get_quote(self, quote_request: QuoteRequest, user_id: int, db: AsyncSession) -> QuoteResponse:
         """Get quote using Jupiter API - mirrors ManualTradingService interface"""
+        client = None
         try:
             chain_id = quote_request.chain_id
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
@@ -203,10 +227,12 @@ class SolanaManualTradingService:
             logger.error(f"Solana quote failed: {e}")
             raise Exception(f"Solana quote failed: {str(e)}")
         finally:
-            await client.close()
+            if client:
+                await client.close()
     
     async def execute_trade(self, trade_request: ManualTradeRequest, user_id: int, db: AsyncSession) -> ManualTradeResponse:
         """Execute trade using Jupiter API - mirrors ManualTradingService interface"""
+        client = None
         try:
             chain_id = trade_request.chain_id
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
@@ -272,7 +298,8 @@ class SolanaManualTradingService:
             logger.error(f"Solana trade execution failed: {e}")
             raise Exception(f"Solana trade execution failed: {str(e)}")
         finally:
-            await client.close()
+            if client:
+                await client.close()
     
     async def _execute_transaction(self, swap_result: dict, client: AsyncClient, keypair: Keypair) -> str:
         """Execute the Solana transaction"""
@@ -419,6 +446,7 @@ class SolanaManualTradingService:
     
     async def get_wallet_balances(self, balance_request: WalletBalanceRequest, user_id: int, db: AsyncSession) -> WalletBalanceResponse:
         """Get wallet balances for Solana - mirrors ManualTradingService interface"""
+        client = None
         try:
             chain_id = balance_request.chain_id
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
@@ -446,7 +474,8 @@ class SolanaManualTradingService:
             logger.error(f"Solana balance check failed: {e}")
             raise Exception(f"Solana balance check failed: {str(e)}")
         finally:
-            await client.close()
+            if client:
+                await client.close()
     
     async def _get_spl_token_info(self, token_mint: str, client: AsyncClient, wallet_pubkey: Pubkey) -> Optional[TokenInfo]:
         """Get SPL token information"""
