@@ -9,6 +9,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.encryption import encryption_util
+from src.utils.solana_key_handler import SolanaKeyHandler
+from src.utils.solana_transaction_checker import SolanaTransactionChecker
 from src.database.queries import get_user_private_key_by_type
 
 # Import Solana libraries
@@ -54,51 +56,15 @@ class SolanaIntegration:
         
         private_key = encryption_util.decrypt_private_key(encrypted_key)
         
-        # Handle Solana private key format with better error handling
+        # Use the comprehensive key handler to support all formats
         try:
-            decoded_key = None
-            
-            # Try to decode as base58 (Solana format) - most common
-            if len(private_key) == 88:  # Base58 encoded private key
-                try:
-                    decoded_key = base58.b58decode(private_key)
-                    logger.info("Private key decoded as base58 format")
-                except Exception as e:
-                    logger.warning(f"Failed to decode as base58: {e}")
-            
-            # If base58 failed or not base58 length, try hex format
-            if decoded_key is None:
-                # Handle hex format
-                if private_key.startswith('0x'):
-                    private_key = private_key[2:]
-                
-                # Validate hex format
-                try:
-                    # Check if it's valid hex
-                    int(private_key, 16)
-                    # Pad to 64 characters if needed
-                    private_key = private_key.zfill(64)
-                    decoded_key = bytes.fromhex(private_key)
-                    logger.info("Private key decoded as hex format")
-                except ValueError as e:
-                    raise ValueError(f"Invalid hex format in private key: {str(e)}")
-            
-            # Handle different key lengths
-            if decoded_key is None:
-                raise ValueError("Could not decode private key in any supported format")
-            elif len(decoded_key) == 32:
-                keypair = Keypair.from_seed(decoded_key)
-                logger.info("Created keypair from 32-byte seed")
-            elif len(decoded_key) == 64:
-                keypair = Keypair.from_bytes(decoded_key)
-                logger.info("Created keypair from 64-byte keypair bytes")
-            else:
-                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes (expected 32 or 64)")
-                
+            keypair = SolanaKeyHandler.create_keypair_from_private_key(private_key)
+            logger.info("Successfully created Solana keypair using SolanaKeyHandler")
         except Exception as e:
-            logger.error(f"Private key processing failed: {e}")
-            logger.error(f"Private key length: {len(private_key)}")
-            logger.error(f"Private key starts with: {private_key[:10]}...")
+            logger.error(f"Failed to create Solana keypair: {e}")
+            # Log key format detection for debugging
+            key_validation = SolanaKeyHandler.validate_key_format(private_key)
+            logger.error(f"Key validation: {key_validation}")
             raise Exception(f"Failed to load Solana keypair: {str(e)}")
         
         wallet_pubkey = str(keypair.pubkey())
@@ -282,15 +248,23 @@ class SolanaIntegration:
             tx_signature = str(send_response.value)
             logger.info(f"Solana transaction sent: {tx_signature}")
             
-            # Step 4: Confirm transaction
-            logger.info("Waiting for Solana confirmation...")
-            confirmed = await self._confirm_transaction(client, tx_signature)
+            # Step 4: Comprehensive transaction status checking
+            logger.info("Checking Solana transaction status...")
+            tx_checker = SolanaTransactionChecker(self.rpc_endpoint)
+            status_result = await tx_checker.check_transaction_status(tx_signature, timeout_seconds=90)
             
-            if confirmed:
+            if status_result["status"] == "success":
                 logger.info("Solana swap completed successfully!")
                 logger.info(f"Explorer: https://explorer.solana.com/tx/{tx_signature}")
+                logger.info(f"Transaction details: {status_result}")
+            elif status_result["status"] == "failed":
+                logger.error(f"Solana transaction failed: {status_result.get('error', 'Unknown error')}")
+                raise Exception(f"Transaction failed: {status_result.get('error', 'Unknown error')}")
+            elif status_result["status"] == "timeout":
+                logger.warning(f"Solana transaction confirmation timeout: {status_result.get('error', 'Timeout')}")
+                # Don't raise exception for timeout - transaction might still succeed
             else:
-                logger.warning("Solana transaction confirmation timeout")
+                logger.warning(f"Solana transaction status unclear: {status_result}")
             
             return tx_signature
             

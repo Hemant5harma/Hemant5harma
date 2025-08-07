@@ -14,6 +14,8 @@ from src.py_models.manual_trade import (
     NetworkInfo, SupportedNetworksResponse
 )
 from src.utils.encryption import encryption_util
+from src.utils.solana_key_handler import SolanaKeyHandler
+from src.utils.solana_transaction_checker import SolanaTransactionChecker
 from src.database.queries import get_user_private_key_by_type
 
 # Import Solana libraries
@@ -104,51 +106,15 @@ class SolanaManualTradingService:
         
         private_key = encryption_util.decrypt_private_key(encrypted_key)
         
-        # Handle Solana private key format conversion with better error handling
+        # Use the comprehensive key handler to support all formats
         try:
-            decoded_key = None
-            
-            # Try to decode as base58 (Solana format) - most common
-            if len(private_key) == 88:  # Base58 encoded private key
-                try:
-                    decoded_key = base58.b58decode(private_key)
-                    logger.info("Private key decoded as base58 format")
-                except Exception as e:
-                    logger.warning(f"Failed to decode as base58: {e}")
-            
-            # If base58 failed or not base58 length, try hex format
-            if decoded_key is None:
-                # Handle hex format
-                if private_key.startswith('0x'):
-                    private_key = private_key[2:]
-                
-                # Validate hex format
-                try:
-                    # Check if it's valid hex
-                    int(private_key, 16)
-                    # Pad to 64 characters if needed
-                    private_key = private_key.zfill(64)
-                    decoded_key = bytes.fromhex(private_key)
-                    logger.info("Private key decoded as hex format")
-                except ValueError as e:
-                    raise ValueError(f"Invalid hex format in private key: {str(e)}")
-            
-            # Handle different key lengths
-            if decoded_key is None:
-                raise ValueError("Could not decode private key in any supported format")
-            elif len(decoded_key) == 32:
-                keypair = Keypair.from_seed(decoded_key)
-                logger.info("Created keypair from 32-byte seed")
-            elif len(decoded_key) == 64:
-                keypair = Keypair.from_bytes(decoded_key)
-                logger.info("Created keypair from 64-byte keypair bytes")
-            else:
-                raise ValueError(f"Invalid private key length: {len(decoded_key)} bytes (expected 32 or 64)")
-                
+            keypair = SolanaKeyHandler.create_keypair_from_private_key(private_key)
+            logger.info("Successfully created Solana keypair using SolanaKeyHandler")
         except Exception as e:
-            logger.error(f"Private key processing failed: {e}")
-            logger.error(f"Private key length: {len(private_key)}")
-            logger.error(f"Private key starts with: {private_key[:10]}...")
+            logger.error(f"Failed to create Solana keypair: {e}")
+            # Log key format detection for debugging
+            key_validation = SolanaKeyHandler.validate_key_format(private_key)
+            logger.error(f"Key validation: {key_validation}")
             raise Exception(f"Failed to load Solana keypair: {str(e)}")
         
         wallet_pubkey = str(keypair.pubkey())
@@ -280,15 +246,38 @@ class SolanaManualTradingService:
             # Step 3: Execute the transaction
             tx_signature = await self._execute_transaction(swap_result, client, keypair)
             
+            # Step 4: Check transaction status immediately after sending
+            logger.info("Checking transaction status for accurate result...")
+            tx_checker = SolanaTransactionChecker(self.rpc_endpoint)
+            status_result = await tx_checker.check_transaction_status(tx_signature, timeout_seconds=90)
+            
+            # Determine final status
+            final_status = "pending"  # Default
+            actual_gas_used = "5000"  # Default estimate
+            
+            if status_result["status"] == "success":
+                final_status = "success"
+                actual_gas_used = str(status_result.get("compute_units_consumed", 5000))
+                logger.info(f"Trade completed successfully: {tx_signature}")
+            elif status_result["status"] == "failed":
+                final_status = "failed"
+                logger.error(f"Trade failed: {status_result.get('error', 'Unknown error')}")
+            elif status_result["status"] == "timeout":
+                final_status = "pending"  # Keep as pending for timeout
+                logger.warning(f"Trade status check timeout - marking as pending: {tx_signature}")
+            else:
+                final_status = "pending"
+                logger.info(f"Trade status unclear - marking as pending: {tx_signature}")
+            
             return ManualTradeResponse(
                 transaction_hash=tx_signature,  # Using signature as transaction_hash for compatibility
                 sell_token=sell_token,
                 buy_token=buy_token,
                 sell_amount=trade_request.sell_amount,
                 buy_amount=quote_data.get("outAmount", "0"),
-                gas_used="5000",  # Solana compute units
+                gas_used=actual_gas_used,
                 gas_price="0.000005",  # Solana fees
-                status="pending",
+                status=final_status,  # Now returns accurate status
                 timestamp=datetime.now(),
                 chain_id=chain_id,
                 network_name=self.supported_chains[chain_id]["name"]
@@ -343,7 +332,7 @@ class SolanaManualTradingService:
             raise Exception(f"Transaction execution failed: {str(e)}")
     
     async def get_transaction_status(self, tx_hash: str, chain_id: int) -> Dict[str, Any]:
-        """Get transaction status using public RPC - mirrors ManualTradingService interface"""
+        """Get transaction status using comprehensive checker - mirrors ManualTradingService interface"""
         try:
             if chain_id not in self.supported_chains:
                 return {
@@ -353,90 +342,45 @@ class SolanaManualTradingService:
                     "chain_id": chain_id
                 }
             
-            # Setup client for status checking (no auth needed)
+            # Use the comprehensive transaction checker
             chain_info = self.supported_chains[chain_id]
-            client = AsyncClient(chain_info["rpc"])
+            tx_checker = SolanaTransactionChecker(chain_info["rpc"])
             
-            try:
-                from solders.signature import Signature
-                sig = Signature.from_string(tx_hash)
-                
-                # Check transaction status
-                tx_response = await client.get_transaction(
-                    sig,
-                    encoding="json",
-                    commitment=Confirmed,
-                    max_supported_transaction_version=0
-                )
-                
-                if tx_response.value is not None:
-                    # Transaction found and confirmed
-                    tx_data = tx_response.value
-                    # Map Solana status to our standard status
-                    if tx_data.meta and tx_data.meta.err is None:
-                        status = "success"  # Use "success" to match EVM networks
-                    else:
-                        status = "failed"
-                    
-                    return {
-                        "transaction_hash": tx_hash,
-                        "status": status,
-                        "chain_id": chain_id,
-                        "block_number": tx_data.slot if tx_data else None,
-                        "gas_used": "5000"  # Solana compute units (approximation)
-                    }
-                else:
-                    # Check if transaction exists in mempool
-                    try:
-                        # Try to get signature status
-                        status_response = await client.get_signature_statuses([sig])
-                        if status_response.value and status_response.value[0]:
-                            signature_status = status_response.value[0]
-                            if signature_status.confirmation_status:
-                                # Transaction is processed
-                                if signature_status.err is None:
-                                    status = "success"
-                                else:
-                                    status = "failed"
-                                return {
-                                    "transaction_hash": tx_hash,
-                                    "status": status,
-                                    "chain_id": chain_id,
-                                    "block_number": signature_status.slot,
-                                    "gas_used": "5000"
-                                }
-                            else:
-                                return {
-                                    "transaction_hash": tx_hash,
-                                    "status": "pending",
-                                    "chain_id": chain_id
-                                }
-                        else:
-                            return {
-                                "transaction_hash": tx_hash,
-                                "status": "not_found",
-                                "chain_id": chain_id
-                            }
-                    except Exception:
-                        return {
-                            "transaction_hash": tx_hash,
-                            "status": "not_found",
-                            "chain_id": chain_id
-                        }
-                        
-            except Exception as e:
-                logger.error(f"Solana transaction status check failed for {tx_hash}: {e}")
-                return {
-                    "transaction_hash": tx_hash,
-                    "status": "error",
-                    "error": str(e),
-                    "chain_id": chain_id
-                }
-            finally:
-                await client.close()
+            # Get comprehensive status (with shorter timeout for status checks)
+            status_result = await tx_checker.check_transaction_status(tx_hash, timeout_seconds=30)
+            
+            # Map to our standard format
+            result = {
+                "transaction_hash": tx_hash,
+                "status": status_result["status"],
+                "chain_id": chain_id
+            }
+            
+            # Add additional fields if available
+            if "block_number" in status_result:
+                result["block_number"] = status_result["block_number"]
+            
+            if "compute_units_consumed" in status_result:
+                result["gas_used"] = str(status_result["compute_units_consumed"])
+            elif "fee" in status_result:
+                result["gas_used"] = "5000"  # Default estimate
+            else:
+                result["gas_used"] = "5000"  # Default estimate
+            
+            if "error" in status_result:
+                result["error"] = status_result["error"]
+            
+            if "block_time" in status_result:
+                result["block_time"] = status_result["block_time"]
+            
+            if "fee" in status_result:
+                result["fee"] = status_result["fee"]
+            
+            logger.info(f"Transaction status for {tx_hash}: {result['status']}")
+            return result
                 
         except Exception as e:
-            logger.error(f"Solana transaction status outer error for {tx_hash}: {e}")
+            logger.error(f"Solana transaction status error for {tx_hash}: {e}")
             return {
                 "transaction_hash": tx_hash,
                 "status": "error",
