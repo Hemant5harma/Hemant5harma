@@ -77,6 +77,12 @@ class WalletBalanceResponse(BaseModel):
     chain_id: int
     network_name: Optional[str] = None
 
+class DirectWalletBalanceRequest(BaseModel):
+    """Request model for direct balance check using a provided private key"""
+    chain_id: int = Field(..., description="Chain ID of the network (EVM chain IDs or 900 for Solana)")
+    private_key: str = Field(..., description="Private key string (hex for EVM; base58/JSON/hex for Solana)")
+    tokens: Optional[list[str]] = Field(default=None, description="Optional token list to check balances")
+
 class NetworkInfo(BaseModel):
     """Network information model"""
     chain_id: int

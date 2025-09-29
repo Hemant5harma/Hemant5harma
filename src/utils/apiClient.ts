@@ -256,6 +256,15 @@ export const deleteBot = async (botId: number) => {
   }
 };
 
+// Wallet balances for authenticated user
+export const getWalletBalances = async (chainId: number, tokens?: string[]) => {
+  const payload: any = { chain_id: chainId };
+  if (tokens && tokens.length > 0) {
+    payload.tokens = tokens;
+  }
+  return apiClient.post('/mtrades/wallet/balances', payload);
+};
+
 /**
  * Get trade history for a specific bot
  */

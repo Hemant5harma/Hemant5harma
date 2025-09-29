@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { apiClient } from '../utils/apiClient';
+import { apiClient, getWalletBalances } from '../utils/apiClient';
 import { showNotification } from '@mantine/notifications';
 import {
   networkOptions,
@@ -169,6 +169,8 @@ const ManualTrade: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [quoteError, setQuoteError] = useState<string>('');
+  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [nativeBalance, setNativeBalance] = useState<string>('0');
   // Search state
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -180,6 +182,9 @@ const ManualTrade: React.FC = () => {
       setBuyToken(tokens[1]);
     }
     fetchTradeHistory();
+    // Reset balances on network change
+    setBalances({});
+    setNativeBalance('0');
   }, [selectedNetwork]);
 
   const fetchSupportedNetworks = async () => {
@@ -250,6 +255,26 @@ const ManualTrade: React.FC = () => {
       setQuoteLoading(false);
     }
   }, [sellAmount, sellToken, buyToken, slippage, selectedNetwork]);
+
+  // Fetch balances whenever selected tokens change
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        const tokenList = [sellToken?.address, buyToken?.address].filter(Boolean) as string[];
+        if (tokenList.length === 0) return;
+        const res = await getWalletBalances(selectedNetwork.chain_id, tokenList);
+        setNativeBalance(res.native_balance || '0');
+        const map: Record<string, string> = {};
+        (res.tokens || []).forEach((t: any) => {
+          map[t.address] = t.balance;
+        });
+        setBalances(map);
+      } catch (e) {
+        // Silent fail; UI already has notifications in apiClient
+      }
+    };
+    fetchBalances();
+  }, [selectedNetwork.chain_id, sellToken?.address, buyToken?.address]);
 
   useEffect(() => {
     if (sellAmount && Number.parseFloat(sellAmount) > 0 && sellToken && buyToken) {
@@ -703,6 +728,23 @@ const ManualTrade: React.FC = () => {
                     <DollarSign className="mr-2 h-4 w-4" />
                     You Pay
                   </label>
+                  {sellToken && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Balance: {
+                        (() => {
+                          const bal = sellToken.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || (selectedNetwork.chain_id === 900 && sellToken.address === 'So11111111111111111111111111111111111111112')
+                            ? nativeBalance
+                            : balances[sellToken.address] || '0';
+                          const dec = sellToken.decimals;
+                          try {
+                            return (Number(bal) / Math.pow(10, dec)).toFixed(6);
+                          } catch {
+                            return '0';
+                          }
+                        })()
+                      } {sellToken.symbol}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
                   <input
@@ -750,6 +792,23 @@ const ManualTrade: React.FC = () => {
                     <TrendingUp className="mr-2 h-4 w-4" />
                     You Receive
                   </label>
+                  {buyToken && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Balance: {
+                        (() => {
+                          const bal = buyToken.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || (selectedNetwork.chain_id === 900 && buyToken.address === 'So11111111111111111111111111111111111111112')
+                            ? nativeBalance
+                            : balances[buyToken.address] || '0';
+                          const dec = buyToken.decimals;
+                          try {
+                            return (Number(bal) / Math.pow(10, dec)).toFixed(6);
+                          } catch {
+                            return '0';
+                          }
+                        })()
+                      } {buyToken.symbol}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
                   <input

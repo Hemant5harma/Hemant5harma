@@ -7,6 +7,8 @@ from sqlalchemy.orm import joinedload
 from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
 from src.dex.unified_dex_router import UnifiedDexRouter
+from src.services.manager import BotManager
+from src.py_models.manual_trade import WalletBalanceRequest
 
 from src.database.queries import create_or_update_bot_performance
 
@@ -193,6 +195,29 @@ async def check_bot(bot_id: int):
             # Get all coins for this bot
             coins = bot.coins
             
+            # Check native balance once upfront (we use native token as sell token by default)
+            try:
+                balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=None)
+                balances = await dex_router.get_wallet_balances(balance_request, bot.user_id, db)
+                native_balance_smallest = int(balances.native_balance)
+            except Exception as e:
+                logger.error(f"Failed to get wallet balance for bot {bot_id}: {e}")
+                native_balance_smallest = 0
+            
+            # Determine unit multiplier per chain (lamports for Solana, wei for EVM)
+            unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
+            
+            # If no native balance at all, pause the bot and exit early
+            if native_balance_smallest <= 0:
+                logger.warning(f"No native balance detected for bot {bot_id}; pausing bot.")
+                try:
+                    BotManager().pause_job(bot_id)
+                except Exception:
+                    pass
+                bot.status = "paused"
+                await db.commit()
+                return
+            
             for coin in coins:
                 try:
                     # Create market data service instance
@@ -221,14 +246,23 @@ async def check_bot(bot_id: int):
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
                     if condition_met:
                         logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
-                        # Determine appropriate unit conversion based on blockchain type
-                        # For EVM chains, amounts are denominated in wei (10**18)
-                        # For Solana, amounts should be in lamports (10**9)
-                        unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
+                        # Check sufficient native balance before executing
+                        required_amount = int(coin.amount * unit_multiplier) if coin.amount else 0
+                        if native_balance_smallest < required_amount:
+                            logger.warning(
+                                f"Insufficient native balance for bot {bot_id}: have {native_balance_smallest}, need {required_amount}. Pausing bot."
+                            )
+                            try:
+                                BotManager().pause_job(bot_id)
+                            except Exception:
+                                pass
+                            bot.status = "paused"
+                            await db.commit()
+                            return
 
                         tx_hash = await dex_router.execute_bot_trade(
                             buy_token=coin.token_address,
-                            sell_amount=int(coin.amount * unit_multiplier),
+                            sell_amount=required_amount,
                             chain_id=chain_id,
                             user_id=bot.user_id,
                             db=db

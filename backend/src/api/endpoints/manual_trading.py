@@ -6,6 +6,7 @@ from src.dex.unified_dex_router import UnifiedDexRouter
 from src.py_models.manual_trade import (
     QuoteRequest, QuoteResponse, ManualTradeRequest, 
     ManualTradeResponse, WalletBalanceResponse, WalletBalanceRequest,
+    DirectWalletBalanceRequest,
     NetworkInfo, SupportedNetworksResponse
 )
 from src.database.queries import (
@@ -163,6 +164,117 @@ async def get_wallet_balances(
         return balances
     except Exception as e:
         logger.error(f"Failed to get wallet balances: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/wallet/balances-by-key", response_model=WalletBalanceResponse)
+async def get_wallet_balances_by_key(
+    balance_request: DirectWalletBalanceRequest,
+):
+    """
+    Get wallet balances using a directly provided private key (no user auth).
+    Supports EVM chains (hex private key) and Solana (base58/JSON/hex formats).
+    """
+    try:
+        # Route directly without DB or current_user; services will use provided key
+        # We'll dynamically create services like ManualTradingService/SolanaManualTradingService
+        chain_id = balance_request.chain_id
+        tokens = balance_request.tokens or []
+
+        if chain_id == 900:
+            # Solana flow
+            from src.services.solana_manual_trading import SolanaManualTradingService
+            from src.utils.solana_key_handler import SolanaKeyHandler
+            from solana.rpc.async_api import AsyncClient
+            from solders.pubkey import Pubkey
+            import base64
+
+            service = SolanaManualTradingService()
+            client = AsyncClient(service.supported_chains[900]["rpc"])
+            try:
+                keypair = SolanaKeyHandler.create_keypair_from_private_key(balance_request.private_key)
+                # Native SOL balance
+                sol_balance = await client.get_balance(keypair.pubkey())
+                native_balance = str(sol_balance.value)
+
+                # Token balances
+                token_infos = []
+                if tokens:
+                    for token_mint in tokens:
+                        try:
+                            info = await service._get_spl_token_info(token_mint, client, keypair.pubkey())
+                            if info:
+                                token_infos.append(info)
+                        except Exception:
+                            continue
+
+                return WalletBalanceResponse(
+                    native_balance=native_balance,
+                    tokens=token_infos,
+                    chain_id=900,
+                    network_name=service.supported_chains[900]["name"],
+                )
+            finally:
+                await client.close()
+        else:
+            # EVM flow
+            from web3 import Web3
+            from web3.middleware import ExtraDataToPOAMiddleware
+            from eth_account import Account
+            from src.services.manual_trading import ManualTradingService
+
+            evm = ManualTradingService()
+            if chain_id not in evm.supported_chains:
+                raise HTTPException(status_code=400, detail=f"Chain {chain_id} not supported")
+            rpc = evm.supported_chains[chain_id]["rpc"]
+            web3 = Web3(Web3.HTTPProvider(rpc))
+            web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+
+            # Private key may have 0x prefix
+            account = Account.from_key(balance_request.private_key)
+            address = account.address
+
+            # Native balance
+            native_balance = str(web3.eth.get_balance(address))
+
+            # ERC20 balances
+            token_infos = []
+            if tokens:
+                token_infos = []
+                erc20_abi = [
+                    {"constant": True, "inputs": [], "name": "name", "outputs": [{"name": "", "type": "string"}], "type": "function"},
+                    {"constant": True, "inputs": [], "name": "symbol", "outputs": [{"name": "", "type": "string"}], "type": "function"},
+                    {"constant": True, "inputs": [], "name": "decimals", "outputs": [{"name": "", "type": "uint8"}], "type": "function"},
+                    {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}
+                ]
+                for token_address in tokens:
+                    try:
+                        contract = web3.eth.contract(
+                            address=Web3.to_checksum_address(token_address),
+                            abi=erc20_abi,
+                        )
+                        token_infos.append({
+                            "address": token_address,
+                            "symbol": contract.functions.symbol().call(),
+                            "name": contract.functions.name().call(),
+                            "decimals": contract.functions.decimals().call(),
+                            "balance": str(contract.functions.balanceOf(address).call()),
+                        })
+                    except Exception:
+                        continue
+
+            # Normalize to TokenInfo list
+            from src.py_models.manual_trade import TokenInfo
+            tokens_model = [TokenInfo(**ti) if isinstance(ti, dict) else ti for ti in token_infos]
+            return WalletBalanceResponse(
+                native_balance=native_balance,
+                tokens=tokens_model,
+                chain_id=chain_id,
+                network_name=evm.supported_chains[chain_id]["name"],
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get balances by key: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/history")
