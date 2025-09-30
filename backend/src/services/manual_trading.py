@@ -42,6 +42,9 @@ class ManualTradingService:
             10: {"name": "Optimism", "rpc": f"https://optimism-mainnet.infura.io/v3/{self.infura_api_key}"},
             10143: {"name": "Monad Testnet", "rpc": "https://testnet-rpc.monad.xyz"},
         }
+        # Simple in-memory cache for ERC20 metadata to avoid repeated RPC calls
+        # Keyed by token address (checksum), value: {symbol, name, decimals}
+        self._erc20_meta_cache: dict[str, dict] = {}
     
     def get_supported_networks(self) -> SupportedNetworksResponse:
         """Get supported networks"""
@@ -311,6 +314,9 @@ class ManualTradingService:
             tokens = []
             if balance_request.tokens:
                 for token_address in balance_request.tokens:
+                    # Skip native token sentinel to avoid unnecessary contract calls
+                    if token_address.lower() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
+                        continue
                     token_info = self._get_token_info(token_address, web3, wallet_address)
                     if token_info:
                         tokens.append(token_info)
@@ -329,6 +335,10 @@ class ManualTradingService:
     def _get_token_info(self, token_address: str, web3: Web3, wallet_address: str) -> Optional[TokenInfo]:
         """Get ERC20 token info"""
         try:
+            # Skip native token sentinel
+            if token_address.lower() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
+                return None
+
             erc20_abi = [
                 {"constant": True, "inputs": [], "name": "name", "outputs": [{"name": "", "type": "string"}], "type": "function"},
                 {"constant": True, "inputs": [], "name": "symbol", "outputs": [{"name": "", "type": "string"}], "type": "function"},
@@ -336,16 +346,24 @@ class ManualTradingService:
                 {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}
             ]
             
-            contract = web3.eth.contract(
-                address=Web3.to_checksum_address(token_address),
-                abi=erc20_abi
-            )
+            checksum = Web3.to_checksum_address(token_address)
+            contract = web3.eth.contract(address=checksum, abi=erc20_abi)
+
+            # Use cached metadata when available to avoid extra RPCs
+            meta = self._erc20_meta_cache.get(checksum)
+            if not meta:
+                meta = {
+                    "symbol": contract.functions.symbol().call(),
+                    "name": contract.functions.name().call(),
+                    "decimals": contract.functions.decimals().call(),
+                }
+                self._erc20_meta_cache[checksum] = meta
             
             return TokenInfo(
                 address=token_address,
-                symbol=contract.functions.symbol().call(),
-                name=contract.functions.name().call(),
-                decimals=contract.functions.decimals().call(),
+                symbol=meta["symbol"],
+                name=meta["name"],
+                decimals=meta["decimals"],
                 balance=str(contract.functions.balanceOf(wallet_address).call())
             )
             

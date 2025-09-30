@@ -20,7 +20,7 @@ from src.database.queries import get_user_private_key_by_type
 
 # Import Solana libraries
 from solana.rpc.async_api import AsyncClient
-from solana.rpc.types import TxOpts
+from solana.rpc.types import TxOpts, TokenAccountOpts
 from solana.rpc.commitment import Confirmed, Finalized
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
@@ -403,6 +403,9 @@ class SolanaManualTradingService:
             tokens = []
             if balance_request.tokens:
                 for token_mint in balance_request.tokens:
+                    # Skip SOL mint here; native SOL is returned separately
+                    if token_mint == self.common_tokens["SOL"]:
+                        continue
                     token_info = await self._get_spl_token_info(token_mint, client, keypair.pubkey())
                     if token_info:
                         tokens.append(token_info)
@@ -422,36 +425,39 @@ class SolanaManualTradingService:
                 await client.close()
     
     async def _get_spl_token_info(self, token_mint: str, client: AsyncClient, wallet_pubkey: Pubkey) -> Optional[TokenInfo]:
-        """Get SPL token information"""
+        """Get SPL token information by querying token accounts and summing balances"""
         try:
-            # Get token accounts for this mint
-            from spl.token.core import get_associated_token_address
-            
-            # Get associated token account
-            token_account = get_associated_token_address(wallet_pubkey, Pubkey.from_string(token_mint))
-            
-            # Get account info
-            account_info = await client.get_account_info(token_account)
-            
-            if account_info.value is None:
-                # No token account exists, balance is 0
-                balance = "0"
-            else:
-                # Parse token account data to get balance
-                # This is a simplified version - in production you'd use SPL token library
-                balance = "0"  # Placeholder - would need proper SPL token parsing
-            
-            # Get token metadata (simplified - would use token registry in production)
+            mint_pk = Pubkey.from_string(token_mint)
+
+            # Find token accounts (jsonParsed to read balances directly)
+            accounts_resp = await client.get_token_accounts_by_owner(
+                owner=wallet_pubkey,
+                opts=TokenAccountOpts(mint=mint_pk, encoding="jsonParsed")
+            )
+            accounts = getattr(accounts_resp, 'value', None) or []
+
+            total = 0
+            for acc in accounts:
+                try:
+                    # acc is dict with keys 'pubkey' and 'account'
+                    parsed = acc.get('account', {}).get('data', {}).get('parsed', {})
+                    info = parsed.get('info', {})
+                    token_amount = info.get('tokenAmount', {})
+                    amt_str = token_amount.get('amount', '0')
+                    total += int(amt_str)
+                except Exception as e:
+                    logger.debug(f"Failed parsing token account: {e}")
+                    continue
+            total_amount = str(total)
+
             token_data = self._get_token_metadata(token_mint)
-            
             return TokenInfo(
                 address=token_mint,
                 symbol=token_data.get("symbol", "UNKNOWN"),
                 name=token_data.get("name", "Unknown Token"),
                 decimals=token_data.get("decimals", 9),
-                balance=balance
+                balance=total_amount
             )
-            
         except Exception as e:
             logger.error(f"SPL token info failed for {token_mint}: {e}")
             return None
