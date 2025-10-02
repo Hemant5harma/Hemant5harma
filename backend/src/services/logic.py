@@ -9,6 +9,7 @@ from src.database.connection import async_session
 from src.dex.unified_dex_router import UnifiedDexRouter
 from src.services.manager import BotManager
 from src.py_models.manual_trade import WalletBalanceRequest
+from src.services.notifications import NotificationService
 
 from src.database.queries import create_or_update_bot_performance
 
@@ -216,6 +217,20 @@ async def check_bot(bot_id: int):
                     pass
                 bot.status = "paused"
                 await db.commit()
+                # Notify: paused due to insufficient balance (zero)
+                try:
+                    await NotificationService.emit(
+                        db,
+                        user_id=bot.user_id,
+                        type="bot.paused_insufficient_balance",
+                        title="Bot paused: insufficient balance",
+                        message="Bot paused due to zero native balance",
+                        severity="warning",
+                        bot_id=bot_id,
+                        extra_data={"available": native_balance_smallest, "required": 0, "chain_id": chain_id},
+                    )
+                except Exception:
+                    pass
                 return
             
             for coin in coins:
@@ -258,6 +273,20 @@ async def check_bot(bot_id: int):
                                 pass
                             bot.status = "paused"
                             await db.commit()
+                            # Notify: paused due to insufficient balance
+                            try:
+                                await NotificationService.emit(
+                                    db,
+                                    user_id=bot.user_id,
+                                    type="bot.paused_insufficient_balance",
+                                    title="Bot paused: insufficient balance",
+                                    message=f"Needed {required_amount}, available {native_balance_smallest}",
+                                    severity="warning",
+                                    bot_id=bot_id,
+                                    extra_data={"available": native_balance_smallest, "required": required_amount, "token": coin.token_address, "chain_id": chain_id},
+                                )
+                            except Exception:
+                                pass
                             return
 
                         tx_hash = await dex_router.execute_bot_trade(

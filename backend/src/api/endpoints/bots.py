@@ -24,6 +24,7 @@ from src.database.models.models import User
 from src.services.logic import check_bot, calculate_bot_performance
 from typing import List, Optional
 import logging
+from src.services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,19 @@ async def create_and_start_bot(
     # 5) Launch the job manager
     job_manager = JobManager(scheduler_manager=BotManager())
     await job_manager.start_bot_job(db_bot.id, check_bot)
+    # Emit notification: bot started
+    try:
+        await NotificationService.emit(
+            db,
+            user_id=current_user.id,
+            type="bot.started",
+            title="Bot started",
+            message=f"Bot '{db_bot.name}' started",
+            severity="success",
+            bot_id=db_bot.id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit bot started notification: {e}")
     
     # Refresh bot data after starting
     updated_bot = await get_bot_by_id(db, db_bot.id)
@@ -139,7 +153,19 @@ async def start_bot(
     # Create an instance of JobManager and pass in your BotManager
     job_manager = JobManager(scheduler_manager=BotManager())
     await job_manager.start_bot_job(bot_id, check_bot)
-
+    # Notification: bot started
+    try:
+        await NotificationService.emit(
+            db,
+            user_id=current_user.id,
+            type="bot.started",
+            title="Bot started",
+            message=f"Bot '{bot.name}' started",
+            severity="success",
+            bot_id=bot_id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit bot started notification: {e}")
     return bot_response
 
 @router.put("/{bot_id}/pause", response_model=BotResponse)
@@ -155,6 +181,21 @@ async def pause_bot(
 
     job_manager = JobManager(scheduler_manager=BotManager())
     await job_manager.pause_bot_job(bot_id)
+    # Update DB status to paused for consistency
+    await update_bot_status(db, bot_id, "paused")
+    # Notification: bot paused
+    try:
+        await NotificationService.emit(
+            db,
+            user_id=current_user.id,
+            type="bot.paused",
+            title="Bot paused",
+            message=f"Bot '{bot.name}' paused",
+            severity="info",
+            bot_id=bot_id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit bot paused notification: {e}")
 
     coins = [CoinResponse.model_validate(coin) for coin in await get_coins_by_bot(db, bot_id)]
     bot_data = {
@@ -194,6 +235,19 @@ async def resume_bot(
     # 3) Resume the bot job on the scheduler
     job_manager = JobManager(scheduler_manager=BotManager())
     await job_manager.resume_bot_job(bot_id)
+    # Notification: bot resumed
+    try:
+        await NotificationService.emit(
+            db,
+            user_id=current_user.id,
+            type="bot.resumed",
+            title="Bot resumed",
+            message=f"Bot '{resumed_bot.name}' resumed",
+            severity="success",
+            bot_id=bot_id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit bot resumed notification: {e}")
 
     # 4) Return updated bot info
     coins = [CoinResponse.model_validate(coin) for coin in await get_coins_by_bot(db, bot_id)]
@@ -221,6 +275,22 @@ async def delete_existing_bot(
     bot = await get_bot_by_id(db, bot_id)
     if not bot or bot.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Bot not found or not yours")
+
+    # Emit notification BEFORE deleting the bot to avoid foreign key constraint issues
+    try:
+        await NotificationService.emit(
+            db,
+            user_id=current_user.id,
+            type="bot.deleted",
+            title="Bot deleted",
+            message=f"Bot '{bot.name}' deleted",
+            severity="warning",
+            bot_id=None,  # Don't reference the bot_id since it will be deleted
+            extra_data={"deleted_bot_id": bot_id, "bot_name": bot.name},
+        )
+    except Exception as e:
+        # Log but don't fail the deletion
+        logger.error(f"Failed to emit bot deletion notification: {e}")
 
     job_manager = JobManager(scheduler_manager=BotManager())
     await job_manager.exit_bot_job(bot_id)

@@ -144,6 +144,51 @@ export const apiClient = {
   },
 
   /**
+   * PATCH request with authentication
+   */
+  patch: async (endpoint: string, data: any) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const errorMessage =
+          errorData?.detail ||
+          errorData?.message ||
+          `Request failed with status ${response.status}`;
+
+        // Show error notification only once
+        showNotification({
+          title: 'Error',
+          message: errorMessage,
+          color: 'red',
+        });
+
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error: any) {
+      // Only show notification for network errors if no notification was already shown
+      if (error.message === 'Failed to fetch') {
+        showNotification({
+          title: 'Connection Error',
+          message: 'Unable to connect to server',
+          color: 'red',
+        });
+        throw new Error('Unable to connect to server');
+      }
+
+      // Re-throw the error without showing another notification
+      throw error;
+    }
+  },
+
+  /**
    * DELETE request with authentication
    */
   delete: async (endpoint: string) => {
@@ -276,5 +321,62 @@ export const fetchBotTradeHistory = async (botId: number) => {
     console.error(`Error fetching trade history for bot ${botId}:`, error);
     // Don't show additional notification here since apiClient already handles it
     throw error;
+  }
+};
+
+/**
+ * Fetch notifications from backend
+ */
+export const fetchNotifications = async (status?: string, limit = 50, offset = 0) => {
+  try {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    const data = await apiClient.get(`/notifications?${params.toString()}`);
+    return data;
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get unread notification count
+ */
+export const getUnreadNotificationCount = async () => {
+  try {
+    const data = await apiClient.get('/notifications/unread-count');
+    return data.count;
+  } catch (error) {
+    console.error('Error fetching unread count:', error);
+    return 0;
+  }
+};
+
+/**
+ * Mark notification as read
+ */
+export const markNotificationAsRead = async (notificationId: number) => {
+  try {
+    await apiClient.patch(`/notifications/${notificationId}/read`, {});
+    return true;
+  } catch (error) {
+    console.error(`Error marking notification ${notificationId} as read:`, error);
+    return false;
+  }
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const data = await apiClient.post('/notifications/mark-all-read', {});
+    return data.updated || 0;
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    return 0;
   }
 };

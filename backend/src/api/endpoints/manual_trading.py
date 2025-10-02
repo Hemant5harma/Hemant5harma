@@ -19,6 +19,7 @@ from src.api.auth_utils import get_current_user
 from src.api.dependencies import get_db_session
 from typing import Dict, Any, List, Optional
 import logging
+from src.services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +116,55 @@ async def execute_trade(
         
         # Update the result status to reflect what we stored
         result.status = initial_status
+
+        # Emit notifications for success/failed
+        try:
+            if initial_status == "success":
+                await NotificationService.emit(
+                    db,
+                    user_id=current_user.id,
+                    type="trade.success",
+                    title="Trade executed",
+                    message=f"Bought {result.buy_amount} {result.buy_token} for {result.sell_amount} {result.sell_token}",
+                    severity="success",
+                    extra_data={
+                        "tx_hash": result.transaction_hash,
+                        "chain_id": trade_request.chain_id,
+                        "network": result.network_name,
+                    },
+                )
+            elif initial_status == "failed":
+                await NotificationService.emit(
+                    db,
+                    user_id=current_user.id,
+                    type="trade.failed",
+                    title="Trade failed",
+                    message=f"Trade failed for pair {result.sell_token}->{result.buy_token}",
+                    severity="error",
+                    extra_data={
+                        "tx_hash": result.transaction_hash,
+                        "chain_id": trade_request.chain_id,
+                        "network": result.network_name,
+                    },
+                )
+        except Exception as e:
+            logger.error(f"Failed to emit trade notification: {e}")
         
         return result
     except Exception as e:
         logger.error(f"Failed to execute trade: {e}")
+        try:
+            await NotificationService.emit(
+                db,
+                user_id=current_user.id,
+                type="trade.failed",
+                title="Trade failed",
+                message=str(e),
+                severity="error",
+                extra_data={"chain_id": getattr(trade_request, 'chain_id', None)},
+            )
+        except Exception as notification_error:
+            logger.error(f"Failed to emit trade failure notification: {notification_error}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/transaction/{tx_hash}")

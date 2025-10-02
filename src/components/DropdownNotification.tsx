@@ -4,8 +4,8 @@ import ClickOutside from './ClickOutside';
 import { useNotifications, NotificationType } from '../context/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 
-const NotificationIcon = ({ type }: { type: NotificationType }) => {
-  switch (type) {
+const NotificationIcon = ({ severity }: { severity: string }) => {
+  switch (severity) {
     case 'success':
       return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-500">
@@ -94,8 +94,8 @@ const DropdownNotification = () => {
   const { notifications, markAsRead, clearNotification, clearAllNotifications, unreadCount } =
     useNotifications();
 
-  const handleNotificationClick = (id: string) => {
-    markAsRead(id);
+  const handleNotificationClick = async (id: number) => {
+    await markAsRead(id);
   };
 
   return (
@@ -155,12 +155,12 @@ const DropdownNotification = () => {
                   <li key={notification.id}>
                     <div
                       className={`flex gap-4 border-t border-stroke p-4 hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4 ${
-                        notification.read ? 'opacity-70' : ''
+                        notification.status === 'read' ? 'opacity-70' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification.id)}
                     >
                       <div>
-                        <NotificationIcon type={notification.type} />
+                        <NotificationIcon severity={notification.severity} />
                       </div>
                       <div className="flex-1">
                         <h6 className="mb-1 font-medium text-black dark:text-white">
@@ -170,7 +170,7 @@ const DropdownNotification = () => {
                           {notification.message}
                         </p>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(notification.timestamp), {
+                          {formatDistanceToNow(new Date(notification.created_at), {
                             addSuffix: true,
                           })}
                         </p>

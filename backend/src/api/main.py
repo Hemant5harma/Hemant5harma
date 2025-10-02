@@ -4,7 +4,7 @@ import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.database.models.models import Base
-from .endpoints import users, auth, bots, manual_trading, private_keys
+from .endpoints import users, auth, bots, manual_trading, private_keys, notifications
 import logging
 
 # Configure logging
@@ -63,6 +63,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(bots.router, prefix="/bots", tags=["bots"])
 app.include_router(manual_trading.router, prefix="/mtrades", tags=["manual-trading"])
 app.include_router(private_keys.router, prefix="/private-keys", tags=["private-keys"])
+app.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 
 @app.get("/")
 async def root():

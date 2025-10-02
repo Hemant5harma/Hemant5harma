@@ -93,3 +93,20 @@ class BotPerformance(Base):
     total_perf = Column(Float, default=0.0)
     updated_at = Column(DateTime, default=datetime.utcnow)
     bot = relationship("Bot", back_populates="performances")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String, nullable=False)  # e.g., bot.started, bot.paused, bot.paused_insufficient_balance, bot.deleted, bot.resumed, trade.success, trade.failed
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    severity = Column(String, nullable=False, default="info")  # info|success|warning|error
+    status = Column(String, nullable=False, default="unread")  # unread|read
+    bot_id = Column(Integer, ForeignKey("bots.id", ondelete="SET NULL"), nullable=True)
+    trade_id = Column(Integer, ForeignKey("trades.id", ondelete="SET NULL"), nullable=True)
+    extra_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    read_at = Column(DateTime, nullable=True)

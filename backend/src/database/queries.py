@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete 
-from .models.models import User, Bot, Coin, Trade, BotPerformance, ManualTrade
+from .models.models import User, Bot, Coin, Trade, BotPerformance, ManualTrade, Notification
 from datetime import datetime , timezone
 from typing import Optional, List
+from sqlalchemy import desc
 
 # User Operations
 async def create_user(db: AsyncSession, address: str) -> User:
@@ -395,3 +396,76 @@ async def update_manual_trade_status(db: AsyncSession, tx_hash: str, status: str
         await db.refresh(manual_trade)
     
     return manual_trade
+
+# Notification Operations
+async def create_notification(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    type: str,
+    title: str,
+    message: str,
+    severity: str = "info",
+    bot_id: Optional[int] = None,
+    trade_id: Optional[int] = None,
+    extra_data: Optional[dict] = None,
+) -> Notification:
+    notification = Notification(
+        user_id=user_id,
+        type=type,
+        title=title,
+        message=message,
+        severity=severity,
+        status="unread",
+        bot_id=bot_id,
+        trade_id=trade_id,
+        extra_data=extra_data or {}
+    )
+    db.add(notification)
+    await db.commit()
+    await db.refresh(notification)
+    return notification
+
+async def list_notifications(
+    db: AsyncSession,
+    user_id: int,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
+) -> List[Notification]:
+    query = select(Notification).where(Notification.user_id == user_id)
+    if status:
+        query = query.where(Notification.status == status)
+    query = query.order_by(desc(Notification.created_at)).limit(limit).offset(offset)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def mark_notification_read(db: AsyncSession, user_id: int, notification_id: int) -> bool:
+    result = await db.execute(
+        select(Notification).where(Notification.id == notification_id, Notification.user_id == user_id)
+    )
+    n = result.scalar_one_or_none()
+    if not n:
+        return False
+    n.status = "read"
+    n.read_at = datetime.utcnow()
+    await db.commit()
+    return True
+
+async def mark_all_notifications_read(db: AsyncSession, user_id: int) -> int:
+    result = await db.execute(select(Notification).where(Notification.user_id == user_id, Notification.status == "unread"))
+    notifications = result.scalars().all()
+    count = 0
+    for n in notifications:
+        n.status = "read"
+        n.read_at = datetime.utcnow()
+        count += 1
+    if count:
+        await db.commit()
+    return count
+
+async def get_unread_count(db: AsyncSession, user_id: int) -> int:
+    result = await db.execute(
+        select(Notification).where(Notification.user_id == user_id, Notification.status == "unread")
+    )
+    return len(result.scalars().all())
