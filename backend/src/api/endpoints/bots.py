@@ -11,7 +11,8 @@ from src.database.queries import (
     get_all_bot,
     get_bots_by_chain,
     get_bot_performance,
-    get_trades_by_bot
+    get_trades_by_bot,
+    get_bot_by_user_and_name
 )
 from src.py_models.bot import BotCreate, BotResponse, BotUpdate, BotNetworkUpdate, MultiChainBotStats
 from src.py_models.coin import CoinResponse
@@ -39,6 +40,14 @@ async def create_and_start_bot(
     """
     Creates a new bot for the current user with multi-chain support.
     """
+    # Check if bot name already exists for this user
+    existing_bot = await get_bot_by_user_and_name(db, current_user.id, bot.name)
+    if existing_bot:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Bot with name '{bot.name}' already exists. Please choose a different name."
+        )
+    
     # 1) Create bot in the DB with network parameters
     db_bot = await create_bot(
         db, 

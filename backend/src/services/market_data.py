@@ -95,7 +95,12 @@ class MarketDataService:
             f"{network}/token_price/{address_for_query}?include_24hr_price_change=true&include_24hr_vol=true"
         )
         try:
-            response = requests.get(url, headers={"accept": "application/json"})
+            # Add timeout and retry logic to prevent connection issues
+            response = requests.get(
+                url, 
+                headers={"accept": "application/json"},
+                timeout=10,  # 10 second timeout
+            )
             response.raise_for_status()
             data = response.json()
 

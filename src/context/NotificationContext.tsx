@@ -70,8 +70,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (token) {
       refreshNotifications();
       
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(refreshNotifications, 30000);
+      // Poll for new notifications every 60 seconds (reduced from 30s to reduce load)
+      const interval = setInterval(refreshNotifications, 60000);
       return () => clearInterval(interval);
     }
   }, []);

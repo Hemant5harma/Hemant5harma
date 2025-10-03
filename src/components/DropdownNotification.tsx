@@ -162,17 +162,18 @@ const DropdownNotification = () => {
                       <div>
                         <NotificationIcon severity={notification.severity} />
                       </div>
-                      <div className="flex-1">
-                        <h6 className="mb-1 font-medium text-black dark:text-white">
+                      <div className="flex-1 min-w-0">
+                        <h6 className="mb-1 font-medium text-black dark:text-white break-words">
                           {notification.title}
                         </h6>
-                        <p className="text-sm text-body dark:text-bodydark">
+                        <p className="text-sm text-body dark:text-bodydark break-words overflow-wrap-anywhere">
                           {notification.message}
                         </p>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(notification.created_at), {
-                            addSuffix: true,
-                          })}
+                          {formatDistanceToNow(
+                            new Date(notification.created_at.includes('Z') ? notification.created_at : notification.created_at + 'Z'), 
+                            { addSuffix: true }
+                          )}
                         </p>
                       </div>
                       <button

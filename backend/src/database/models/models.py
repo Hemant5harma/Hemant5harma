@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSO
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Base class for async SQLAlchemy models
 class Base(AsyncAttrs, DeclarativeBase):
@@ -75,8 +75,8 @@ class ManualTrade(Base):
     slippage_bps = Column(Integer, nullable=False, default=100)
     chain_id = Column(Integer, nullable=False, default=1)  # Chain ID for multi-chain support
     network_name = Column(String, nullable=True)  # Network display name (e.g., "Ethereum", "Polygon")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     user = relationship("User", back_populates="manual_trades")
 
 class BotPerformance(Base):
@@ -91,7 +91,7 @@ class BotPerformance(Base):
     three_month_perf = Column(Float, default=0.0)
     six_month_perf = Column(Float, default=0.0)
     total_perf = Column(Float, default=0.0)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     bot = relationship("Bot", back_populates="performances")
 
 
@@ -108,5 +108,5 @@ class Notification(Base):
     bot_id = Column(Integer, ForeignKey("bots.id", ondelete="SET NULL"), nullable=True)
     trade_id = Column(Integer, ForeignKey("trades.id", ondelete="SET NULL"), nullable=True)
     extra_data = Column(JSON, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     read_at = Column(DateTime, nullable=True)

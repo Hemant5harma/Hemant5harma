@@ -27,8 +27,8 @@ class SolanaIntegration:
     
     def __init__(self):
         self.rpc_endpoint = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
-        self.jupiter_quote_url = "https://quote-api.jup.ag/v6/quote"
-        self.jupiter_swap_url = "https://quote-api.jup.ag/v6/swap"
+        self.jupiter_quote_url = "https://lite-api.jup.ag/swap/v1/quote"
+        self.jupiter_swap_url = "https://lite-api.jup.ag/swap/v1/swap"
         
         # Common Solana token mints
         self.common_tokens = {

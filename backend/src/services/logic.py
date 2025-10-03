@@ -203,6 +203,16 @@ async def check_bot(bot_id: int):
                 native_balance_smallest = int(balances.native_balance)
             except Exception as e:
                 logger.error(f"Failed to get wallet balance for bot {bot_id}: {e}")
+                # If it's a connection error, pause the bot temporarily to avoid spam
+                if "ConnectionResetError" in str(e) or "Connection" in str(e):
+                    logger.warning(f"Connection issue detected for bot {bot_id}, pausing temporarily")
+                    try:
+                        BotManager().pause_job(bot_id)
+                        bot.status = "paused"
+                        await db.commit()
+                    except Exception:
+                        pass
+                    return
                 native_balance_smallest = 0
             
             # Determine unit multiplier per chain (lamports for Solana, wei for EVM)
@@ -219,15 +229,23 @@ async def check_bot(bot_id: int):
                 await db.commit()
                 # Notify: paused due to insufficient balance (zero)
                 try:
+                    native_symbol = "SOL" if chain_id == 900 else ("MON" if chain_id == 10143 else "ETH")
+                    message = f"Bot '{bot.name}' paused due to zero {native_symbol} balance"
+                    
                     await NotificationService.emit(
                         db,
                         user_id=bot.user_id,
                         type="bot.paused_insufficient_balance",
                         title="Bot paused: insufficient balance",
-                        message="Bot paused due to zero native balance",
+                        message=message,
                         severity="warning",
                         bot_id=bot_id,
-                        extra_data={"available": native_balance_smallest, "required": 0, "chain_id": chain_id},
+                        extra_data={
+                            "available_native": 0, 
+                            "required_usd": 0, 
+                            "chain_id": chain_id,
+                            "native_symbol": native_symbol
+                        },
                     )
                 except Exception:
                     pass
@@ -275,15 +293,40 @@ async def check_bot(bot_id: int):
                             await db.commit()
                             # Notify: paused due to insufficient balance
                             try:
+                                # Convert wei/lamports to user-friendly amounts
+                                required_usd = coin.amount if coin.amount else 0  # This is already in USD
+                                available_usd = native_balance_smallest / unit_multiplier  # Convert to native token amount
+                                
+                                # Determine native symbol and currency display
+                                if chain_id == 900:
+                                    native_symbol = "SOL"
+                                    currency_display = "USDT"
+                                elif chain_id == 10143:  # Monad testnet
+                                    native_symbol = "MON"
+                                    currency_display = "MON"  # Use MON for Monad testnet
+                                else:
+                                    native_symbol = "ETH"
+                                    currency_display = "USDT"
+                                
+                                # Format the message with user-friendly amounts and bot name
+                                message = f"Bot '{bot.name}' paused: needed ${required_usd:.2f} {currency_display}, available {available_usd:.6f} {native_symbol}"
+                                
                                 await NotificationService.emit(
                                     db,
                                     user_id=bot.user_id,
                                     type="bot.paused_insufficient_balance",
                                     title="Bot paused: insufficient balance",
-                                    message=f"Needed {required_amount}, available {native_balance_smallest}",
+                                    message=message,
                                     severity="warning",
                                     bot_id=bot_id,
-                                    extra_data={"available": native_balance_smallest, "required": required_amount, "token": coin.token_address, "chain_id": chain_id},
+                                    extra_data={
+                                        "available_native": available_usd, 
+                                        "required_usd": required_usd, 
+                                        "token": coin.token_address, 
+                                        "chain_id": chain_id,
+                                        "native_symbol": native_symbol,
+                                        "currency_display": currency_display
+                                    },
                                 )
                             except Exception:
                                 pass

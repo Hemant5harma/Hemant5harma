@@ -115,7 +115,12 @@ class ManualTradingService:
                 "0x-version": "v2"
             }
             
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(
+                url, 
+                params=params, 
+                headers=headers,
+                timeout=30,  # 30 second timeout
+            )
             response.raise_for_status()
             data = response.json()
             
@@ -162,7 +167,12 @@ class ManualTradingService:
                 "0x-version": "v2"
             }
             
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(
+                url, 
+                params=params, 
+                headers=headers,
+                timeout=30,  # 30 second timeout
+            )
             response.raise_for_status()
             quote_data = response.json()
             

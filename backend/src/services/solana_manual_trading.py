@@ -32,8 +32,8 @@ class SolanaManualTradingService:
     
     def __init__(self):
         self.rpc_endpoint = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
-        self.jupiter_quote_url = "https://quote-api.jup.ag/v6/quote"
-        self.jupiter_swap_url = "https://quote-api.jup.ag/v6/swap"
+        self.jupiter_quote_url = "https://lite-api.jup.ag/swap/v1/quote"
+        self.jupiter_swap_url = "https://lite-api.jup.ag/swap/v1/swap"
         
         # Solana chain configuration
         self.supported_chains = {
@@ -55,7 +55,7 @@ class SolanaManualTradingService:
                 "decimals": 6
             },
             "USDT": {
-                "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+                "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY1iMcCe8BenwNYB",
                 "symbol": "USDT",
                 "name": "Tether",
                 "decimals": 6
@@ -217,7 +217,12 @@ class SolanaManualTradingService:
                 "asLegacyTransaction": "false"
             }
             
-            quote_response = requests.get(self.jupiter_quote_url, params=params, timeout=30)
+            quote_response = requests.get(
+                self.jupiter_quote_url, 
+                params=params, 
+                timeout=30,
+                headers={"User-Agent": "DCA-Bot/1.0"}  # Add user agent to avoid blocking
+            )
             quote_response.raise_for_status()
             quote_data = quote_response.json()
             
@@ -459,7 +464,7 @@ class SolanaManualTradingService:
                 balance=total_amount
             )
         except Exception as e:
-            logger.error(f"SPL token info failed for {token_mint}: {e}")
+            logger.warning(f"SPL token info failed for {token_mint}: {e}")
             return None
     
     def _get_token_metadata(self, token_mint: str) -> dict:

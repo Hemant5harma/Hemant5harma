@@ -325,7 +325,7 @@ class JupiterSwapDemo:
         self.tokens = {
             "SOL": "So11111111111111111111111111111111111111112",
             "USDC": "EPjFWdd5AufqSSqeM2qN8dLHFJx9oenfaXqv5UTtRr6cj",
-            "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+            "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY1iMcCe8BenwNYB",
             "RAY": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
             "SRM": "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt"
         }

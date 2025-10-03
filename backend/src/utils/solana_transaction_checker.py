@@ -68,10 +68,12 @@ class SolanaTransactionChecker:
             
         except Exception as e:
             logger.error(f"Transaction status check failed for {signature}: {e}")
+            # RPC errors (rate limiting, network issues) should return "timeout", not "error"
+            # "error" status means transaction failed on-chain, not that we couldn't check it
             return {
                 "transaction_hash": signature,
-                "status": "error",
-                "error": str(e),
+                "status": "timeout",
+                "error": f"Could not check transaction status: {str(e)}",
                 "timestamp": datetime.now().isoformat()
             }
         finally:
@@ -161,8 +163,10 @@ class SolanaTransactionChecker:
             
         except Exception as e:
             logger.error(f"Error getting comprehensive status: {e}")
-            result["status"] = "error"
-            result["error"] = str(e)
+            # RPC errors should return "pending", not "error"
+            # "error" means transaction failed, not that we couldn't check it
+            result["status"] = "pending"
+            result["error"] = f"Could not check status: {str(e)}"
         
         return result
     
@@ -215,7 +219,8 @@ class SolanaTransactionChecker:
                     
         except Exception as e:
             logger.error(f"Error parsing transaction response: {e}")
-            result["status"] = "error"
+            # Parsing errors should return "pending", not "error"
+            result["status"] = "pending"
             result["error"] = f"Failed to parse transaction response: {str(e)}"
         
         return result
@@ -294,10 +299,11 @@ class SolanaTransactionChecker:
             except Exception as e:
                 logger.error(f"Error during confirmation wait (attempt {attempt + 1}): {e}")
                 if attempt == max_retries - 1:  # Last attempt
+                    # Return timeout, not error - we couldn't check, doesn't mean it failed
                     return {
                         "transaction_hash": str(sig),
-                        "status": "error",
-                        "error": f"Failed to check status: {str(e)}",
+                        "status": "timeout",
+                        "error": f"Could not verify transaction status: {str(e)}",
                         "timestamp": datetime.now().isoformat()
                     }
         

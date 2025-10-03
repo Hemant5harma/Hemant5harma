@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete 
 from .models.models import User, Bot, Coin, Trade, BotPerformance, ManualTrade, Notification
-from datetime import datetime , timezone
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy import desc
 
@@ -119,6 +119,13 @@ async def delete_user_private_key_by_type(db: AsyncSession, user_id: int, key_ty
     return True
 
 # Bot Operations
+async def get_bot_by_user_and_name(db: AsyncSession, user_id: int, name: str) -> Optional[Bot]:
+    """
+    Check if a bot with the given name already exists for the user.
+    """
+    result = await db.execute(select(Bot).where(Bot.user_id == user_id, Bot.name == name))
+    return result.scalars().first()
+
 async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
     """
     Creates a new bot for the given user with multi-chain support.
@@ -391,7 +398,7 @@ async def update_manual_trade_status(db: AsyncSession, tx_hash: str, status: str
         manual_trade.status = status
         if gas_used:
             manual_trade.gas_used = gas_used
-        manual_trade.updated_at = datetime.utcnow()
+        manual_trade.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         await db.commit()
         await db.refresh(manual_trade)
     
@@ -448,7 +455,7 @@ async def mark_notification_read(db: AsyncSession, user_id: int, notification_id
     if not n:
         return False
     n.status = "read"
-    n.read_at = datetime.utcnow()
+    n.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.commit()
     return True
 
@@ -458,7 +465,7 @@ async def mark_all_notifications_read(db: AsyncSession, user_id: int) -> int:
     count = 0
     for n in notifications:
         n.status = "read"
-        n.read_at = datetime.utcnow()
+        n.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
         count += 1
     if count:
         await db.commit()

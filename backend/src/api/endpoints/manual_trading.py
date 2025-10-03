@@ -70,33 +70,36 @@ async def execute_trade(
         router = UnifiedDexRouter()
         result = await router.execute_manual_trade(trade_request, current_user.id, db)
         
-        # Try to get immediate transaction status (with short delay for blockchain processing)
+        # For Solana, the service already returns accurate status after comprehensive checking
+        # For EVM chains, we need to do an additional status check
         import asyncio
-        initial_status = "pending"
-        try:
-            # Wait based on network type (Solana is faster than EVM)
-            if trade_request.chain_id == 900:  # Solana
-                await asyncio.sleep(1)  # Shorter delay for Solana
-            else:  # EVM networks
+        initial_status = result.status if result.status else "pending"
+        
+        # Only do additional status check for non-Solana chains
+        if trade_request.chain_id != 900:  # Not Solana
+            try:
                 await asyncio.sleep(2)  # Standard delay for EVM
-            
-            # Check transaction status
-            status_result = await router.get_transaction_status(result.transaction_hash, trade_request.chain_id)
-            blockchain_status = status_result.get("status")
-            logger.info(f"Immediate status check for {result.transaction_hash} (chain {trade_request.chain_id}): {blockchain_status}")
-            
-            # Map blockchain status to our status
-            if blockchain_status in ["confirmed", "success", "finalized"]:
-                initial_status = "success"
-                logger.info(f"Trade {result.transaction_hash} confirmed immediately")
-            elif blockchain_status in ["failed", "error"]:
-                initial_status = "failed"
-                logger.info(f"Trade {result.transaction_hash} failed immediately")
-            else:
-                logger.info(f"Trade {result.transaction_hash} still pending after immediate check")
-        except Exception as e:
-            logger.info(f"Could not get immediate status for {result.transaction_hash}: {e}")
-            # Continue with pending status
+                
+                # Check transaction status
+                status_result = await router.get_transaction_status(result.transaction_hash, trade_request.chain_id)
+                blockchain_status = status_result.get("status")
+                logger.info(f"Immediate status check for {result.transaction_hash} (chain {trade_request.chain_id}): {blockchain_status}")
+                
+                # Map blockchain status to our status
+                if blockchain_status in ["confirmed", "success", "finalized"]:
+                    initial_status = "success"
+                    logger.info(f"Trade {result.transaction_hash} confirmed immediately")
+                elif blockchain_status in ["failed", "error"]:
+                    initial_status = "failed"
+                    logger.info(f"Trade {result.transaction_hash} failed immediately")
+                else:
+                    logger.info(f"Trade {result.transaction_hash} still pending after immediate check")
+            except Exception as e:
+                logger.info(f"Could not get immediate status for {result.transaction_hash}: {e}")
+                # Continue with pending status
+        else:
+            # For Solana, log the status returned by the service
+            logger.info(f"Solana trade {result.transaction_hash} status from service: {initial_status}")
         
         # Store trade in database for the authenticated user
         trade_data = {
@@ -117,29 +120,37 @@ async def execute_trade(
         # Update the result status to reflect what we stored
         result.status = initial_status
 
-        # Emit notifications for success/failed
+        # Emit notifications ONLY for definitive statuses (success/failed), NOT for pending
+        # This prevents premature notifications before the final trade result is known
         try:
             if initial_status == "success":
+                # Format token addresses to be more user-friendly
+                sell_token_display = result.sell_token[:8] + "..." if len(result.sell_token) > 20 else result.sell_token
+                buy_token_display = result.buy_token[:8] + "..." if len(result.buy_token) > 20 else result.buy_token
+                
                 await NotificationService.emit(
                     db,
                     user_id=current_user.id,
                     type="trade.success",
-                    title="Trade executed",
-                    message=f"Bought {result.buy_amount} {result.buy_token} for {result.sell_amount} {result.sell_token}",
+                    title="Trade executed successfully",
+                    message=f"Swap completed on {result.network_name}",
                     severity="success",
                     extra_data={
                         "tx_hash": result.transaction_hash,
                         "chain_id": trade_request.chain_id,
                         "network": result.network_name,
+                        "sell_token": sell_token_display,
+                        "buy_token": buy_token_display,
                     },
                 )
+                logger.info(f"Sent success notification for trade {result.transaction_hash}")
             elif initial_status == "failed":
                 await NotificationService.emit(
                     db,
                     user_id=current_user.id,
                     type="trade.failed",
                     title="Trade failed",
-                    message=f"Trade failed for pair {result.sell_token}->{result.buy_token}",
+                    message=f"Swap failed on {result.network_name}",
                     severity="error",
                     extra_data={
                         "tx_hash": result.transaction_hash,
@@ -147,6 +158,10 @@ async def execute_trade(
                         "network": result.network_name,
                     },
                 )
+                logger.info(f"Sent failed notification for trade {result.transaction_hash}")
+            else:
+                # Pending status - no notification sent, will be updated when status is confirmed
+                logger.info(f"Trade {result.transaction_hash} is pending, notification will be sent when final status is determined")
         except Exception as e:
             logger.error(f"Failed to emit trade notification: {e}")
         
@@ -182,12 +197,51 @@ async def get_transaction_status(
         router = UnifiedDexRouter()
         status = await router.get_transaction_status(tx_hash, chain_id)
         
-        # Update database record if status changed
+        # Update database record if status changed and send notification
         if status.get("status") in ["success", "failed"]:
+            # First check if trade was previously pending
+            from src.database.queries import get_manual_trade_by_hash
+            trade = await get_manual_trade_by_hash(db, tx_hash)
+            was_pending = trade and trade.status == "pending"
+            
+            # Update status in database
             await update_manual_trade_status(
                 db, tx_hash, status["status"], 
                 str(status.get("gas_used", ""))
             )
+            
+            # Send notification if status changed from pending to final
+            if was_pending and trade:
+                try:
+                    network_name = trade.network_name if hasattr(trade, 'network_name') else "blockchain"
+                    if status["status"] == "success":
+                        await NotificationService.emit(
+                            db,
+                            user_id=current_user.id,
+                            type="trade.success",
+                            title="Trade executed successfully",
+                            message=f"Swap confirmed on {network_name}",
+                            severity="success",
+                            extra_data={
+                                "tx_hash": tx_hash,
+                                "chain_id": chain_id,
+                            },
+                        )
+                    elif status["status"] == "failed":
+                        await NotificationService.emit(
+                            db,
+                            user_id=current_user.id,
+                            type="trade.failed",
+                            title="Trade failed",
+                            message=f"Swap failed on {network_name}",
+                            severity="error",
+                            extra_data={
+                                "tx_hash": tx_hash,
+                                "chain_id": chain_id,
+                            },
+                        )
+                except Exception as notif_error:
+                    logger.error(f"Failed to send status change notification: {notif_error}")
         
         return status
     except Exception as e:
@@ -355,10 +409,50 @@ async def get_manual_trade_history(
                         await update_manual_trade_status(db, trade.transaction_hash, "success", str(status_result.get("gas_used", "")))
                         trade.status = "success"  # Update in-memory object for response
                         logger.info(f"Updated trade {trade.id} status to success")
+                        
+                        # Send success notification for pending trade that succeeded
+                        try:
+                            await NotificationService.emit(
+                                db,
+                                user_id=current_user.id,
+                                type="trade.success",
+                                title="Trade executed successfully",
+                                message=f"Swap confirmed on {trade.network_name}",
+                                severity="success",
+                                extra_data={
+                                    "tx_hash": trade.transaction_hash,
+                                    "chain_id": trade.chain_id,
+                                    "network": trade.network_name,
+                                },
+                            )
+                            logger.info(f"Sent delayed success notification for trade {trade.transaction_hash}")
+                        except Exception as notif_error:
+                            logger.error(f"Failed to send success notification for trade {trade.id}: {notif_error}")
+                            
                     elif blockchain_status in ["failed", "error"]:
                         await update_manual_trade_status(db, trade.transaction_hash, "failed", str(status_result.get("gas_used", "")))
                         trade.status = "failed"  # Update in-memory object for response
                         logger.info(f"Updated trade {trade.id} status to failed")
+                        
+                        # Send failed notification for pending trade that failed
+                        try:
+                            await NotificationService.emit(
+                                db,
+                                user_id=current_user.id,
+                                type="trade.failed",
+                                title="Trade failed",
+                                message=f"Swap failed on {trade.network_name}",
+                                severity="error",
+                                extra_data={
+                                    "tx_hash": trade.transaction_hash,
+                                    "chain_id": trade.chain_id,
+                                    "network": trade.network_name,
+                                },
+                            )
+                            logger.info(f"Sent delayed failed notification for trade {trade.transaction_hash}")
+                        except Exception as notif_error:
+                            logger.error(f"Failed to send failed notification for trade {trade.id}: {notif_error}")
+                            
                     else:
                         logger.info(f"Trade {trade.id} still pending (status: {blockchain_status})")
                 except Exception as e:
