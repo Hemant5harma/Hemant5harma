@@ -196,11 +196,51 @@ async def check_bot(bot_id: int):
             # Get all coins for this bot
             coins = bot.coins
             
-            # Check native balance once upfront (we use native token as sell token by default)
+            # USDT token addresses for each chain (for DCA bot purchases)
+            usdt_tokens = {
+                900: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # Solana USDT (correct mint)
+                1: "0xdac17f958d2ee523a2206206994597c13d831ec7",      # Ethereum USDT
+                137: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",    # Polygon USDT
+                42161: "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",  # Arbitrum USDT
+                43114: "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7",  # Avalanche USDT
+                56: "0x55d398326f99059ff775485246999027b3197955",     # BSC USDT
+                8453: "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",   # Base USDT
+                10: "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",    # Optimism USDT
+                10143: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D",  # Monad Testnet USDT
+            }
+            
+            # Get USDT token address for this chain
+            usdt_token = usdt_tokens.get(chain_id)
+            
+            # USDT has 6 decimals on ALL chains including Solana
+            usdt_decimals = 6
+            usdt_multiplier = 10 ** usdt_decimals
+            
+            # Determine unit multiplier per chain (lamports for Solana, wei for EVM) - kept for compatibility
+            unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
+            
+            # Check both native balance (for gas) and USDT balance (for trading)
             try:
+                # Get native balance for gas fees
                 balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=None)
                 balances = await dex_router.get_wallet_balances(balance_request, bot.user_id, db)
                 native_balance_smallest = int(balances.native_balance)
+                
+                # Get USDT balance for trading
+                usdt_balance_smallest = 0
+                if usdt_token:
+                    usdt_balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=[usdt_token])
+                    usdt_balances = await dex_router.get_wallet_balances(usdt_balance_request, bot.user_id, db)
+                    # Extract USDT balance from tokens list
+                    if usdt_balances.tokens:
+                        for token_info in usdt_balances.tokens:
+                            if token_info.address.lower() == usdt_token.lower():
+                                usdt_balance_smallest = int(token_info.balance)
+                                logger.info(f"Bot {bot_id} - USDT balance: {usdt_balance_smallest} (raw), {usdt_balance_smallest / usdt_multiplier:.6f} USDT")
+                                break
+                    else:
+                        logger.warning(f"Bot {bot_id} - No USDT balance returned for token {usdt_token}")
+                    
             except Exception as e:
                 logger.error(f"Failed to get wallet balance for bot {bot_id}: {e}")
                 # If it's a connection error, pause the bot temporarily to avoid spam
@@ -214,13 +254,11 @@ async def check_bot(bot_id: int):
                         pass
                     return
                 native_balance_smallest = 0
+                usdt_balance_smallest = 0
             
-            # Determine unit multiplier per chain (lamports for Solana, wei for EVM)
-            unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
-            
-            # If no native balance at all, pause the bot and exit early
+            # If no native balance at all, pause the bot and exit early (need native token for gas fees)
             if native_balance_smallest <= 0:
-                logger.warning(f"No native balance detected for bot {bot_id}; pausing bot.")
+                logger.warning(f"No native balance detected for bot {bot_id}; pausing bot (need for gas fees).")
                 try:
                     BotManager().pause_job(bot_id)
                 except Exception:
@@ -230,7 +268,7 @@ async def check_bot(bot_id: int):
                 # Notify: paused due to insufficient balance (zero)
                 try:
                     native_symbol = "SOL" if chain_id == 900 else ("MON" if chain_id == 10143 else "ETH")
-                    message = f"Bot '{bot.name}' paused due to zero {native_symbol} balance"
+                    message = f"Bot '{bot.name}' paused: zero {native_symbol} balance (needed for gas fees)"
                     
                     await NotificationService.emit(
                         db,
@@ -279,11 +317,11 @@ async def check_bot(bot_id: int):
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
                     if condition_met:
                         logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
-                        # Check sufficient native balance before executing
-                        required_amount = int(coin.amount * unit_multiplier) if coin.amount else 0
-                        if native_balance_smallest < required_amount:
+                        # Check sufficient USDT balance before executing (we now use USDT to buy tokens)
+                        required_amount = int(coin.amount * usdt_multiplier) if coin.amount else 0
+                        if usdt_balance_smallest < required_amount:
                             logger.warning(
-                                f"Insufficient native balance for bot {bot_id}: have {native_balance_smallest}, need {required_amount}. Pausing bot."
+                                f"Insufficient USDT balance for bot {bot_id}: have {usdt_balance_smallest}, need {required_amount}. Pausing bot."
                             )
                             try:
                                 BotManager().pause_job(bot_id)
@@ -293,23 +331,18 @@ async def check_bot(bot_id: int):
                             await db.commit()
                             # Notify: paused due to insufficient balance
                             try:
-                                # Convert wei/lamports to user-friendly amounts
+                                # Convert to user-friendly amounts
                                 required_usd = coin.amount if coin.amount else 0  # This is already in USD
-                                available_usd = native_balance_smallest / unit_multiplier  # Convert to native token amount
+                                available_usdt = usdt_balance_smallest / usdt_multiplier  # Convert to USDT amount
                                 
-                                # Determine native symbol and currency display
-                                if chain_id == 900:
-                                    native_symbol = "SOL"
-                                    currency_display = "USDT"
-                                elif chain_id == 10143:  # Monad testnet
-                                    native_symbol = "MON"
+                                # Determine currency display
+                                if chain_id == 10143:  # Monad testnet
                                     currency_display = "MON"  # Use MON for Monad testnet
                                 else:
-                                    native_symbol = "ETH"
                                     currency_display = "USDT"
                                 
                                 # Format the message with user-friendly amounts and bot name
-                                message = f"Bot '{bot.name}' paused: needed ${required_usd:.2f} {currency_display}, available {available_usd:.6f} {native_symbol}"
+                                message = f"Bot '{bot.name}' paused: needed ${required_usd:.2f} {currency_display}, available {available_usdt:.6f} {currency_display}"
                                 
                                 await NotificationService.emit(
                                     db,
@@ -320,11 +353,10 @@ async def check_bot(bot_id: int):
                                     severity="warning",
                                     bot_id=bot_id,
                                     extra_data={
-                                        "available_native": available_usd, 
+                                        "available_usdt": available_usdt, 
                                         "required_usd": required_usd, 
                                         "token": coin.token_address, 
                                         "chain_id": chain_id,
-                                        "native_symbol": native_symbol,
                                         "currency_display": currency_display
                                     },
                                 )

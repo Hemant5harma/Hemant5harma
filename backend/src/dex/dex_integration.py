@@ -37,6 +37,18 @@ class DexIntegration:
             10: {"name": "Optimism", "rpc": f"https://optimism-mainnet.infura.io/v3/{self.infura_api_key}"},
             10143: {"name": "Monad Testnet", "rpc": "https://testnet-rpc.monad.xyz"},
         }
+        
+        # USDT token addresses for each supported chain (for DCA bot purchases)
+        self.usdt_tokens = {
+            1: "0xdac17f958d2ee523a2206206994597c13d831ec7",      # Ethereum USDT
+            137: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",    # Polygon USDT
+            42161: "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",  # Arbitrum USDT
+            43114: "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7",  # Avalanche USDT
+            56: "0x55d398326f99059ff775485246999027b3197955",     # BSC USDT
+            8453: "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",   # Base USDT
+            10: "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",    # Optimism USDT
+            10143: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D",  # Monad Testnet USDT
+        }
     
     async def _setup_for_request(self, chain_id: int, user_id: int, db: AsyncSession) -> tuple[Web3, Account, str]:
         """Setup Web3 and user account for a specific request"""
@@ -79,7 +91,7 @@ class DexIntegration:
             chain_id: Chain ID for the trade
             user_id: User ID for wallet access
             db: Database session
-            sell_token: Token to sell (defaults to native token)
+            sell_token: Token to sell (defaults to USDT for bot trades)
         
         Returns:
             Dict containing quote data
@@ -87,9 +99,9 @@ class DexIntegration:
         try:
             web3, account, wallet_address = await self._setup_for_request(chain_id, user_id, db)
             
-            # Default to native token if no sell_token specified
+            # Default to USDT if no sell_token specified (for DCA bot purchases)
             if sell_token is None:
-                sell_token = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                sell_token = self.usdt_tokens.get(chain_id, "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
             
             sell_token = self._normalize_token_address(sell_token)
             buy_token = self._normalize_token_address(buy_token)
@@ -141,7 +153,7 @@ class DexIntegration:
             chain_id: Chain ID for the trade
             user_id: User ID for wallet access
             db: Database session
-            sell_token: Token to sell (defaults to native token)
+            sell_token: Token to sell (defaults to USDT for bot trades)
         
         Returns:
             Transaction hash of the executed trade
@@ -149,9 +161,9 @@ class DexIntegration:
         try:
             web3, account, wallet_address = await self._setup_for_request(chain_id, user_id, db)
             
-            # Default to native token if no sell_token specified
+            # Default to USDT if no sell_token specified (for DCA bot purchases)
             if sell_token is None:
-                sell_token = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                sell_token = self.usdt_tokens.get(chain_id, "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
             
             sell_token = self._normalize_token_address(sell_token)
             buy_token = self._normalize_token_address(buy_token)

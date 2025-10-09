@@ -55,7 +55,7 @@ class SolanaManualTradingService:
                 "decimals": 6
             },
             "USDT": {
-                "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY1iMcCe8BenwNYB",
+                "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
                 "symbol": "USDT",
                 "name": "Tether",
                 "decimals": 6
@@ -409,7 +409,7 @@ class SolanaManualTradingService:
             if balance_request.tokens:
                 for token_mint in balance_request.tokens:
                     # Skip SOL mint here; native SOL is returned separately
-                    if token_mint == self.common_tokens["SOL"]:
+                    if token_mint == self.common_tokens["SOL"]["mint"]:
                         continue
                     token_info = await self._get_spl_token_info(token_mint, client, keypair.pubkey())
                     if token_info:
@@ -429,43 +429,85 @@ class SolanaManualTradingService:
             if client:
                 await client.close()
     
+    def _get_associated_token_address(self, owner: Pubkey, mint: Pubkey) -> Pubkey:
+        """Compute Associated Token Account (ATA) address using PDA derivation"""
+        # SPL Token Program ID
+        TOKEN_PROGRAM_ID = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+        # Associated Token Program ID  
+        ASSOCIATED_TOKEN_PROGRAM_ID = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+        
+        # Find PDA: [owner, token_program, mint]
+        seeds = [
+            bytes(owner),
+            bytes(TOKEN_PROGRAM_ID),
+            bytes(mint)
+        ]
+        
+        ata, _ = Pubkey.find_program_address(seeds, ASSOCIATED_TOKEN_PROGRAM_ID)
+        return ata
+    
     async def _get_spl_token_info(self, token_mint: str, client: AsyncClient, wallet_pubkey: Pubkey) -> Optional[TokenInfo]:
-        """Get SPL token information by querying token accounts and summing balances"""
+        """Get SPL token information using ATA + get_token_account_balance (robust method)"""
         try:
             mint_pk = Pubkey.from_string(token_mint)
-
-            # Find token accounts (jsonParsed to read balances directly)
-            accounts_resp = await client.get_token_accounts_by_owner(
-                owner=wallet_pubkey,
-                opts=TokenAccountOpts(mint=mint_pk, encoding="jsonParsed")
+            
+            # Compute the Associated Token Account (ATA) for this owner + mint
+            ata = self._get_associated_token_address(wallet_pubkey, mint_pk)
+            
+            # Fetch token account balance via RPC
+            balance_resp = await client.get_token_account_balance(ata)
+            
+            # Extract balance value (handles both typed and dict responses)
+            value = None
+            if hasattr(balance_resp, "value"):
+                value = balance_resp.value
+            elif isinstance(balance_resp, dict):
+                value = balance_resp.get("result", {}).get("value")
+            
+            # Get token metadata
+            token_data = self._get_token_metadata(token_mint)
+            
+            if not value:
+                # Token account doesn't exist or no balance - return zero balance
+                logger.info(f"No ATA found for {token_mint}, returning zero balance")
+                return TokenInfo(
+                    address=token_mint,
+                    symbol=token_data.get("symbol", "UNKNOWN"),
+                    name=token_data.get("name", "Unknown Token"),
+                    decimals=token_data.get("decimals", 9),
+                    balance="0"
+                )
+            
+            # Extract amount and decimals from response
+            if isinstance(value, dict):
+                amount_str = value.get("amount", "0")
+                decimals = value.get("decimals", token_data.get("decimals", 9))
+            else:
+                # Typed response object
+                amount_str = getattr(value, "amount", "0")
+                decimals = getattr(value, "decimals", token_data.get("decimals", 9))
+            
+            logger.info(f"Found {token_data.get('symbol', 'TOKEN')} balance: {amount_str} (raw), ATA: {str(ata)}")
+            
+            return TokenInfo(
+                address=token_mint,
+                symbol=token_data.get("symbol", "UNKNOWN"),
+                name=token_data.get("name", "Unknown Token"),
+                decimals=decimals,
+                balance=amount_str
             )
-            accounts = getattr(accounts_resp, 'value', None) or []
-
-            total = 0
-            for acc in accounts:
-                try:
-                    # acc is dict with keys 'pubkey' and 'account'
-                    parsed = acc.get('account', {}).get('data', {}).get('parsed', {})
-                    info = parsed.get('info', {})
-                    token_amount = info.get('tokenAmount', {})
-                    amt_str = token_amount.get('amount', '0')
-                    total += int(amt_str)
-                except Exception as e:
-                    logger.debug(f"Failed parsing token account: {e}")
-                    continue
-            total_amount = str(total)
-
+            
+        except Exception as e:
+            logger.warning(f"SPL token info failed for {token_mint}: {e}")
+            # Return zero balance on error instead of None
             token_data = self._get_token_metadata(token_mint)
             return TokenInfo(
                 address=token_mint,
                 symbol=token_data.get("symbol", "UNKNOWN"),
                 name=token_data.get("name", "Unknown Token"),
                 decimals=token_data.get("decimals", 9),
-                balance=total_amount
+                balance="0"
             )
-        except Exception as e:
-            logger.warning(f"SPL token info failed for {token_mint}: {e}")
-            return None
     
     def _get_token_metadata(self, token_mint: str) -> dict:
         """Get token metadata from common tokens list"""

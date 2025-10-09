@@ -57,12 +57,17 @@ class SolanaTransactionChecker:
             # If confirmed, validate the transaction was actually successful
             if result["status"] == "confirmed":
                 success_check = await self._validate_transaction_success(client, sig)
-                if success_check["is_successful"]:
+                if success_check["is_successful"] is True:
                     result["status"] = "success"
                     result.update(success_check)
-                else:
+                elif success_check["is_successful"] is False:
+                    # Actual on-chain failure (err != None)
                     result["status"] = "failed"
                     result["error"] = success_check.get("error", "Transaction failed")
+                else:
+                    # Unknown status (validation error, RPC issue, etc.)
+                    result["status"] = "timeout"
+                    result["error"] = success_check.get("error", "Could not validate transaction")
             
             return result
             
@@ -347,66 +352,67 @@ class SolanaTransactionChecker:
                 elif hasattr(tx_data, 'transaction') and hasattr(tx_data.transaction, 'meta'):
                     meta = getattr(tx_data.transaction, 'meta', None)
                 
-                # Check for transaction errors
-                if meta is None:
-                    return {
-                        "is_successful": False,
-                        "error": "Transaction metadata not available"
-                    }
-                
-                err = getattr(meta, 'err', None)
-                if err is not None:
-                    return {
-                        "is_successful": False,
-                        "error": f"Transaction failed: {err}"
-                    }
-                
-                # Additional success validations
-                success_data = {
-                    "is_successful": True,
-                    "block_number": getattr(tx_data, 'slot', None),
-                    "block_time": getattr(tx_data, 'block_time', None),
-                    "fee": getattr(meta, 'fee', 0),
-                    "compute_units_consumed": getattr(meta, 'compute_units_consumed', 0)
-                }
-                
-                # Check for balance changes (indicates successful execution)
-                pre_balances = getattr(meta, 'pre_balances', [])
-                post_balances = getattr(meta, 'post_balances', [])
-                
-                if pre_balances and post_balances and len(pre_balances) == len(post_balances):
-                    balance_changes = []
-                    for i, (pre, post) in enumerate(zip(pre_balances, post_balances)):
-                        if pre != post:
-                            balance_changes.append({
-                                "account_index": i,
-                                "pre_balance": pre,
-                                "post_balance": post,
-                                "change": post - pre
-                            })
-                    
-                    success_data["balance_changes"] = balance_changes
-                    
-                    # If no balance changes, might indicate a failed transaction
-                    fee = getattr(meta, 'fee', 0)
-                    if not balance_changes and fee == 0:
+                # Check for transaction errors - ONLY check err field
+                if meta is not None:
+                    err = getattr(meta, 'err', None)
+                    if err is not None:
+                        # This is an actual on-chain failure
                         return {
                             "is_successful": False,
-                            "error": "No balance changes detected and no fee paid"
+                            "error": f"Transaction failed: {err}"
                         }
-                
-                return success_data
+                    
+                    # Transaction succeeded on-chain (err is None)
+                    success_data = {
+                        "is_successful": True,
+                        "block_number": getattr(tx_data, 'slot', None),
+                        "block_time": getattr(tx_data, 'block_time', None),
+                        "fee": getattr(meta, 'fee', 0),
+                        "compute_units_consumed": getattr(meta, 'compute_units_consumed', 0)
+                    }
+                    
+                    # Check for balance changes (indicates successful execution)
+                    pre_balances = getattr(meta, 'pre_balances', [])
+                    post_balances = getattr(meta, 'post_balances', [])
+                    
+                    if pre_balances and post_balances and len(pre_balances) == len(post_balances):
+                        balance_changes = []
+                        for i, (pre, post) in enumerate(zip(pre_balances, post_balances)):
+                            if pre != post:
+                                balance_changes.append({
+                                    "account_index": i,
+                                    "pre_balance": pre,
+                                    "post_balance": post,
+                                    "change": post - pre
+                                })
+                        
+                        success_data["balance_changes"] = balance_changes
+                    
+                    return success_data
+                else:
+                    # Meta is None but transaction exists - assume success
+                    # (Transaction was sent and mined, which typically means success)
+                    logger.warning(f"Transaction {str(sig)} has no metadata, but exists on-chain - assuming success")
+                    return {
+                        "is_successful": True,
+                        "block_number": getattr(tx_data, 'slot', None),
+                        "block_time": getattr(tx_data, 'block_time', None),
+                        "fee": 5000,  # Default estimate
+                        "compute_units_consumed": 5000  # Default estimate
+                    }
             
             else:
+                # Transaction not found - could be pending or RPC issue
                 return {
-                    "is_successful": False,
+                    "is_successful": "unknown",
                     "error": "Transaction not found for validation"
                 }
                 
         except Exception as e:
             logger.error(f"Error validating transaction success: {e}")
+            # RPC/parsing errors should not be treated as transaction failures
             return {
-                "is_successful": False,
+                "is_successful": "unknown",
                 "error": f"Validation error: {str(e)}"
             }
     

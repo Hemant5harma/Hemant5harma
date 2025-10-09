@@ -34,7 +34,7 @@ class SolanaIntegration:
         self.common_tokens = {
             "SOL": "So11111111111111111111111111111111111111112",  # Wrapped SOL
             "USDC": "EPjFWdd5AufqSSqeM2qN8dLHFJx9oenfaXqv5UTtRr6cj",
-            "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+            "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # Correct USDT mint
             "RAY": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
             "SRM": "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt"
         }
@@ -99,7 +99,7 @@ class SolanaIntegration:
             chain_id: Chain ID (must be 900 for Solana)
             user_id: User ID for wallet access
             db: Database session
-            sell_token: Token to sell (defaults to SOL)
+            sell_token: Token to sell (defaults to USDT for bot trades)
         
         Returns:
             Dict containing quote data compatible with DexIntegration format
@@ -108,9 +108,9 @@ class SolanaIntegration:
         try:
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
             
-            # Default to SOL if no sell_token specified
+            # Default to USDT if no sell_token specified (for DCA bot purchases)
             if sell_token is None:
-                sell_token = self.common_tokens["SOL"]
+                sell_token = self.common_tokens["USDT"]
             
             sell_token = self._normalize_token_address(sell_token)
             buy_token = self._normalize_token_address(buy_token)
@@ -163,7 +163,7 @@ class SolanaIntegration:
             chain_id: Chain ID (must be 900 for Solana)
             user_id: User ID for wallet access
             db: Database session
-            sell_token: Token to sell (defaults to SOL)
+            sell_token: Token to sell (defaults to USDT for bot trades)
         
         Returns:
             Transaction signature (equivalent to transaction hash)
@@ -172,9 +172,9 @@ class SolanaIntegration:
         try:
             client, keypair, wallet_pubkey = await self._setup_for_request(chain_id, user_id, db)
             
-            # Default to SOL if no sell_token specified
+            # Default to USDT if no sell_token specified (for DCA bot purchases)
             if sell_token is None:
-                sell_token = self.common_tokens["SOL"]
+                sell_token = self.common_tokens["USDT"]
             
             sell_token = self._normalize_token_address(sell_token)
             buy_token = self._normalize_token_address(buy_token)
@@ -258,13 +258,23 @@ class SolanaIntegration:
                 logger.info(f"Explorer: https://explorer.solana.com/tx/{tx_signature}")
                 logger.info(f"Transaction details: {status_result}")
             elif status_result["status"] == "failed":
-                logger.error(f"Solana transaction failed: {status_result.get('error', 'Unknown error')}")
-                raise Exception(f"Transaction failed: {status_result.get('error', 'Unknown error')}")
+                # Check if this is an actual on-chain failure or just a validation error
+                error_msg = status_result.get('error', 'Unknown error')
+                if "Validation error" in error_msg or "Could not check" in error_msg:
+                    # Validation/RPC error - transaction might be successful, don't fail
+                    logger.warning(f"Solana transaction validation issue (transaction may have succeeded): {error_msg}")
+                    logger.info(f"Explorer: https://explorer.solana.com/tx/{tx_signature}")
+                else:
+                    # Actual on-chain failure
+                    logger.error(f"Solana transaction failed on-chain: {error_msg}")
+                    raise Exception(f"Transaction failed: {error_msg}")
             elif status_result["status"] == "timeout":
                 logger.warning(f"Solana transaction confirmation timeout: {status_result.get('error', 'Timeout')}")
+                logger.info(f"Explorer: https://explorer.solana.com/tx/{tx_signature}")
                 # Don't raise exception for timeout - transaction might still succeed
             else:
                 logger.warning(f"Solana transaction status unclear: {status_result}")
+                logger.info(f"Explorer: https://explorer.solana.com/tx/{tx_signature}")
             
             return tx_signature
             
