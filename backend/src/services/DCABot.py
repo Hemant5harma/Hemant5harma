@@ -8,7 +8,6 @@ from src.database.connection import async_session
 from src.database.connection import (
     get_db,
 )  # <- note we're importing the function, not calling it
-from src.services.logic import parse_frequency
 from sqlalchemy import delete
 
 
@@ -38,15 +37,25 @@ class JobManager:
                 return False
 
             # Update the bot status
-            bot_frequency = bot.frequency
+            # All bots now check every 1 minute regardless of frequency setting
+            # bot.frequency is used at the logic level to determine when to evaluate conditions
+            # The bot checks every minute, but only evaluates conditions if enough time has passed since last trade
+            # Start checking immediately (or very soon)
             next_run_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
-                seconds=30
+                seconds=5
             )
 
-            # Schedule the job
+            # Schedule the job to run every 1 minute
+            # Bot checks every minute, but condition evaluation is controlled by time windows
+            # based on bot.frequency from the bot's start time
             self.scheduler_manager.schedule_job(
-                bot_id, next_run_time, check_bot, [bot_id], bot_frequency
+                bot_id, next_run_time, check_bot, [bot_id], "1 minute"
             )
+            
+            # Set start_time when bot is first started (only if not already set)
+            if not bot.start_time:
+                bot.start_time = datetime.now(timezone.utc).replace(tzinfo=None)
+            
             bot.status = "running"
             await db.commit()
             logger.info(f"Bot {bot_id} started successfully")
@@ -116,6 +125,41 @@ class JobManager:
         except Exception as e:
             logger.error(f"Error resuming bot {bot_id}: {str(e)}")
             return False
+
+    async def schedule_resume_at_time(self, bot_id: int, resume_time: datetime):
+        """
+        Schedule a one-time resume job at a specific time.
+        Used to resume bot at the start of the next time window.
+        """
+        try:
+            # Create a wrapper function to resume the bot
+            async def resume_wrapper():
+                await self.resume_bot_job(bot_id)
+                # Remove the one-time resume job after execution
+                resume_job_id = f"resume_bot_{bot_id}"
+                try:
+                    job = self.scheduler_manager.scheduler.get_job(resume_job_id)
+                    if job:
+                        self.scheduler_manager.scheduler.remove_job(resume_job_id)
+                        logger.info(f"Removed one-time resume job {resume_job_id} after execution")
+                except Exception as e:
+                    logger.error(f"Error removing resume job {resume_job_id}: {str(e)}")
+            
+            # Schedule the one-time resume job
+            resume_job_id = f"resume_bot_{bot_id}"
+            self.scheduler_manager.schedule_one_time_job(
+                resume_job_id,
+                resume_time,
+                resume_wrapper,
+                []
+            )
+            
+            logger.info(f"Scheduled bot {bot_id} to resume at {resume_time}")
+            return resume_time
+            
+        except Exception as e:
+            logger.error(f"Error scheduling resume for bot {bot_id}: {str(e)}")
+            return None
 
     async def exit_bot_job(self, bot_id: int):
         """Delete a bot using SQLAlchemy ORM"""

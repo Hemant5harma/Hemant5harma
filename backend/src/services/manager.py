@@ -101,6 +101,21 @@ class BotManager:
             self.scheduler.remove_job(job_id)
             logger.info(f"Removed job for bot {bot_id}")
 
+    def schedule_one_time_job(self, job_id: str, run_date: datetime, func, args):
+        """
+        Schedule a one-time job using 'date' trigger.
+        Used for resuming bots after a pause period.
+        """
+        self.scheduler.add_job(
+            func,
+            'date',
+            run_date=run_date,
+            args=args,
+            id=job_id,
+            replace_existing=True
+        )
+        logger.info(f"Scheduled one-time job {job_id} to run at {run_date}")
+
     def list_jobs(self):
         """Return all scheduled jobs."""
         return self.scheduler.get_jobs()

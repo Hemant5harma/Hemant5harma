@@ -8,6 +8,7 @@ from src.database.models.models import Bot, Coin, Trade
 from src.database.connection import async_session
 from src.dex.unified_dex_router import UnifiedDexRouter
 from src.services.manager import BotManager
+from src.services.DCABot import JobManager
 from src.py_models.manual_trade import WalletBalanceRequest
 from src.services.notifications import NotificationService
 
@@ -176,18 +177,66 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
 
 
 async def check_bot(bot_id: int):
-    """Check bot conditions and execute trades using SQLAlchemy ORM"""
+    """Check bot conditions and execute trades using SQLAlchemy ORM
+    
+    Logic-level approach: Bot checks every minute, but only evaluates conditions
+    if enough time has passed since the last trade (based on bot.frequency).
+    """
     async with async_session() as db:
         try:
-            # Get the bot with user information
+            # Get the bot with user information and trades
             result = await db.execute(
-                select(Bot).where(Bot.id == bot_id, Bot.status == "running").options(joinedload(Bot.coins), joinedload(Bot.user))
+                select(Bot).where(Bot.id == bot_id, Bot.status == "running")
+                .options(joinedload(Bot.coins), joinedload(Bot.user), joinedload(Bot.trades))
             )
             bot = result.scalars().first()
 
             if not bot:
                 logger.info(f"Bot {bot_id} not found or not running")
                 return
+            
+            # Logic-level frequency check: Calculate time windows based on bot start time
+            # Bot can trade once per time window (e.g., once per 24 hours from start time)
+            # Windows are calculated from bot.start_time, not from when trade executes
+            if not bot.start_time:
+                # If start_time is not set, set it now (for existing bots)
+                bot.start_time = datetime.now(timezone.utc).replace(tzinfo=None)
+                await db.commit()
+            
+            current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+            required_interval = parse_frequency(bot.frequency)
+            
+            # Calculate which time window we're currently in
+            # Window 0: [start_time, start_time + frequency)
+            # Window 1: [start_time + frequency, start_time + 2*frequency)
+            # Window 2: [start_time + 2*frequency, start_time + 3*frequency)
+            # etc.
+            time_since_start = current_time - bot.start_time
+            current_window = int(time_since_start.total_seconds() / required_interval.total_seconds())
+            current_window_start = bot.start_time + timedelta(seconds=current_window * required_interval.total_seconds())
+            current_window_end = current_window_start + required_interval
+            
+            # Check if bot has already traded in the current window
+            if bot.trades:
+                # Get the most recent trade
+                last_trade = max(bot.trades, key=lambda t: t.trade_time)
+                last_trade_time = last_trade.trade_time
+                
+                # Check if last trade was in the current window
+                if current_window_start <= last_trade_time < current_window_end:
+                    # Already traded in this window, skip until next window
+                    bot.next_execution_time = current_window_end
+                    await db.commit()
+                    logger.info(
+                        f"Bot {bot_id} skipping check: already traded in current window "
+                        f"[{current_window_start} to {current_window_end}]. "
+                        f"Next window starts at {current_window_end}"
+                    )
+                    return
+            
+            # Bot can trade in this window (either no previous trades, or last trade was in a previous window)
+            
+            # Enough time has passed (or no previous trades), proceed with normal checking
 
             chain_id = bot.chain_id  
             # Create UnifiedDexRouter instance (supports both EVM and Solana)
@@ -289,6 +338,9 @@ async def check_bot(bot_id: int):
                     pass
                 return
             
+            # Track if any trade was executed during this check
+            trade_executed = False
+            
             for coin in coins:
                 try:
                     # Create market data service instance
@@ -384,6 +436,7 @@ async def check_bot(bot_id: int):
                             chain_id=chain_id  # Added chain_id from bot config
                         )
                         db.add(trade)
+                        trade_executed = True
                         logger.info(f"Trade executed for bot {bot_id}, coin {coin.id}")
                     else:
                         logger.info(f"Trading condition not met for {coin.token_address}")
@@ -391,9 +444,34 @@ async def check_bot(bot_id: int):
                 except Exception as e:
                     logger.error(f"Error processing coin {coin.id}: {str(e)}")
             
-            # Update next execution time for bot
-            next_time = (datetime.now() + parse_frequency(bot.frequency)).replace(tzinfo=None)
-            bot.next_execution_time = next_time
+            # If a trade was executed, pause the bot until the next window starts
+            # This reduces server load by stopping checks until the next time window
+            if trade_executed:
+                # Calculate next window start time based on bot.start_time and frequency
+                current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+                required_interval = parse_frequency(bot.frequency)
+                time_since_start = current_time - bot.start_time
+                current_window = int(time_since_start.total_seconds() / required_interval.total_seconds())
+                next_window_start = bot.start_time + timedelta(seconds=(current_window + 1) * required_interval.total_seconds())
+                
+                bot.next_execution_time = next_window_start
+                
+                # Pause the bot to reduce server load
+                try:
+                    BotManager().pause_job(bot_id)
+                    bot.status = "paused"
+                    
+                    # Schedule resume at the start of the next window
+                    job_manager = JobManager(scheduler_manager=BotManager())
+                    await job_manager.schedule_resume_at_time(bot_id, next_window_start)
+                    
+                    logger.info(
+                        f"Trade executed for bot {bot_id} in window {current_window}. "
+                        f"Bot paused until next window starts at {next_window_start} "
+                        f"(based on start time {bot.start_time})"
+                    )
+                except Exception as e:
+                    logger.error(f"Error pausing bot {bot_id} after trade: {str(e)}")
             
             # Commit once after processing all coins
             await db.commit()
@@ -410,27 +488,40 @@ async def check_bot(bot_id: int):
 
 
 def parse_frequency(frequency_str):
-    """Parse frequency string into timedelta"""
+    """Parse frequency string into timedelta
+    
+    Supports all timeframes:
+    - every minute, every 5 minutes, every 15 minutes
+    - hourly (1 hour), every 4 hours
+    - daily (1 day)
+    - weekly (1 week)
+    - monthly (1 month), every 3 months, every 6 months
+    - yearly (1 year)
+    """
     try:
         # If frequency is stored as an integer (minutes)
         if isinstance(frequency_str, int):
             return timedelta(minutes=frequency_str)
 
-        # If frequency is stored as a string like "5 minute"
+        # If frequency is stored as a string like "5 minute" or "1 hour"
         num, unit = frequency_str.split()
         num = int(num)
-        if unit.lower() in ("second", "seconds"):
+        unit_lower = unit.lower()
+        
+        if unit_lower in ("second", "seconds"):
             return timedelta(seconds=num)
-        elif unit.lower() in ("minute", "minutes"):
+        elif unit_lower in ("minute", "minutes"):
             return timedelta(minutes=num)
-        elif unit.lower() in ("hour", "hours"):
+        elif unit_lower in ("hour", "hours"):
             return timedelta(hours=num)
-        elif unit.lower() in ("day", "days"):
+        elif unit_lower in ("day", "days"):
             return timedelta(days=num)
-        elif unit.lower() in ("week", "weeks"):
+        elif unit_lower in ("week", "weeks"):
             return timedelta(weeks=num)
-        elif unit.lower() in ("month", "months"):
-            return timedelta(days=num * 30)
+        elif unit_lower in ("month", "months"):
+            return timedelta(days=num * 30)  # Approximate month as 30 days
+        elif unit_lower in ("year", "years"):
+            return timedelta(days=num * 365)  # Approximate year as 365 days
         else:
             raise ValueError(f"Invalid frequency unit: {unit}")
     except Exception as e:

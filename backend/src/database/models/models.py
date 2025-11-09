@@ -28,6 +28,7 @@ class Bot(Base):
     rpc_url = Column(String, nullable=True)  # Optional custom RPC URL
     network_name = Column(String, nullable=True)  # Network display name
     next_execution_time = Column(DateTime)
+    start_time = Column(DateTime, nullable=True)  # Track when bot was started for time window calculation
     user = relationship("User", back_populates="bots")
     coins = relationship("Coin", back_populates="bot", cascade="all, delete-orphan")
     trades = relationship("Trade", back_populates="bot", cascade="all, delete-orphan")

@@ -281,6 +281,11 @@ const frequencyOptions = [
   { value: '1 hour', label: 'Hourly', icon: '🕐' },
   { value: '4 hours', label: 'Every 4 Hours', icon: '📅' },
   { value: '1 day', label: 'Daily', icon: '🌅' },
+  { value: '1 week', label: 'Weekly', icon: '📆' },
+  { value: '1 month', label: 'Monthly', icon: '🗓️' },
+  { value: '3 months', label: 'Every 3 Months', icon: '📊' },
+  { value: '6 months', label: 'Every 6 Months', icon: '📈' },
+  { value: '1 year', label: 'Yearly', icon: '🎯' },
 ];
 
 const DCATrading: React.FC = () => {
