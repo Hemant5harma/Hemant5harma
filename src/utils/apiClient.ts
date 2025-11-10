@@ -380,3 +380,86 @@ export const markAllNotificationsAsRead = async () => {
     return 0;
   }
 };
+
+/**
+ * Wallet management functions
+ */
+// Private key / wallet management functions
+export const fetchPrivateKeys = async (keyType?: string): Promise<any[]> => {
+  try {
+    const query = keyType ? `?key_type=${keyType}` : '';
+    return await apiClient.get(`/private-keys/${query}`);
+  } catch (error) {
+    console.error('Error fetching private keys:', error);
+    throw error;
+  }
+};
+
+export const createPrivateKey = async (data: { name: string; private_key: string; key_type: string }): Promise<any> => {
+  try {
+    const result = await apiClient.post('/private-keys/', data);
+    showNotification({
+      title: 'Wallet Added',
+      message: `Wallet "${data.name}" has been added successfully`,
+      color: 'green',
+    });
+    return result;
+  } catch (error) {
+    console.error('Error creating private key:', error);
+    throw error;
+  }
+};
+
+export const deletePrivateKey = async (keyId: number): Promise<any> => {
+  try {
+    const data = await apiClient.delete(`/private-keys/${keyId}`);
+    showNotification({
+      title: 'Wallet Deleted',
+      message: 'Wallet has been deleted successfully',
+      color: 'green',
+    });
+    return data;
+  } catch (error) {
+    console.error('Error deleting private key:', error);
+    throw error;
+  }
+};
+
+export const updatePrivateKey = async (keyId: number, data: { name: string }): Promise<any> => {
+  try {
+    const result = await apiClient.put(`/private-keys/${keyId}`, data);
+    showNotification({
+      title: 'Wallet Updated',
+      message: 'Wallet name has been updated successfully',
+      color: 'green',
+    });
+    return result;
+  } catch (error) {
+    console.error('Error updating private key:', error);
+    throw error;
+  }
+};
+
+export const setDefaultPrivateKey = async (keyId: number): Promise<any> => {
+  try {
+    const result = await apiClient.post(`/private-keys/${keyId}/set-default`, {});
+    showNotification({
+      title: 'Default Wallet Set',
+      message: 'Default wallet has been updated',
+      color: 'blue',
+    });
+    return result;
+  } catch (error) {
+    console.error('Error setting default private key:', error);
+    throw error;
+  }
+};
+
+export const getPrivateKeyStatus = async (): Promise<any> => {
+  try {
+    return await apiClient.get('/private-keys/status');
+  } catch (error) {
+    console.error('Error getting private key status:', error);
+    throw error;
+  }
+};

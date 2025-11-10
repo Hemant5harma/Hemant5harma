@@ -126,12 +126,13 @@ async def get_bot_by_user_and_name(db: AsyncSession, user_id: int, name: str) ->
     result = await db.execute(select(Bot).where(Bot.user_id == user_id, Bot.name == name))
     return result.scalars().first()
 
-async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None) -> Bot:
+async def create_bot(db: AsyncSession, user_id: int, name: str, frequency: str, chain_id: int = 1, rpc_url: str = None, network_name: str = None, private_key_id: int = None) -> Bot:
     """
     Creates a new bot for the given user with multi-chain support.
     """
     bot = Bot(
-        user_id=user_id, 
+        user_id=user_id,
+        private_key_id=private_key_id,
         name=name, 
         frequency=frequency, 
         status="paused",
@@ -179,9 +180,12 @@ async def delete_bot(db: AsyncSession, bot_id: int) -> None:
 
 async def get_bot_by_id(db: AsyncSession, bot_id: int) -> Bot:
     """
-    Retrieves a bot by its ID.
+    Retrieves a bot by its ID with private key information.
     """
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    from sqlalchemy.orm import joinedload
+    result = await db.execute(
+        select(Bot).where(Bot.id == bot_id).options(joinedload(Bot.private_key))
+    )
     return result.scalars().first()
 
 async def get_all_bot(db: AsyncSession) -> Bot:

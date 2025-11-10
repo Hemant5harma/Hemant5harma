@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { showNotification } from '@mantine/notifications';
-import { privateKeyApi, PrivateKeyStatusResponse } from '../utils/privateKeyApi';
 
 // Custom components to replace Mantine components for better dark mode support
 const CustomSwitch: React.FC<{
@@ -193,22 +192,6 @@ const SettingsPage: React.FC = () => {
     secretKey: '',
   });
 
-  const [ethPrivateKey, setEthPrivateKey] = useState({
-    key: '',
-    hasKey: false,
-    loading: false,
-  });
-
-  const [solanaPrivateKey, setSolanaPrivateKey] = useState({
-    key: '',
-    hasKey: false,
-    loading: false,
-  });
-
-  // Check private key status on mount
-  useEffect(() => {
-    checkPrivateKeyStatus();
-  }, []);
 
   // Handle floating save button visibility
   useEffect(() => {
@@ -221,22 +204,6 @@ const SettingsPage: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const checkPrivateKeyStatus = async () => {
-    try {
-      setEthPrivateKey(prev => ({ ...prev, loading: true }));
-      setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
-      
-      const response: PrivateKeyStatusResponse = await privateKeyApi.getPrivateKeyStatus();
-      
-      setEthPrivateKey(prev => ({ ...prev, hasKey: response.eth_key, loading: false }));
-      setSolanaPrivateKey(prev => ({ ...prev, hasKey: response.solana_key, loading: false }));
-    } catch (error: any) {
-      console.error('Failed to check private key status:', error);
-      setEthPrivateKey(prev => ({ ...prev, loading: false }));
-      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
-    }
-  };
 
   const handleSaveSettings = async () => {
     try {
@@ -254,124 +221,6 @@ const SettingsPage: React.FC = () => {
         message: error.message || 'Failed to save settings',
         color: 'red',
       });
-    }
-  };
-
-  // Private key management functions
-  const handleSaveEthPrivateKey = async () => {
-    if (!ethPrivateKey.key.trim()) {
-      showNotification({
-        title: 'Error',
-        message: 'Please enter an ETH private key',
-        color: 'red',
-      });
-      return;
-    }
-
-    // Basic ETH private key validation
-    const cleanKey = ethPrivateKey.key.trim().replace(/^0x/, '');
-    if (cleanKey.length !== 64 || !/^[0-9a-fA-F]+$/.test(cleanKey)) {
-      showNotification({
-        title: 'Invalid ETH Private Key',
-        message: 'ETH private key must be 64 hex characters',
-        color: 'red',
-      });
-      return;
-    }
-
-    setEthPrivateKey(prev => ({ ...prev, loading: true }));
-    try {
-      await privateKeyApi.savePrivateKey(cleanKey, 'eth');
-      setEthPrivateKey(prev => ({ ...prev, hasKey: true, key: '', loading: false }));
-      showNotification({
-        title: 'Success',
-        message: 'ETH private key saved successfully',
-        color: 'green',
-      });
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to save ETH private key',
-        color: 'red',
-      });
-      setEthPrivateKey(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleSaveSolanaPrivateKey = async () => {
-    if (!solanaPrivateKey.key.trim()) {
-      showNotification({
-        title: 'Error',
-        message: 'Please enter a Solana private key',
-        color: 'red',
-      });
-      return;
-    }
-
-    setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
-    try {
-      await privateKeyApi.savePrivateKey(solanaPrivateKey.key.trim(), 'solana');
-      setSolanaPrivateKey(prev => ({ ...prev, hasKey: true, key: '', loading: false }));
-      showNotification({
-        title: 'Success',
-        message: 'Solana private key saved successfully',
-        color: 'green',
-      });
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to save Solana private key',
-        color: 'red',
-      });
-      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleDeleteEthPrivateKey = async () => {
-    if (!window.confirm('Are you sure you want to delete your ETH private key?')) {
-      return;
-    }
-
-    setEthPrivateKey(prev => ({ ...prev, loading: true }));
-    try {
-      await privateKeyApi.deletePrivateKey('eth');
-      setEthPrivateKey(prev => ({ ...prev, hasKey: false, loading: false }));
-      showNotification({
-        title: 'Success',
-        message: 'ETH private key deleted successfully',
-        color: 'green',
-      });
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to delete ETH private key',
-        color: 'red',
-      });
-      setEthPrivateKey(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleDeleteSolanaPrivateKey = async () => {
-    if (!window.confirm('Are you sure you want to delete your Solana private key?')) {
-      return;
-    }
-
-    setSolanaPrivateKey(prev => ({ ...prev, loading: true }));
-    try {
-      await privateKeyApi.deletePrivateKey('solana');
-      setSolanaPrivateKey(prev => ({ ...prev, hasKey: false, loading: false }));
-      showNotification({
-        title: 'Success',
-        message: 'Solana private key deleted successfully',
-        color: 'green',
-      });
-    } catch (error: any) {
-      showNotification({
-        title: 'Error',
-        message: error.message || 'Failed to delete Solana private key',
-        color: 'red',
-      });
-      setSolanaPrivateKey(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -601,171 +450,47 @@ const SettingsPage: React.FC = () => {
             </div>
           </section>
 
-          {/* Private Key Management */}
+          {/* Wallet Management Info - Moved to DCA & Manual Trading */}
           <section
-            id="private-key"
+            id="wallet-management"
             className="rounded-xl border bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-boxdark sm:p-6"
           >
             <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white sm:mb-6 sm:text-xl">
-              Private Key Management
+              🔐 Wallet Management
             </h2>
             
-            {/* Security Notice */}
-            <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+            {/* Information Notice */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-yellow-400"
+                    className="h-5 w-5 text-blue-400"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
                     <path
                       fillRule="evenodd"
-                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                       clipRule="evenodd"
                     />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                    Security Notice
+                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Wallet Management Moved
                   </h3>
-                  <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300 sm:text-sm">
-                    Your private keys are encrypted and stored securely. Never share your private
-                    keys with anyone. These keys are required for executing trades on your behalf.
+                  <p className="mt-1 text-xs text-blue-700 dark:text-blue-300 sm:text-sm">
+                    Wallet and private key management is now integrated directly into:
+                  </p>
+                  <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-blue-700 dark:text-blue-300 sm:text-sm">
+                    <li><strong>DCA Trading</strong> - Add and select wallets when creating bots</li>
+                    <li><strong>Manual Trading</strong> - Choose wallets for each trade</li>
+                  </ul>
+                  <p className="mt-2 text-xs text-blue-700 dark:text-blue-300 sm:text-sm">
+                    Each wallet has a name and can be used across multiple bots and trades. Your private keys are encrypted and stored securely.
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* ETH Private Key */}
-            <div className="mb-6">
-              <h3 className="mb-4 text-base font-medium text-gray-900 dark:text-white">
-                🔷 Ethereum (ETH) Private Key
-              </h3>
-              
-              <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                    ETH Key Status
-                  </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {ethPrivateKey.loading
-                      ? 'Checking...'
-                      : ethPrivateKey.hasKey
-                        ? 'ETH private key is saved and encrypted'
-                        : 'No ETH private key saved'}
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      ethPrivateKey.hasKey
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}
-                  >
-                    {ethPrivateKey.hasKey ? 'Configured' : 'Not Configured'}
-                  </span>
-                </div>
-              </div>
-
-              {!ethPrivateKey.hasKey && (
-                <div className="space-y-4">
-                  <CustomPasswordInput
-                    label="ETH Private Key"
-                    value={ethPrivateKey.key}
-                    onChange={(value) => setEthPrivateKey((prev) => ({ ...prev, key: value }))}
-                    placeholder="Enter your ETH wallet private key (64 hex characters)"
-                    description="Your ETH private key will be encrypted before storage"
-                  />
-                  <CustomButton
-                    onClick={handleSaveEthPrivateKey}
-                    loading={ethPrivateKey.loading}
-                    className="w-full sm:w-auto"
-                  >
-                    Save ETH Private Key
-                  </CustomButton>
-                </div>
-              )}
-
-              {ethPrivateKey.hasKey && (
-                <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0">
-                  <CustomButton
-                    onClick={handleDeleteEthPrivateKey}
-                    loading={ethPrivateKey.loading}
-                    variant="danger"
-                    className="w-full sm:w-auto"
-                  >
-                    Delete ETH Private Key
-                  </CustomButton>
-                </div>
-              )}
-            </div>
-
-            {/* Solana Private Key */}
-            <div>
-              <h3 className="mb-4 text-base font-medium text-gray-900 dark:text-white">
-                ✨ Solana (SOL) Private Key
-              </h3>
-              
-              <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                    SOL Key Status
-                  </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {solanaPrivateKey.loading
-                      ? 'Checking...'
-                      : solanaPrivateKey.hasKey
-                        ? 'Solana private key is saved and encrypted'
-                        : 'No Solana private key saved'}
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      solanaPrivateKey.hasKey
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}
-                  >
-                    {solanaPrivateKey.hasKey ? 'Configured' : 'Not Configured'}
-                  </span>
-                </div>
-              </div>
-
-              {!solanaPrivateKey.hasKey && (
-                <div className="space-y-4">
-                  <CustomPasswordInput
-                    label="Solana Private Key"
-                    value={solanaPrivateKey.key}
-                    onChange={(value) => setSolanaPrivateKey((prev) => ({ ...prev, key: value }))}
-                    placeholder="Enter your Solana wallet private key (Base58 or hex format)"
-                    description="Your Solana private key will be encrypted before storage"
-                  />
-                  <CustomButton
-                    onClick={handleSaveSolanaPrivateKey}
-                    loading={solanaPrivateKey.loading}
-                    className="w-full sm:w-auto"
-                  >
-                    Save Solana Private Key
-                  </CustomButton>
-                </div>
-              )}
-
-              {solanaPrivateKey.hasKey && (
-                <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-3 sm:space-y-0">
-                  <CustomButton
-                    onClick={handleDeleteSolanaPrivateKey}
-                    loading={solanaPrivateKey.loading}
-                    variant="danger"
-                    className="w-full sm:w-auto"
-                  >
-                    Delete Solana Private Key
-                  </CustomButton>
-                </div>
-              )}
             </div>
           </section>
 

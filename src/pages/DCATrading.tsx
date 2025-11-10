@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import ConditionBuilder from '../components/ConditionBuilder';
 import ManageBots from './ManageBots';
+import PrivateKeySelector from '../components/PrivateKeySelector';
+import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
 import { apiClient } from '../utils/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,6 +37,7 @@ interface DCAState {
     frequency: string;
     botName: string;
     chain_id: number;
+    private_key_id: number | null;
   };
   availableBalance: number;
 }
@@ -66,6 +69,7 @@ const initialState: DCAState = {
     frequency: '1 minute',
     botName: 'DCA Bot 1',
     chain_id: 10143,
+    private_key_id: null,
   },
   availableBalance: 990059.94,
 };
@@ -295,6 +299,8 @@ const DCATrading: React.FC = () => {
   const [isCreatingBot, setIsCreatingBot] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showAddKeyModal, setShowAddKeyModal] = useState(false);
+  const [keyRefreshCounter, setKeyRefreshCounter] = useState(0);
 
   useEffect(() => {
     const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0);
@@ -314,6 +320,10 @@ const DCATrading: React.FC = () => {
 
     if (!dca.dcaSettings.chain_id) {
       errors.push('Please select a blockchain network');
+    }
+
+    if (!dca.dcaSettings.private_key_id) {
+      errors.push('Please select a wallet for trading');
     }
 
     setValidationErrors(errors);
@@ -358,6 +368,7 @@ const DCATrading: React.FC = () => {
       name: dca.dcaSettings.botName,
       frequency: dca.dcaSettings.frequency,
       chain_id: dca.dcaSettings.chain_id,
+      private_key_id: dca.dcaSettings.private_key_id,
       rpc_url: selectedNetwork?.rpc_url,
       network_name: selectedNetwork?.network_name,
       coins: dca.dcaSettings.assets.map((asset) => ({
@@ -617,6 +628,22 @@ const DCATrading: React.FC = () => {
                         </span>
                       </div>
                     )}
+                  </motion.div>
+
+                  {/* Private Key / Wallet Selection */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.45 }}
+                  >
+                    <PrivateKeySelector
+                      key={`${dca.dcaSettings.chain_id}-${keyRefreshCounter}`}
+                      chainId={dca.dcaSettings.chain_id}
+                      selectedKeyId={dca.dcaSettings.private_key_id}
+                      onKeySelect={(keyId) => handleUpdateDCASettings('private_key_id', keyId || 0)}
+                      onAddKey={() => setShowAddKeyModal(true)}
+                      label="Trading Wallet"
+                    />
                   </motion.div>
                 </div>
 
@@ -999,6 +1026,17 @@ const DCATrading: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Add Private Key Modal */}
+      <AddPrivateKeyModal
+        isOpen={showAddKeyModal}
+        onClose={() => setShowAddKeyModal(false)}
+        chainId={dca.dcaSettings.chain_id}
+        onKeyCreated={() => {
+          setKeyRefreshCounter(prev => prev + 1);
+          setShowAddKeyModal(false);
+        }}
+      />
     </div>
   );
 };

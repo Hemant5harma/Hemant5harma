@@ -11,6 +11,8 @@ import {
   type Network,
 } from '../data/networkData';
 import { BlockchainIndicator } from '../components/BlockchainIndicator';
+import PrivateKeySelector from '../components/PrivateKeySelector';
+import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
 import {
   ChevronDown,
   ArrowUpDown,
@@ -173,6 +175,10 @@ const ManualTrade: React.FC = () => {
   const [nativeBalance, setNativeBalance] = useState<string>('0');
   // Search state
   const [searchTerm, setSearchTerm] = useState<string>('');
+  // Wallet/Private key state
+  const [selectedPrivateKeyId, setSelectedPrivateKeyId] = useState<number | null>(null);
+  const [showAddKeyModal, setShowAddKeyModal] = useState(false);
+  const [keyRefreshCounter, setKeyRefreshCounter] = useState(0);
 
   // Simplified useEffect hooks (removed wallet connection logic)
   useEffect(() => {
@@ -699,6 +705,38 @@ const ManualTrade: React.FC = () => {
             </div>
           </motion.div>
 
+          {/* Wallet/Private Key Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+            className="mb-6 overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
+          >
+            <div className="bg-gradient-to-r from-primary to-secondary p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Shield className="h-5 w-5" />
+                  <span className="font-semibold">Trading Wallet</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-purple-100">
+                  <Info className="h-4 w-4" />
+                  <span className="hidden sm:inline">Select Wallet</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-800 dark:shadow-none">
+              <PrivateKeySelector
+                key={`${selectedNetwork.chain_id}-${keyRefreshCounter}`}
+                chainId={selectedNetwork.chain_id}
+                selectedKeyId={selectedPrivateKeyId}
+                onKeySelect={(keyId) => setSelectedPrivateKeyId(keyId)}
+                onAddKey={() => setShowAddKeyModal(true)}
+                label=""
+              />
+            </div>
+          </motion.div>
+
           {/* Blockchain Indicator */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1135,6 +1173,17 @@ const ManualTrade: React.FC = () => {
       {/* Modals */}
       <TokenSelector />
       <SettingsModal />
+      
+      {/* Add Private Key Modal */}
+      <AddPrivateKeyModal
+        isOpen={showAddKeyModal}
+        onClose={() => setShowAddKeyModal(false)}
+        chainId={selectedNetwork.chain_id}
+        onKeyCreated={() => {
+          setKeyRefreshCounter(prev => prev + 1);
+          setShowAddKeyModal(false);
+        }}
+      />
     </div>
   );
 };

@@ -178,21 +178,33 @@ async def calculate_bot_performance(bot_id: int, db: AsyncSession) -> dict:
 
 async def check_bot(bot_id: int):
     """Check bot conditions and execute trades using SQLAlchemy ORM
-    
+
     Logic-level approach: Bot checks every minute, but only evaluates conditions
     if enough time has passed since the last trade (based on bot.frequency).
     """
     async with async_session() as db:
         try:
-            # Get the bot with user information and trades
+            # Get the bot with user information, private_key, and trades
             result = await db.execute(
                 select(Bot).where(Bot.id == bot_id, Bot.status == "running")
-                .options(joinedload(Bot.coins), joinedload(Bot.user), joinedload(Bot.trades))
+                .options(joinedload(Bot.coins), joinedload(Bot.user), joinedload(Bot.private_key), joinedload(Bot.trades))
             )
             bot = result.scalars().first()
 
             if not bot:
                 logger.info(f"Bot {bot_id} not found or not running")
+                return
+            
+            # Check if bot has a private key assigned
+            if not bot.private_key:
+                logger.error(f"Bot {bot_id} does not have a private key assigned. Cannot execute trades.")
+                # Pause the bot
+                try:
+                    BotManager().pause_job(bot_id)
+                    bot.status = "paused"
+                    await db.commit()
+                except Exception as e:
+                    logger.error(f"Error pausing bot {bot_id}: {e}")
                 return
             
             # Logic-level frequency check: Calculate time windows based on bot start time
@@ -245,8 +257,10 @@ async def check_bot(bot_id: int):
             # Get all coins for this bot
             coins = bot.coins
             
-            # USDT token addresses for each chain (for DCA bot purchases)
-            usdt_tokens = {
+            # Purchase token addresses for each chain (for DCA bot purchases)
+            # For Monad testnet (10143), use MON (native token) instead of USDT for testing
+            # For all other chains, use USDT
+            purchase_tokens = {
                 900: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # Solana USDT (correct mint)
                 1: "0xdac17f958d2ee523a2206206994597c13d831ec7",      # Ethereum USDT
                 137: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",    # Polygon USDT
@@ -255,40 +269,53 @@ async def check_bot(bot_id: int):
                 56: "0x55d398326f99059ff775485246999027b3197955",     # BSC USDT
                 8453: "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",   # Base USDT
                 10: "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",    # Optimism USDT
-                10143: "0x88b8E2161DEDC77EF4ab7585569D2415a1C1055D",  # Monad Testnet USDT
+                10143: None,  # Monad Testnet - use native MON token instead of USDT
             }
             
-            # Get USDT token address for this chain
-            usdt_token = usdt_tokens.get(chain_id)
+            # For Monad testnet, use native MON token; for others, use USDT
+            is_monad_testnet = (chain_id == 10143)
+            purchase_token = purchase_tokens.get(chain_id)
             
-            # USDT has 6 decimals on ALL chains including Solana
-            usdt_decimals = 6
-            usdt_multiplier = 10 ** usdt_decimals
+            # Purchase token decimals: MON (native) has 18 decimals, USDT has 6 decimals
+            if is_monad_testnet:
+                purchase_decimals = 18  # MON native token has 18 decimals
+                purchase_multiplier = 10 ** 18
+                purchase_symbol = "MON"
+            else:
+                purchase_decimals = 6  # USDT has 6 decimals on all chains
+                purchase_multiplier = 10 ** 6
+                purchase_symbol = "USDT"
             
             # Determine unit multiplier per chain (lamports for Solana, wei for EVM) - kept for compatibility
             unit_multiplier = 10 ** 9 if chain_id == 900 else 10 ** 18
             
-            # Check both native balance (for gas) and USDT balance (for trading)
+            # Check both native balance (for gas) and purchase token balance (for trading)
             try:
                 # Get native balance for gas fees
                 balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=None)
                 balances = await dex_router.get_wallet_balances(balance_request, bot.user_id, db)
                 native_balance_smallest = int(balances.native_balance)
                 
-                # Get USDT balance for trading
-                usdt_balance_smallest = 0
-                if usdt_token:
-                    usdt_balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=[usdt_token])
-                    usdt_balances = await dex_router.get_wallet_balances(usdt_balance_request, bot.user_id, db)
-                    # Extract USDT balance from tokens list
-                    if usdt_balances.tokens:
-                        for token_info in usdt_balances.tokens:
-                            if token_info.address.lower() == usdt_token.lower():
-                                usdt_balance_smallest = int(token_info.balance)
-                                logger.info(f"Bot {bot_id} - USDT balance: {usdt_balance_smallest} (raw), {usdt_balance_smallest / usdt_multiplier:.6f} USDT")
+                # Get purchase token balance for trading
+                # For Monad testnet, use native MON balance; for others, use USDT balance
+                purchase_balance_smallest = 0
+                if is_monad_testnet:
+                    # For Monad testnet, use native MON balance for purchases
+                    purchase_balance_smallest = native_balance_smallest
+                    logger.info(f"Bot {bot_id} - MON balance: {purchase_balance_smallest} (raw), {purchase_balance_smallest / purchase_multiplier:.6f} MON")
+                elif purchase_token:
+                    # For other chains, get USDT balance
+                    purchase_balance_request = WalletBalanceRequest(chain_id=chain_id, tokens=[purchase_token])
+                    purchase_balances = await dex_router.get_wallet_balances(purchase_balance_request, bot.user_id, db)
+                    # Extract purchase token balance from tokens list
+                    if purchase_balances.tokens:
+                        for token_info in purchase_balances.tokens:
+                            if token_info.address.lower() == purchase_token.lower():
+                                purchase_balance_smallest = int(token_info.balance)
+                                logger.info(f"Bot {bot_id} - {purchase_symbol} balance: {purchase_balance_smallest} (raw), {purchase_balance_smallest / purchase_multiplier:.6f} {purchase_symbol}")
                                 break
                     else:
-                        logger.warning(f"Bot {bot_id} - No USDT balance returned for token {usdt_token}")
+                        logger.warning(f"Bot {bot_id} - No {purchase_symbol} balance returned for token {purchase_token}")
                     
             except Exception as e:
                 logger.error(f"Failed to get wallet balance for bot {bot_id}: {e}")
@@ -303,7 +330,7 @@ async def check_bot(bot_id: int):
                         pass
                     return
                 native_balance_smallest = 0
-                usdt_balance_smallest = 0
+                purchase_balance_smallest = 0
             
             # If no native balance at all, pause the bot and exit early (need native token for gas fees)
             if native_balance_smallest <= 0:
@@ -369,11 +396,12 @@ async def check_bot(bot_id: int):
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
                     if condition_met:
                         logger.info(f"Trading condition met! Executing trade for {coin.token_address}")
-                        # Check sufficient USDT balance before executing (we now use USDT to buy tokens)
-                        required_amount = int(coin.amount * usdt_multiplier) if coin.amount else 0
-                        if usdt_balance_smallest < required_amount:
+                        # Check sufficient purchase token balance before executing
+                        # For Monad testnet, use MON; for others, use USDT
+                        required_amount = int(coin.amount * purchase_multiplier) if coin.amount else 0
+                        if purchase_balance_smallest < required_amount:
                             logger.warning(
-                                f"Insufficient USDT balance for bot {bot_id}: have {usdt_balance_smallest}, need {required_amount}. Pausing bot."
+                                f"Insufficient {purchase_symbol} balance for bot {bot_id}: have {purchase_balance_smallest}, need {required_amount}. Pausing bot."
                             )
                             try:
                                 BotManager().pause_job(bot_id)
@@ -384,17 +412,11 @@ async def check_bot(bot_id: int):
                             # Notify: paused due to insufficient balance
                             try:
                                 # Convert to user-friendly amounts
-                                required_usd = coin.amount if coin.amount else 0  # This is already in USD
-                                available_usdt = usdt_balance_smallest / usdt_multiplier  # Convert to USDT amount
-                                
-                                # Determine currency display
-                                if chain_id == 10143:  # Monad testnet
-                                    currency_display = "MON"  # Use MON for Monad testnet
-                                else:
-                                    currency_display = "USDT"
+                                required_amount_display = coin.amount if coin.amount else 0
+                                available_amount_display = purchase_balance_smallest / purchase_multiplier
                                 
                                 # Format the message with user-friendly amounts and bot name
-                                message = f"Bot '{bot.name}' paused: needed ${required_usd:.2f} {currency_display}, available {available_usdt:.6f} {currency_display}"
+                                message = f"Bot '{bot.name}' paused: needed {required_amount_display:.6f} {purchase_symbol}, available {available_amount_display:.6f} {purchase_symbol}"
                                 
                                 await NotificationService.emit(
                                     db,
@@ -405,23 +427,30 @@ async def check_bot(bot_id: int):
                                     severity="warning",
                                     bot_id=bot_id,
                                     extra_data={
-                                        "available_usdt": available_usdt, 
-                                        "required_usd": required_usd, 
+                                        "available_amount": available_amount_display, 
+                                        "required_amount": required_amount_display, 
                                         "token": coin.token_address, 
                                         "chain_id": chain_id,
-                                        "currency_display": currency_display
+                                        "currency_display": purchase_symbol
                                     },
                                 )
                             except Exception:
                                 pass
                             return
 
+                        # Determine sell token: MON (native) for Monad testnet, USDT for others
+                        sell_token_for_trade = None  # None means use default (USDT)
+                        if is_monad_testnet:
+                            # For Monad testnet, use native MON token (0xeeee...)
+                            sell_token_for_trade = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        
                         tx_hash = await dex_router.execute_bot_trade(
                             buy_token=coin.token_address,
                             sell_amount=required_amount,
                             chain_id=chain_id,
                             user_id=bot.user_id,
-                            db=db
+                            db=db,
+                            sell_token=sell_token_for_trade
                         )
 
                         # Record the trade with additional data

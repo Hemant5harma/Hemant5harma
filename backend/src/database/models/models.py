@@ -12,15 +12,17 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     address = Column(String, unique=True, nullable=False)
-    encrypted_eth_private_key = Column(String, nullable=True)  # ETH private key
-    encrypted_solana_private_key = Column(String, nullable=True)  # Solana private key
+    encrypted_eth_private_key = Column(String, nullable=True)  # ETH private key (legacy - will be migrated)
+    encrypted_solana_private_key = Column(String, nullable=True)  # Solana private key (legacy - will be migrated)
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
     manual_trades = relationship("ManualTrade", back_populates="user", cascade="all, delete-orphan")
+    private_keys = relationship("PrivateKey", back_populates="user", cascade="all, delete-orphan")
 
 class Bot(Base):
     __tablename__ = "bots"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    private_key_id = Column(Integer, ForeignKey("private_keys.id", ondelete="SET NULL"), nullable=True)  # Link to private key for trading
     name = Column(String, nullable=False)
     frequency = Column(String, nullable=False)
     status = Column(String, nullable=False, default="paused")
@@ -30,6 +32,7 @@ class Bot(Base):
     next_execution_time = Column(DateTime)
     start_time = Column(DateTime, nullable=True)  # Track when bot was started for time window calculation
     user = relationship("User", back_populates="bots")
+    private_key = relationship("PrivateKey", back_populates="bots")
     coins = relationship("Coin", back_populates="bot", cascade="all, delete-orphan")
     trades = relationship("Trade", back_populates="bot", cascade="all, delete-orphan")
     performances = relationship("BotPerformance", back_populates="bot", cascade="all, delete-orphan", passive_deletes=True)
@@ -111,3 +114,18 @@ class Notification(Base):
     extra_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     read_at = Column(DateTime, nullable=True)
+
+class PrivateKey(Base):
+    __tablename__ = "private_keys"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)  # User-friendly name (e.g., "Trading Wallet", "Main Wallet")
+    encrypted_private_key = Column(String, nullable=False)  # Encrypted private key
+    key_type = Column(String, nullable=False)  # "evm" or "solana"
+    address = Column(String, nullable=False)  # Wallet address (derived from private key)
+    is_default = Column(Integer, nullable=False, default=0)  # 1 if default, 0 otherwise
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    
+    user = relationship("User", back_populates="private_keys")
+    bots = relationship("Bot", back_populates="private_key")

@@ -14,6 +14,7 @@ class PerformanceResponse(BaseModel):
 class BotCreate(BaseModel):
     name: str
     frequency: str
+    private_key_id: Optional[int] = Field(default=None, description="Private Key ID to use for this bot's trades")
     chain_id: int = Field(default=1, description="Chain ID of the network (e.g., 1 for Ethereum, 137 for Polygon)")
     rpc_url: Optional[str] = Field(default=None, description="Optional custom RPC URL for the network")
     network_name: Optional[str] = Field(default=None, description="Display name of the network")
@@ -35,6 +36,7 @@ class BotNetworkUpdate(BaseModel):
 class BotResponse(BaseModel):
     id: int
     user_id: int
+    private_key_id: Optional[int] = None
     name: str
     frequency: str
     status: str

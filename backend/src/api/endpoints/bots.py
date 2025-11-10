@@ -56,7 +56,8 @@ async def create_and_start_bot(
         bot.frequency,
         bot.chain_id,
         bot.rpc_url,
-        bot.network_name
+        bot.network_name,
+        bot.private_key_id
     )
     
     # 2) Create corresponding coins
