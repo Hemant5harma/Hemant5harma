@@ -484,23 +484,12 @@ async def check_bot(bot_id: int):
                 next_window_start = bot.start_time + timedelta(seconds=(current_window + 1) * required_interval.total_seconds())
                 
                 bot.next_execution_time = next_window_start
-                
-                # Pause the bot to reduce server load
-                try:
-                    BotManager().pause_job(bot_id)
-                    bot.status = "paused"
-                    
-                    # Schedule resume at the start of the next window
-                    job_manager = JobManager(scheduler_manager=BotManager())
-                    await job_manager.schedule_resume_at_time(bot_id, next_window_start)
-                    
-                    logger.info(
-                        f"Trade executed for bot {bot_id} in window {current_window}. "
-                        f"Bot paused until next window starts at {next_window_start} "
-                        f"(based on start time {bot.start_time})"
-                    )
-                except Exception as e:
-                    logger.error(f"Error pausing bot {bot_id} after trade: {str(e)}")
+                # Keep bot running; it will naturally skip until next window using next_execution_time check
+                logger.info(
+                    f"Trade executed for bot {bot_id} in window {current_window}. "
+                    f"Next window starts at {next_window_start} "
+                    f"(based on start time {bot.start_time}). Bot remains running."
+                )
             
             # Commit once after processing all coins
             await db.commit()
