@@ -1,26 +1,18 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { showNotification } from '@mantine/notifications';
 import {
-  Plus,
-  Tag,
   AlertCircle,
   X,
   Check,
-  ChevronDown,
-  Clock,
-  DollarSign,
-  Zap,
-  TrendingUp,
-  Shield,
   Search,
 } from 'lucide-react';
 import ConditionBuilder from '../components/ConditionBuilder';
-import ManageBots from './ManageBots';
 import PrivateKeySelector from '../components/PrivateKeySelector';
 import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
 import { apiClient } from '../utils/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 interface DCAState {
   notifications: Notification[];
@@ -301,6 +293,8 @@ const DCATrading: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showAddKeyModal, setShowAddKeyModal] = useState(false);
   const [keyRefreshCounter, setKeyRefreshCounter] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const newTotalValue = dca.dcaSettings.assets.reduce((sum, asset) => sum + asset.amount, 0);
@@ -389,6 +383,10 @@ const DCATrading: React.FC = () => {
           color: 'green',
         });
         setDca(initialState);
+        setActiveStep(0);
+        setValidationErrors([]);
+        setShowCryptoModal(false);
+        setShowAddKeyModal(false);
         setIsCreatingBot(false);
       })
       .catch((error) => {
@@ -434,6 +432,7 @@ const DCATrading: React.FC = () => {
     }));
     setShowCryptoModal(false);
     setSearchTerm('');
+    setValidationErrors([]);
   };
 
   const handleRemoveCrypto = (symbol: string) => {
@@ -488,291 +487,316 @@ const DCATrading: React.FC = () => {
         crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="bg-[#FFFFFF] dark:bg-boxdark">
-        <div className="mx-auto max-w-5xl">
-          {/* Hero Section */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-8 text-center"
-          >
-            <div className="mb-4 inline-flex items-center rounded-full bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-black dark:from-primary dark:to-secondary dark:text-white">
-              <Zap className="mr-2 h-4 w-4" />
-              Automated Trading Made Simple
-            </div>
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
-              DCA Trading Bot
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                {' '}
-                Creator
-              </span>
-            </h1>
-            <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-              Create intelligent dollar-cost averaging strategies with advanced conditions and
-              automated execution across multiple blockchains.
-            </p>
-          </motion.div>
+  const configComplete = useMemo(
+    () =>
+      Boolean(
+        dca.dcaSettings.botName.trim() &&
+          dca.dcaSettings.frequency &&
+          dca.dcaSettings.private_key_id,
+      ),
+    [dca.dcaSettings.botName, dca.dcaSettings.frequency, dca.dcaSettings.private_key_id],
+  );
 
-          {/* Main Configuration Card */}
+  const assetsComplete = useMemo(
+    () => dca.dcaSettings.assets.length > 0,
+    [dca.dcaSettings.assets.length],
+  );
+
+  type StepState = 'complete' | 'current' | 'upcoming';
+  interface StepItem {
+    label: string;
+    state: StepState;
+    icon: string;
+  }
+
+  const steps = useMemo<StepItem[]>(
+    () => [
+      {
+        label: 'Bot Config',
+        state: activeStep === 0 ? 'current' : 'complete',
+        icon: activeStep === 0 ? 'edit' : 'check',
+      },
+      {
+        label: 'Select Assets',
+        state:
+          activeStep > 1 && assetsComplete
+            ? 'complete'
+            : activeStep === 1
+            ? 'current'
+            : 'upcoming',
+        icon: activeStep > 1 && assetsComplete ? 'check' : 'inventory_2',
+      },
+      {
+        label: 'Review & Finish',
+        state: activeStep === 2 ? 'current' : 'upcoming',
+        icon: 'rocket_launch',
+      },
+    ],
+    [activeStep, assetsComplete],
+  );
+
+  const getStepCircleClasses = (state: StepState) => {
+    switch (state) {
+      case 'complete':
+        return 'bg-primary text-white border border-primary shadow-lg shadow-primary/30';
+      case 'current':
+        return 'bg-primary/15 text-primary border border-primary';
+      default:
+        return 'bg-border-light dark:bg-border-dark text-text-light-secondary dark:text-text-dark-secondary border border-border-light dark:border-border-dark';
+    }
+  };
+
+  const getStepLabelClasses = (state: StepState) => {
+    switch (state) {
+      case 'complete':
+        return 'text-text-light-primary dark:text-text-dark-primary';
+      case 'current':
+        return 'text-primary';
+      default:
+        return 'text-text-light-secondary dark:text-text-dark-secondary';
+    }
+  };
+
+  const formatConditionLabel = (type?: string) => {
+    if (!type) return 'Custom condition';
+
+    const map: Record<string, string> = {
+      price_drop: 'Price drop',
+      price_rise: 'Price rise',
+      moving_average: 'Moving average',
+      rsi: 'RSI',
+      volume_spike: 'Volume spike',
+      trailing_buy: 'Trailing buy',
+      trailing_sell: 'Trailing sell',
+    };
+
+    return map[type] || type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const renderValidationErrors = () =>
+    validationErrors.length > 0 && (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+        <ul className="list-disc space-y-1 pl-4">
+          {validationErrors.map((error) => (
+            <li key={error}>{error}</li>
+          ))}
+        </ul>
+            </div>
+    );
+
+  const validateConfigStep = () => {
+    const errors: string[] = [];
+
+    if (!dca.dcaSettings.botName.trim()) {
+      errors.push('Please enter a bot name');
+    }
+    if (!dca.dcaSettings.frequency) {
+      errors.push('Select a trading frequency');
+    }
+    if (!dca.dcaSettings.chain_id) {
+      errors.push('Choose a blockchain network');
+    }
+    if (!dca.dcaSettings.private_key_id) {
+      errors.push('Select a trading wallet');
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  const validateAssetsStep = () => {
+    const errors: string[] = [];
+
+    if (!assetsComplete) {
+      errors.push('Add at least one asset to continue');
+    }
+
+    const zeroAmountAsset = dca.dcaSettings.assets.find((asset) => asset.amount <= 0);
+    if (zeroAmountAsset) {
+      errors.push(`Enter an investment amount for ${zeroAmountAsset.name}`);
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (activeStep === 0) {
+      if (!validateConfigStep()) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setValidationErrors([]);
+      setActiveStep(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (activeStep === 1) {
+      if (!validateAssetsStep()) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setValidationErrors([]);
+      setActiveStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (activeStep === 0) {
+      return;
+    }
+
+    setValidationErrors([]);
+    setActiveStep((prev) => Math.max(prev - 1, 0));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderStepContent = () => {
+    switch (activeStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
           <motion.div
+              key="step-1"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-8 overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-          >
-            {/* Card Header */}
-            <div className="bg-gradient-to-r from-primary to-secondary px-6 py-8 sm:px-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white sm:text-3xl">Bot Configuration</h2>
-                  <p className="mt-2 text-purple-100">Set up your automated trading strategy</p>
+              className="overflow-hidden rounded-3xl border border-border-light bg-card-light shadow-soft dark:border-border-dark dark:bg-card-dark"
+            >
+              <div className="bg-gradient-to-r from-primary to-secondary px-6 py-7 sm:px-8">
+                <h2 className="text-2xl font-semibold text-white sm:text-3xl">Step 1 · Bot Essentials</h2>
+                <p className="mt-2 text-sm text-white/80">Name your bot and choose where it will execute trades.</p>
                 </div>
-                <div className="hidden sm:block">
-                  <div className="rounded-full bg-white/20 p-3">
-                    <Shield className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none sm:p-8">
-              <div className="grid gap-8 lg:grid-cols-2">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Bot Name */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.2 }}
-                  >
-                    <label className="mb-3 flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      <Tag className="mr-2 h-5 w-5 text-primary" />
-                      Bot Name
-                    </label>
+              <div className="space-y-6 border-t border-border-light bg-surface-light p-6 sm:p-8 dark:border-border-dark dark:bg-surface-dark">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Bot Name</label>
                     <input
                       type="text"
                       value={dca.dcaSettings.botName}
                       onChange={(e) => handleUpdateDCASettings('botName', e.target.value)}
-                      className="w-full rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
-                      placeholder="Enter a memorable name for your bot"
+                      className="rounded-xl border border-border-light bg-card-light px-4 py-3 text-text-light-primary transition-colors focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
+                      placeholder="e.g. My ETH Accumulator"
                     />
-                  </motion.div>
-
-                  {/* Trading Frequency */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.3 }}
-                  >
-                    <label className="mb-3 flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      <Clock className="mr-2 h-5 w-5 text-primary" />
-                      Trading Frequency
-                    </label>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Trading Frequency</label>
                     <div className="relative">
                       <select
                         value={dca.dcaSettings.frequency}
                         onChange={(e) => handleUpdateDCASettings('frequency', e.target.value)}
-                        className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
+                        className="w-full appearance-none rounded-xl border border-border-light bg-card-light px-4 py-3 pr-12 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
                       >
+                        <option value="" disabled>
+                          Select how often to invest
+                        </option>
                         {frequencyOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.icon} {option.label}
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-                        <ChevronDown className="h-5 w-5" />
+                      <span className="material-symbols-outlined pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-base text-text-light-secondary dark:text-text-dark-secondary">
+                        expand_more
+                      </span>
                       </div>
                     </div>
-                  </motion.div>
-
-                  {/* Blockchain Network */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.4 }}
-                  >
-                    <label className="mb-3 flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-                      Blockchain Network
-                    </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Blockchain Network</label>
                     <div className="relative">
                       <select
                         value={dca.dcaSettings.chain_id}
-                        onChange={(e) =>
-                          handleUpdateDCASettings('chain_id', Number(e.target.value))
-                        }
-                        className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
+                        onChange={(e) => handleUpdateDCASettings('chain_id', Number(e.target.value))}
+                        className="w-full appearance-none rounded-xl border border-border-light bg-card-light px-4 py-3 pr-12 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
                       >
+                        <option value="" disabled>
+                          Select network
+                        </option>
                         {networkOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-                        <ChevronDown className="h-5 w-5" />
-                      </div>
-                    </div>
-                    {selectedNetwork && (
-                      <div className="mt-2 flex items-center">
-                        <div
-                          className={`mr-2 h-3 w-3 rounded-full bg-gradient-to-r ${selectedNetwork.color}`}
-                        ></div>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Connected to {selectedNetwork.shortName}
+                      <span className="material-symbols-outlined pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-base text-text-light-secondary dark:text-text-dark-secondary">
+                        expand_more
                         </span>
                       </div>
+                    {selectedNetwork && (
+                      <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                        Connected to <span className="font-medium text-text-light-primary dark:text-text-dark-primary">{selectedNetwork.shortName}</span>
+                      </p>
                     )}
-                  </motion.div>
-
-                  {/* Private Key / Wallet Selection */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.45 }}
-                  >
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Trading Wallet</label>
                     <PrivateKeySelector
                       key={`${dca.dcaSettings.chain_id}-${keyRefreshCounter}`}
                       chainId={dca.dcaSettings.chain_id}
                       selectedKeyId={dca.dcaSettings.private_key_id}
                       onKeySelect={(keyId) => handleUpdateDCASettings('private_key_id', keyId || 0)}
                       onAddKey={() => setShowAddKeyModal(true)}
-                      label="Trading Wallet"
+                      label=""
                     />
-                  </motion.div>
                 </div>
-
-                {/* Right Column - Total Investment Summary */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 }}
-                  className="rounded-2xl bg-[#FAFBFC] p-6 shadow-sm dark:bg-gray-700/50 dark:shadow-sm"
-                >
-                  <div className="mb-4 flex items-center">
-                    <DollarSign className="mr-2 h-6 w-6 text-primary dark:text-primary" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Investment Summary
-                    </h3>
                   </div>
-
-                  <div className="mb-6">
-                    <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                      $
-                      {totalValue < 0.01 && totalValue > 0
-                        ? totalValue.toFixed(6)
-                        : totalValue.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          })}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Total per execution
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Assets Selected:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {dca.dcaSettings.assets.length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Frequency:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {dca.dcaSettings.frequency}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Network:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {selectedNetwork?.shortName || 'None'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {validationErrors.length > 0 && (
-                    <div className="mt-4 rounded-lg bg-red-50 p-3 dark:bg-red-900/30">
-                      <div className="flex items-start">
-                        <AlertCircle className="mr-2 h-4 w-4 flex-shrink-0 text-red-500 dark:text-red-400" />
-                        <div className="text-sm text-red-700 dark:text-red-300">
-                          <div className="font-medium">Please fix the following:</div>
-                          <ul className="mt-1 list-inside list-disc space-y-1">
-                            {validationErrors.map((error, index) => (
-                              <li key={index}>{error}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
+            {renderValidationErrors()}
               </div>
-            </div>
-          </motion.div>
-
-          {/* Selected Assets Section */}
+        );
+      case 1:
+        return (
+          <div className="space-y-6">
           <motion.div
+              key="step-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-8 overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="overflow-hidden rounded-3xl border border-border-light bg-card-light shadow-soft dark:border-border-dark dark:bg-card-dark"
           >
-            <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none sm:p-8">
-              <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="bg-gradient-to-r from-primary to-secondary px-6 py-7 sm:px-8">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Selected Assets
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Configure your cryptocurrency investments
-                  </p>
+                    <h2 className="text-2xl font-semibold text-white sm:text-3xl">Step 2 · Select Assets</h2>
+                    <p className="text-sm text-white/80">Add the tokens you want this bot to accumulate automatically.</p>
                 </div>
                 <button
                   onClick={() => setShowCryptoModal(true)}
-                  className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-6 py-3 font-medium text-white shadow-lg"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30"
                 >
-                  <Plus className="h-5 w-5" />
-                  <span>Add Asset</span>
+                    <span className="material-symbols-outlined text-base">add_circle</span>
+                    Add Asset
                 </button>
               </div>
-
+              </div>
+              <div className="space-y-6 border-t border-border-light bg-surface-light p-6 sm:p-8 dark:border-border-dark dark:bg-surface-dark">
               {dca.dcaSettings.assets.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-[#FFFFFF] py-16 text-center dark:border-gray-600 dark:bg-gray-800 dark:shadow-none"
-                >
-                  <div className="mb-4 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 p-4 dark:from-primary/30 dark:to-secondary/30">
+                  <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border-light bg-card-light py-16 text-center dark:border-border-dark dark:bg-card-dark">
+                    <div className="mb-4 inline-flex rounded-full bg-primary/10 p-4 dark:bg-primary/20">
                     <AlertCircle className="h-8 w-8 text-primary dark:text-primary" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-                    No Assets Selected
+                    <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
+                      No assets selected yet
                   </h3>
-                  <p className="mb-4 max-w-sm text-gray-600 dark:text-gray-400">
-                    Start building your DCA strategy by adding cryptocurrencies to invest in
+                    <p className="mt-2 max-w-sm text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                      Choose at least one asset to automate your cost averaging strategy.
                   </p>
                   <button
                     onClick={() => setShowCryptoModal(true)}
-                    className="inline-flex items-center space-x-2 rounded-lg bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:from-primary/90 hover:to-secondary/90 focus:outline-none focus:ring-4 focus:ring-primary/20"
+                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-primary/90 hover:to-secondary/90"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Your First Asset</span>
+                      <span className="material-symbols-outlined text-base">add</span>
+                      Select Assets
                   </button>
-                </motion.div>
+                  </div>
               ) : (
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
                   <AnimatePresence>
                     {dca.dcaSettings.assets.map((asset, index) => {
-                      const cryptoData = cryptocurrenciesByNetwork[dca.dcaSettings.chain_id]?.find(
-                        (crypto) => crypto.symbol === asset.symbol,
-                      );
+                        const cryptoData = cryptocurrenciesByNetwork[dca.dcaSettings.chain_id]?.find((crypto) => crypto.symbol === asset.symbol);
 
                       return (
                         <motion.div
@@ -781,57 +805,46 @@ const DCATrading: React.FC = () => {
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95, y: -20 }}
                           transition={{ duration: 0.3, delay: index * 0.1 }}
-                          className="group rounded-2xl border border-gray-200 bg-[#FFFFFF] p-6 shadow-lg transition-all duration-200 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:shadow-none dark:hover:shadow-none"
-                        >
-                          {/* Asset Header */}
-                          <div className="mb-6 flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div
-                                className={`mr-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cryptoData?.color || 'from-primary to-secondary'} text-white shadow-lg`}
-                              >
-                                <span className="text-sm font-bold">
-                                  {asset.symbol.substring(0, 3)}
-                                </span>
+                            className="group space-y-6 rounded-2xl border border-border-light bg-card-light p-6 shadow transition hover:shadow-lg dark:border-border-dark dark:bg-card-dark"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cryptoData?.color || 'from-primary to-secondary'} text-white shadow`}>
+                                  <span className="text-sm font-bold">{asset.symbol.substring(0, 3)}</span>
                               </div>
                               <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
                                   {asset.name}
                                 </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                                   {asset.symbol}
                                 </p>
                               </div>
                             </div>
                             <button
                               onClick={() => handleRemoveCrypto(asset.symbol)}
-                              className="rounded-full bg-red-50 p-2 text-red-500 opacity-0 transition-all duration-200 hover:bg-red-100 group-hover:opacity-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                                className="rounded-full bg-red-50 p-2 text-red-500 opacity-0 transition group-hover:opacity-100 dark:bg-red-900/30 dark:text-red-300"
                               aria-label={`Remove ${asset.name}`}
                             >
-                              <X className="h-4 w-4" />
+                                <span className="material-symbols-outlined text-base">delete</span>
                             </button>
                           </div>
-
-                          {/* Amount Input */}
-                          <div className="mb-6">
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
                               Investment Amount (USDT)
                             </label>
                             <input
                               type="number"
                               value={asset.amount}
-                              onChange={(e) =>
-                                handleAmountChange(asset.symbol, Number(e.target.value))
-                              }
-                              className="w-full rounded-lg border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
+                                onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
+                                className="w-full rounded-lg border border-border-light bg-card-light px-4 py-3 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
                               min="0"
                               step="0.0001"
                               placeholder="0.00"
                             />
                           </div>
-
-                          {/* Condition Builder */}
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
                               Trading Condition
                             </label>
                             <ConditionBuilder
@@ -841,10 +854,8 @@ const DCATrading: React.FC = () => {
                                   threshold: asset.threshold,
                                 },
                               }}
-                              onChange={(conditionData) =>
-                                handleConditionChange(asset.symbol, conditionData)
-                              }
-                              className="rounded-lg border-2 border-gray-200 bg-[#FAFBFC] shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:shadow-none"
+                                onChange={(conditionData) => handleConditionChange(asset.symbol, conditionData)}
+                                className="rounded-lg border border-border-light bg-card-light dark:border-border-dark dark:bg-card-dark"
                             />
                           </div>
                         </motion.div>
@@ -855,59 +866,268 @@ const DCATrading: React.FC = () => {
               )}
             </div>
           </motion.div>
-
-          {/* Create Bot Button */}
+            {renderValidationErrors()}
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-6">
           <motion.div
+              key="step-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mb-8"
-          >
-            <button
-              onClick={handleSubmitDCA}
-              disabled={isCreatingBot || dca.dcaSettings.assets.length === 0}
-              className={`group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-secondary p-1 shadow-xl transition-all duration-300 ${
-                isCreatingBot || dca.dcaSettings.assets.length === 0
-                  ? 'cursor-not-allowed opacity-60'
-                  : 'hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98]'
-              }`}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="space-y-6"
             >
-              <div className="rounded-xl bg-gradient-to-r from-primary to-secondary px-8 py-4 text-center">
-                <div className="flex items-center justify-center space-x-3">
-                  {isCreatingBot ? (
-                    <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      <span className="text-lg font-semibold text-white">Creating Your Bot...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-5 w-5 text-white" />
-                      <span className="text-lg font-semibold text-white">Create DCA Bot</span>
-                    </>
+              <div className="rounded-3xl border border-border-light bg-card-light p-6 shadow-sm dark:border-border-dark dark:bg-card-dark">
+                <h2 className="text-2xl font-semibold text-text-light-primary dark:text-text-dark-primary">
+                  Step 3 · Review &amp; Launch
+                </h2>
+                <p className="mt-2 text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                  Confirm the configuration before creating your DCA bot.
+                </p>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-4 rounded-3xl border border-border-light bg-card-light p-6 shadow-sm dark:border-border-dark dark:bg-card-dark">
+                  <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
+                    Bot Overview
+                  </h3>
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <dt className="text-text-light-secondary dark:text-text-dark-secondary">Name</dt>
+                      <dd className="font-medium text-text-light-primary dark:text-text-dark-primary">
+                        {dca.dcaSettings.botName || '-'}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-text-light-secondary dark:text-text-dark-secondary">Frequency</dt>
+                      <dd className="font-medium text-text-light-primary dark:text-text-dark-primary">
+                        {dca.dcaSettings.frequency || '-'}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-text-light-secondary dark:text-text-dark-secondary">Network</dt>
+                      <dd className="font-medium text-text-light-primary dark:text-text-dark-primary">
+                        {selectedNetwork?.label || 'Not selected'}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-text-light-secondary dark:text-text-dark-secondary">Trading Wallet</dt>
+                      <dd className="font-medium text-text-light-primary dark:text-text-dark-primary">
+                        {dca.dcaSettings.private_key_id ? `Private Key #${dca.dcaSettings.private_key_id}` : 'Not selected'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="space-y-4 rounded-3xl border border-border-light bg-card-light p-6 shadow-sm dark:border-border-dark dark:bg-card-dark">
+                  <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
+                    Execution Summary
+                  </h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-border-light bg-background-light p-4 text-center dark:border-border-dark dark:bg-background-dark">
+                      <p className="text-xs uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
+                        Total per execution
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-text-light-primary dark:text-text-dark-primary">
+                        $
+                        {totalValue < 0.01 && totalValue > 0
+                          ? totalValue.toFixed(6)
+                          : totalValue.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 6,
+                            })}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-border-light bg-background-light p-4 text-center dark:border-border-dark dark:bg-background-dark">
+                      <p className="text-xs uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
+                        Assets configured
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-text-light-primary dark:text-text-dark-primary">
+                        {dca.dcaSettings.assets.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 rounded-3xl border border-border-light bg-card-light p-6 shadow-sm dark:border-border-dark dark:bg-card-dark">
+                  <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
+                    Asset Breakdown
+                  </h3>
+                  {assetsComplete ? (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-border-light dark:border-border-dark">
+                      <table className="min-w-full divide-y divide-border-light text-sm dark:divide-border-dark">
+                        <thead className="bg-background-light text-text-light-secondary dark:bg-background-dark dark:text-text-dark-secondary">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-semibold">Asset</th>
+                            <th className="px-4 py-2 text-left font-semibold">Amount (USDT)</th>
+                            <th className="px-4 py-2 text-left font-semibold">Condition</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-light dark:divide-border-dark">
+                          {dca.dcaSettings.assets.map((asset) => {
+                            const conditionLabel = formatConditionLabel(asset.condition_type);
+                            const threshold = asset.condition_params?.threshold ?? asset.threshold;
+                            return (
+                              <tr key={asset.symbol} className="bg-card-light dark:bg-card-dark">
+                                <td className="px-4 py-3 text-text-light-primary dark:text-text-dark-primary">
+                                  <span className="font-medium">{asset.name}</span>
+                                  <span className="ml-2 text-xs uppercase text-text-light-secondary dark:text-text-dark-secondary">
+                                    {asset.symbol}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-text-light-primary dark:text-text-dark-primary">
+                                  ${asset.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                                </td>
+                                <td className="px-4 py-3 text-text-light-secondary dark:text-text-dark-secondary">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-text-light-primary dark:text-text-dark-primary">
+                                      {conditionLabel}
+                                    </span>
+                                    {threshold !== undefined && (
+                                      <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                                        Threshold: {threshold}
+                                      </span>
                   )}
                 </div>
-                {!isCreatingBot && (
-                  <p className="mt-1 text-sm text-purple-100">
-                    Start automated trading with your configured strategy
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                      No assets configured.
                   </p>
                 )}
               </div>
-            </button>
+              </div>
           </motion.div>
+            {renderValidationErrors()}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-          {/* Manage Bots Section */}
+  const renderActionButtons = () => {
+    const primaryLabel =
+      activeStep === 2
+        ? isCreatingBot
+          ? 'Creating...'
+          : 'Create Bot'
+        : activeStep === 1
+        ? 'Review Summary'
+        : 'Continue';
+
+    const primaryDisabled =
+      activeStep === 2
+        ? isCreatingBot
+        : activeStep === 1
+        ? !assetsComplete
+        : !configComplete;
+
+    const handlePrimaryClick = () => {
+      if (activeStep === 2) {
+        handleSubmitDCA();
+      } else {
+        handleNextStep();
+      }
+    };
+
+    const secondaryLabel = activeStep === 0 ? 'Cancel' : 'Previous Step';
+    const onSecondaryClick =
+      activeStep === 0 ? () => navigate('/bots/manage') : handlePreviousStep;
+
+    const stepMessage =
+      activeStep === 0
+        ? 'Provide the basics for your bot.'
+        : activeStep === 1
+        ? 'Select and configure the assets to automate.'
+        : 'Review everything before launching.';
+
+    return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="flex flex-col gap-4 rounded-2xl border border-border-light bg-card-light p-4 shadow-md dark:border-border-dark dark:bg-card-dark sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+          Step {activeStep + 1} of 3 · {stepMessage}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            onClick={onSecondaryClick}
+            className="flex items-center justify-center gap-2 rounded-xl border border-border-light bg-card-light px-4 py-2 text-sm font-semibold text-text-light-secondary transition-colors hover:bg-border-light/60 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-secondary dark:hover:bg-border-dark/60"
           >
-            <ManageBots />
+            <span className="material-symbols-outlined text-base">
+              {activeStep === 0 ? 'close' : 'arrow_back'}
+            </span>
+            {secondaryLabel}
+          </button>
+          <button
+            onClick={handlePrimaryClick}
+            disabled={primaryDisabled}
+            className={`flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-6 py-2 text-sm font-semibold text-white shadow-lg transition-all duration-200 ${
+              primaryDisabled ? 'cursor-not-allowed opacity-60' : 'hover:scale-[1.02] hover:shadow-xl'
+            }`}
+          >
+            {activeStep === 2 && isCreatingBot ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <span className="material-symbols-outlined text-base">
+                {activeStep === 2 ? 'rocket_launch' : 'arrow_forward'}
+              </span>
+            )}
+            {primaryLabel}
+          </button>
+        </div>
           </motion.div>
+    );
+  };
+
+  return (
+    <div className="w-full bg-background-light py-12 font-display dark:bg-background-dark">
+      <div className="mx-auto max-w-7xl space-y-10 px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="space-y-2">
+          <p className="text-4xl font-black leading-tight tracking-[-0.033em] text-text-light-primary dark:text-text-dark-primary">
+            Create New DCA Bot
+          </p>
+          <p className="text-base font-normal leading-normal text-text-light-secondary dark:text-text-dark-secondary">
+            Configure your Dollar-Cost Averaging bot step-by-step.
+          </p>
+        </div>
+
+        <div className="relative mx-auto flex max-w-3xl justify-between">
+          <div className="absolute left-0 right-0 top-5 h-0.5 bg-border-light dark:bg-border-dark" />
+          <div className="relative flex w-full justify-between">
+            {steps.map((step) => (
+              <div key={step.label} className="flex w-28 flex-col items-center text-center">
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-base transition-colors ${getStepCircleClasses(step.state)}`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">{step.icon}</span>
+                </div>
+                <span
+                  className={`mt-2 text-sm font-semibold transition-colors ${getStepLabelClasses(step.state)}`}
+                >
+                  {step.label}
+                </span>
+              </div>
+            ))}
         </div>
       </div>
 
-      {/* Cryptocurrency Selection Modal */}
+        {renderStepContent()}
+
+        {renderActionButtons()}
+      </div>
+
       <AnimatePresence>
         {showCryptoModal && (
           <motion.div
@@ -924,41 +1144,38 @@ const DCATrading: React.FC = () => {
               className="w-full max-w-lg rounded-2xl bg-[#FFFFFF] p-6 shadow-2xl dark:bg-gray-800 dark:shadow-none"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">
                     Select Cryptocurrency
                   </h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                     Choose from {selectedNetwork?.label || 'available'} assets
                   </p>
                 </div>
                 <button
                   onClick={() => setShowCryptoModal(false)}
-                  className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  className="rounded-full p-2 text-text-light-secondary transition-colors hover:bg-border-light hover:text-text-light-primary dark:text-text-dark-secondary dark:hover:bg-border-dark"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Search Input */}
               <div className="mb-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-light-secondary dark:text-text-dark-secondary" />
                   <input
                     type="text"
                     placeholder="Search cryptocurrencies..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-xl border-2 border-gray-200 bg-[#FAFBFC] py-3 pl-10 pr-4 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
+                    className="w-full rounded-xl border border-border-light bg-card-light py-3 pl-10 pr-4 text-text-light-primary transition-all duration-200 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
                   />
                 </div>
               </div>
 
-              {/* Cryptocurrency List */}
               <div className="max-h-80 space-y-2 overflow-y-auto">
-                {filteredCryptocurrencies?.length > 0 ? (
+                {filteredCryptocurrencies.length > 0 ? (
                   filteredCryptocurrencies.map((crypto) => {
                     const isSelected = dca.dcaSettings.assets.some(
                       (asset) => asset.symbol === crypto.symbol,
@@ -971,7 +1188,7 @@ const DCATrading: React.FC = () => {
                         className={`flex w-full items-center justify-between rounded-xl p-4 text-left transition-all duration-200 ${
                           isSelected
                             ? 'cursor-default bg-primary/10 dark:bg-primary/20'
-                            : 'bg-[#FAFBFC] hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none'
+                            : 'bg-card-light hover:bg-background-light hover:shadow-sm dark:bg-card-dark dark:hover:bg-background-dark'
                         }`}
                         disabled={isSelected}
                       >
@@ -984,10 +1201,10 @@ const DCATrading: React.FC = () => {
                             </span>
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
+                            <p className="font-semibold text-text-light-primary dark:text-text-dark-primary">
                               {crypto.name}
                             </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                               {crypto.symbol}
                             </p>
                           </div>
@@ -1003,21 +1220,20 @@ const DCATrading: React.FC = () => {
                   })
                 ) : (
                   <div className="py-12 text-center">
-                    <div className="mb-3 inline-flex rounded-full bg-[#FAFBFC] p-3 shadow-sm dark:bg-gray-700 dark:shadow-none">
-                      <AlertCircle className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                    <div className="mb-3 inline-flex rounded-full bg-card-light p-3 shadow-sm dark:bg-card-dark">
+                      <AlertCircle className="h-6 w-6 text-text-light-secondary dark:text-text-dark-secondary" />
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-text-light-secondary dark:text-text-dark-secondary">
                       No cryptocurrencies found for this network
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* Modal Footer */}
-              <div className="mt-6 flex justify-end space-x-3">
+              <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowCryptoModal(false)}
-                  className="rounded-lg bg-[#FAFBFC] px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:shadow-none"
+                  className="rounded-lg bg-card-light px-4 py-2 text-sm font-medium text-text-light-secondary transition-colors hover:bg-border-light dark:bg-card-dark dark:text-text-dark-secondary dark:hover:bg-border-dark"
                 >
                   Close
                 </button>
@@ -1027,13 +1243,12 @@ const DCATrading: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Add Private Key Modal */}
       <AddPrivateKeyModal
         isOpen={showAddKeyModal}
         onClose={() => setShowAddKeyModal(false)}
         chainId={dca.dcaSettings.chain_id}
         onKeyCreated={() => {
-          setKeyRefreshCounter(prev => prev + 1);
+            setKeyRefreshCounter((prev) => prev + 1);
           setShowAddKeyModal(false);
         }}
       />

@@ -10,25 +10,9 @@ import {
   type Token,
   type Network,
 } from '../data/networkData';
-import { BlockchainIndicator } from '../components/BlockchainIndicator';
 import PrivateKeySelector from '../components/PrivateKeySelector';
 import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
-import {
-  ChevronDown,
-  ArrowUpDown,
-  Settings,
-  RefreshCw,
-  Zap,
-  TrendingUp,
-  Shield,
-  Info,
-  ExternalLink,
-  Search,
-  X,
-  Check,
-  Clock,
-  DollarSign,
-} from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 // Types (keeping the same)
 interface QuoteData {
@@ -77,29 +61,6 @@ const calculateExchangeRate = (
     return exchangeRate.toFixed(6);
   } catch (error) {
     console.error('Error calculating exchange rate:', error);
-    return '0.000000';
-  }
-};
-
-const formatPrice = (price: string | number) => {
-  try {
-    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    if (isNaN(numPrice)) return '0.000000';
-
-    // For very small numbers, use scientific notation
-    if (numPrice < 0.000001 && numPrice > 0) {
-      return numPrice.toExponential(4);
-    }
-
-    // For normal numbers, use appropriate decimal places
-    if (numPrice < 1) {
-      return numPrice.toFixed(6);
-    } else if (numPrice < 1000) {
-      return numPrice.toFixed(4);
-    } else {
-      return numPrice.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    }
-  } catch (error) {
     return '0.000000';
   }
 };
@@ -192,30 +153,6 @@ const ManualTrade: React.FC = () => {
     setBalances({});
     setNativeBalance('0');
   }, [selectedNetwork]);
-
-  const fetchSupportedNetworks = async () => {
-    try {
-      console.log('🧪 Testing backend API connection...');
-      const response = await apiClient.get('/mtrades/health');
-      console.log('✅ Backend health check response:', response);
-      showNotification({
-        title: 'Backend Connected ✅',
-        message: `Backend is healthy - Chain: ${response.chain_id || 'unknown'}`,
-        color: 'green',
-      });
-    } catch (error: any) {
-      console.error('❌ Backend connection failed:', error);
-      let message = 'Backend unavailable - using fallback configuration';
-      if (error.message === 'Unable to connect to server') {
-        message = 'Backend server not running. Please start the backend on http://localhost:8000';
-      }
-      showNotification({
-        title: 'Backend Connection Failed ⚠️',
-        message,
-        color: 'yellow',
-      });
-    }
-  };
 
   const fetchQuote = useCallback(async () => {
     if (!sellAmount || !sellToken || !buyToken) return;
@@ -367,14 +304,6 @@ const ManualTrade: React.FC = () => {
     }
   };
 
-  const refreshTransactionStatus = async (transaction_hash: string, chain_id: number) => {
-    const status = await checkTransactionStatus(transaction_hash, chain_id);
-    if (status && status.status !== 'pending') {
-      await fetchTradeHistory();
-    }
-    return status;
-  };
-
   const swapTokens = () => {
     if (sellToken && buyToken) {
       const tempToken = sellToken;
@@ -437,7 +366,7 @@ const ManualTrade: React.FC = () => {
             initial={false}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="max-h-[80vh] w-full max-w-lg overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-2xl dark:bg-gray-800 dark:shadow-none"
+            className="max-h-[80vh] w-full max-w-lg overflow-hidden rounded-2xl bg-card-light shadow-2xl dark:bg-card-dark dark:shadow-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -457,55 +386,55 @@ const ManualTrade: React.FC = () => {
             </div>
 
             {/* Search */}
-            <div className="border-b border-gray-200 bg-[#FAFBFC] p-4 shadow-inner dark:border-gray-700 dark:bg-gray-800 dark:shadow-none">
+            <div className="border-b border-border-light bg-background-light p-4 shadow-inner dark:border-border-dark dark:bg-background-dark dark:shadow-none">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-light-secondary dark:text-text-dark-secondary" />
                 <input
                   type="text"
                   placeholder="Search tokens..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   autoFocus
-                  className="w-full rounded-xl border-2 border-gray-200 bg-[#FAFBFC] py-3 pl-10 pr-4 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
+                  className="w-full rounded-xl border-2 border-border-light bg-background-light py-3 pl-10 pr-4 text-text-light-primary transition-all duration-200 focus:border-primary focus:bg-card-light focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-background-dark dark:text-text-dark-primary dark:focus:border-primary"
                 />
               </div>
             </div>
 
             {/* Token List */}
-            <div className="max-h-96 overflow-y-auto bg-[#FAFBFC] p-2 shadow-inner dark:bg-gray-800 dark:shadow-none">
+            <div className="max-h-96 overflow-y-auto bg-background-light p-2 shadow-inner dark:bg-background-dark dark:shadow-none">
               {filteredTokens.length > 0 ? (
                 <div className="space-y-1">
                   {filteredTokens.map((token) => (
                     <button
                       key={token.address}
                       onClick={() => selectToken(token)}
-                      className="flex w-full items-center justify-between rounded-xl bg-[#FAFBFC] p-4 transition-all duration-200 hover:bg-[#FFFFFF] hover:shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:shadow-none"
+                      className="flex w-full items-center justify-between rounded-xl bg-background-light p-4 transition-all duration-200 hover:bg-card-light hover:shadow-sm dark:bg-background-dark dark:hover:bg-card-dark dark:hover:shadow-none"
                     >
                       <div className="flex items-center space-x-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-sm font-bold text-white shadow-lg">
                           {token.symbol.substring(0, 2)}
                         </div>
                         <div className="text-left">
-                          <div className="font-semibold text-gray-900 dark:text-white">
+                          <div className="font-semibold text-text-light-primary dark:text-text-dark-primary">
                             {token.symbol}
                           </div>
-                          <div className="max-w-32 truncate text-sm text-gray-500 dark:text-gray-400">
+                          <div className="max-w-32 truncate text-sm text-text-light-secondary dark:text-text-dark-secondary">
                             {token.name}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-gray-400">Select</div>
+                        <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">Select</div>
                       </div>
                     </button>
                   ))}
                 </div>
               ) : (
                 <div className="py-12 text-center">
-                  <div className="mb-3 inline-flex rounded-full bg-gray-100 p-3 dark:bg-gray-700">
-                    <Search className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                  <div className="mb-3 inline-flex rounded-full bg-card-light p-3 dark:bg-card-dark">
+                    <Search className="h-6 w-6 text-text-light-secondary dark:text-text-dark-secondary" />
                   </div>
-                  <p className="text-gray-600 dark:text-gray-400">No tokens found</p>
+                  <p className="text-text-light-secondary dark:text-text-dark-secondary">No tokens found</p>
                 </div>
               )}
             </div>
@@ -593,181 +522,26 @@ const ManualTrade: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className=" bg-[#FFFFFF] dark:bg-boxdark">
-        <div className="mx-auto max-w-2xl">
-          {/* Hero Section */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-8 text-center"
-          >
-            <div className="mb-4 inline-flex items-center rounded-full bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-black dark:from-primary dark:to-secondary dark:text-white">
-              <Zap className="mr-2 h-4 w-4" />
-              Instant Token Swaps
-            </div>
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Swap
-              </span>{' '}
-              Tokens
+    <div className="w-full bg-background-light dark:bg-background-dark font-display">
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-8">
+        {/* Header */}
+        <header className="relative flex items-center justify-between">
+          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-primary/20 dark:from-primary/30 to-transparent blur-3xl -z-10"></div>
+          <h1 className="text-slate-900 dark:text-white text-3xl md:text-4xl font-black tracking-[-0.033em]">
+            Manual Trade
             </h1>
-            <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-              Trade cryptocurrencies instantly with the best rates across multiple networks
-            </p>
-          </motion.div>
+        </header>
 
-          {/* Header Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-6 flex items-center justify-between"
-          >
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={fetchQuote}
-                disabled={quoteLoading}
-                className="flex items-center space-x-2 rounded-xl bg-white/80 px-4 py-3 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-xl disabled:opacity-50 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:bg-gray-800"
-                title="Refresh Quote"
-              >
-                <RefreshCw className={`h-4 w-4 ${quoteLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button
-                onClick={fetchSupportedNetworks}
-                className="hidden items-center space-x-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-3 font-medium text-white shadow-lg transition-all duration-200 hover:from-primary/90 hover:to-secondary/90 hover:shadow-xl sm:flex"
-                title="Test Backend Connection"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Test API</span>
-              </button>
-            </div>
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="rounded-xl bg-white/80 p-3 text-gray-700 shadow-lg backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-xl dark:bg-gray-800/80 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
-          </motion.div>
-
-          {/* Network Selector */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="mb-6 overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-          >
-            <div className="bg-gradient-to-r from-primary to-secondary p-4 text-white">
+        {/* Main Content */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Swap Interface */}
+          <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+            {/* From Token */}
+            <div className="flex flex-col gap-3 p-4 bg-slate-100 dark:bg-black/20 rounded-lg">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <TrendingUp className="h-5 w-5" />
-                  <span className="font-semibold">Network</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-purple-100">
-                  <Info className="h-4 w-4" />
-                  <span className="hidden sm:inline">Trading Network</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-800 dark:shadow-none">
-              <div className="relative">
-                <select
-                  value={selectedNetwork.chain_id}
-                  onChange={(e) => handleNetworkChange(Number.parseInt(e.target.value))}
-                  className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 font-medium text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary"
-                >
-                  {networkOptions.map((network) => (
-                    <option key={network.chain_id} value={network.chain_id}>
-                      {network.name} {network.isTestnet ? '(Testnet)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-                  <ChevronDown className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {selectedNetwork.name}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span>Ready to Trade</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Wallet/Private Key Selector */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-            className="mb-6 overflow-hidden rounded-2xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-          >
-            <div className="bg-gradient-to-r from-primary to-secondary p-4 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Shield className="h-5 w-5" />
-                  <span className="font-semibold">Trading Wallet</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-purple-100">
-                  <Info className="h-4 w-4" />
-                  <span className="hidden sm:inline">Select Wallet</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-800 dark:shadow-none">
-              <PrivateKeySelector
-                key={`${selectedNetwork.chain_id}-${keyRefreshCounter}`}
-                chainId={selectedNetwork.chain_id}
-                selectedKeyId={selectedPrivateKeyId}
-                onKeySelect={(keyId) => setSelectedPrivateKeyId(keyId)}
-                onAddKey={() => setShowAddKeyModal(true)}
-                label=""
-              />
-            </div>
-          </motion.div>
-
-          {/* Blockchain Indicator */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="mb-6"
-          >
-            <BlockchainIndicator 
-              chainId={selectedNetwork.chain_id} 
-              showDetails={true}
-              status="connected"
-            />
-          </motion.div>
-
-          {/* Main Swap Interface */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-            className="mb-6 overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-          >
-            <div className="bg-[#FAFBFC] p-6 shadow-inner dark:bg-gray-800 dark:shadow-none sm:p-8">
-              {/* Sell Token */}
-              <div className="mb-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <label className="flex items-center text-sm font-semibold text-gray-600 dark:text-gray-400">
-                    <DollarSign className="mr-2 h-4 w-4" />
-                    You Pay
-                  </label>
+                <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">From</p>
                   {sellToken && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
                       Balance: {
                         (() => {
                           const bal = sellToken.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || (selectedNetwork.chain_id === 900 && sellToken.address === 'So11111111111111111111111111111111111111112')
@@ -781,393 +555,262 @@ const ManualTrade: React.FC = () => {
                           }
                         })()
                       } {sellToken.symbol}
-                    </span>
+                  </p>
                   )}
                 </div>
-                <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
+              <div className="flex items-center justify-between gap-4">
                   <input
                     type="number"
                     value={sellAmount}
                     onChange={(e) => setSellAmount(e.target.value)}
                     placeholder="0.0"
-                    className="flex-1 bg-transparent text-2xl font-bold text-gray-900 placeholder-gray-400 outline-none dark:text-white dark:placeholder-gray-500"
+                  className="flex-1 bg-transparent text-slate-900 dark:text-white text-3xl font-bold p-0 border-none focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   />
                   <button
                     onClick={() => openTokenSelector('sell')}
-                    className="flex items-center space-x-3 rounded-2xl bg-white px-4 py-3 shadow-lg transition-all duration-200 hover:shadow-xl dark:bg-gray-800 dark:hover:bg-gray-700"
+                  className="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-10 px-4 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors"
                   >
                     {sellToken ? (
                       <>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-sm font-bold text-white shadow-lg">
-                          {sellToken.symbol.substring(0, 2)}
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {sellToken.symbol}
-                        </span>
+                      <div className="w-5 h-5 bg-center bg-no-repeat aspect-square bg-cover rounded-full bg-gradient-to-br from-primary to-secondary"></div>
+                      <span className="truncate">{sellToken.symbol}</span>
                       </>
                     ) : (
-                      <span className="text-gray-500 dark:text-gray-400">Select Token</span>
-                    )}
-                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <span className="truncate">Select</span>
+                  )}
+                  <span className="material-symbols-outlined text-lg">expand_more</span>
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  {sellAmount && sellToken ? `$${(parseFloat(sellAmount) * (sellToken.symbol === 'ETH' ? 3000 : 1)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+                </p>
+                <button
+                  onClick={() => {
+                    if (sellToken) {
+                      const bal = sellToken.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || (selectedNetwork.chain_id === 900 && sellToken.address === 'So11111111111111111111111111111111111111112')
+                        ? nativeBalance
+                        : balances[sellToken.address] || '0';
+                      const dec = sellToken.decimals;
+                      try {
+                        setSellAmount((Number(bal) / Math.pow(10, dec)).toString());
+                      } catch {}
+                    }
+                  }}
+                  className="text-primary text-sm font-bold hover:underline"
+                >
+                  Max
                   </button>
                 </div>
               </div>
 
-              {/* Swap Arrow */}
-              <div className="mb-6 flex justify-center">
+            {/* Swap Button */}
+            <div className="flex justify-center -my-9 z-10">
                 <button
                   onClick={swapTokens}
-                  className="group rounded-2xl bg-gradient-to-r from-primary to-secondary p-4 text-white shadow-lg transition-all duration-200 hover:scale-110 hover:from-primary/90 hover:to-secondary/90 hover:shadow-xl"
+                className="flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-4 border-background-light dark:border-slate-900/50 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
                 >
-                  <ArrowUpDown className="h-5 w-5 transition-transform group-hover:rotate-180" />
+                <span className="material-symbols-outlined text-2xl">swap_vert</span>
                 </button>
               </div>
 
-              {/* Buy Token */}
-              <div className="mb-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <label className="flex items-center text-sm font-semibold text-gray-600 dark:text-gray-400">
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    You Receive
-                  </label>
-                  {buyToken && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Balance: {
-                        (() => {
-                          const bal = buyToken.address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || (selectedNetwork.chain_id === 900 && buyToken.address === 'So11111111111111111111111111111111111111112')
-                            ? nativeBalance
-                            : balances[buyToken.address] || '0';
-                          const dec = buyToken.decimals;
-                          try {
-                            return (Number(bal) / Math.pow(10, dec)).toFixed(6);
-                          } catch {
-                            return '0';
-                          }
-                        })()
-                      } {buyToken.symbol}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center space-x-4 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
+            {/* To Token */}
+            <div className="flex flex-col gap-3 p-4 bg-slate-100 dark:bg-black/20 rounded-lg">
+              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">To</p>
+              <div className="flex items-center justify-between gap-4">
                   <input
-                    type="number"
-                    value={buyAmount}
+                  type="text"
+                  value={buyAmount || '0.0'}
                     readOnly
                     placeholder="0.0"
-                    className="flex-1 bg-transparent text-2xl font-bold text-gray-900 placeholder-gray-400 outline-none dark:text-white dark:placeholder-gray-500"
+                  className="flex-1 bg-transparent text-slate-900 dark:text-white text-3xl font-bold p-0 border-none focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   />
                   <button
                     onClick={() => openTokenSelector('buy')}
-                    className="flex items-center space-x-3 rounded-2xl bg-white px-4 py-3 shadow-lg transition-all duration-200 hover:shadow-xl dark:bg-gray-800 dark:hover:bg-gray-700"
+                  className="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-10 px-4 bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-white text-sm font-bold hover:bg-slate-300 dark:hover:bg-white/20 transition-colors"
                   >
                     {buyToken ? (
                       <>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-sm font-bold text-white shadow-lg">
-                          {buyToken.symbol.substring(0, 2)}
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {buyToken.symbol}
-                        </span>
+                      <div className="w-5 h-5 bg-center bg-no-repeat aspect-square bg-cover rounded-full bg-gradient-to-br from-primary to-secondary"></div>
+                      <span className="truncate">{buyToken.symbol}</span>
                       </>
                     ) : (
-                      <span className="text-gray-500 dark:text-gray-400">Select Token</span>
+                    <>
+                      <span className="material-symbols-outlined text-lg">token</span>
+                      <span className="truncate">Select Token</span>
+                    </>
                     )}
-                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <span className="material-symbols-outlined text-lg">expand_more</span>
                   </button>
                 </div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                {buyAmount && buyToken ? `$${(parseFloat(buyAmount) * (buyToken.symbol === 'USDC' ? 1 : 3000)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+              </p>
               </div>
 
-              {/* Quote Loading */}
-              {quoteLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">
-                      Getting best price...
-                    </span>
+            {/* Error Display */}
+            {quoteError && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-red-500 text-lg">error</span>
+                  <p className="text-sm text-red-700 dark:text-red-300">{quoteError}</p>
                   </div>
-                </motion.div>
-              )}
+              </div>
+            )}
 
-              {/* Quote Error */}
-              {quoteError && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 rounded-2xl bg-red-50 p-4 shadow-inner dark:bg-red-900/20 dark:shadow-none"
-                >
-                  <div className="flex items-start space-x-3">
-                    <X className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
-                      {quoteError}
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Quote Information */}
-              {quote && !quoteLoading && sellToken && buyToken && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 rounded-2xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Exchange Rate</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        1 {sellToken.symbol} ={' '}
-                        {calculateExchangeRate(
-                          quote.sell_amount,
-                          quote.buy_amount,
-                          sellToken.decimals,
-                          buyToken.decimals,
-                        )}{' '}
-                        {buyToken.symbol}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Slippage Tolerance</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {slippage / 100}%
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Estimated Gas</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {Number.parseInt(quote.estimated_gas || '0').toLocaleString()}
-                      </span>
-                    </div>
-                    {quote.price_impact && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Price Impact</span>
-                        <span
-                          className={`font-semibold ${
-                            Number.parseFloat(quote.price_impact) > 5
-                              ? 'text-red-500'
-                              : 'text-green-500'
-                          }`}
-                        >
-                          {formatPrice(quote.price_impact)}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Swap Button */}
+            {/* Swap Button */}
+            <div className="flex flex-col gap-2">
               <button
                 onClick={executeSwap}
-                disabled={
-                  !quote ||
-                  loading ||
-                  !sellAmount ||
-                  !sellToken ||
-                  !buyToken ||
-                  quoteLoading ||
-                  (sellToken &&
-                    buyToken &&
-                    sellToken.address.toLowerCase() === buyToken.address.toLowerCase())
-                }
-                className={`group relative w-full overflow-hidden rounded-2xl p-1 shadow-xl transition-all duration-300 ${
-                  quote &&
-                  sellAmount &&
-                  !loading &&
-                  sellToken &&
-                  buyToken &&
-                  !quoteLoading &&
-                  !(
-                    sellToken &&
-                    buyToken &&
-                    sellToken.address.toLowerCase() === buyToken.address.toLowerCase()
-                  )
-                    ? 'bg-gradient-to-r from-primary to-secondary hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98] dark:shadow-none'
-                    : 'cursor-not-allowed bg-gray-200 dark:bg-gray-700'
-                }`}
+                disabled={!quote || loading || !sellAmount || !sellToken || !buyToken || quoteLoading || !!quoteError}
+                className="w-full flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary text-white text-base font-bold tracking-wide shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="rounded-xl bg-gradient-to-r from-primary to-secondary px-8 py-4 text-center">
-                  <div className="flex items-center justify-center space-x-3">
-                    {loading ? (
-                      <>
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        <span className="text-lg font-semibold text-white">Swapping...</span>
-                      </>
-                    ) : !sellToken || !buyToken ? (
-                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400">
-                        Select Tokens
+                {loading ? 'Swapping...' : 'Swap'}
+              </button>
+              {quoteLoading && (
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400">Getting quote...</p>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="w-full lg:w-64 flex flex-col gap-4">
+            {/* Network Selector */}
+            <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Network</p>
+              <select
+                value={selectedNetwork.chain_id}
+                onChange={(e) => handleNetworkChange(Number.parseInt(e.target.value))}
+                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-100 dark:bg-black/20 hover:bg-slate-200 dark:hover:bg-black/30 transition-colors text-slate-800 dark:text-white font-semibold border-none focus:ring-2 focus:ring-primary"
+              >
+                {networkOptions.map((network) => (
+                  <option key={network.chain_id} value={network.chain_id}>
+                    {network.name} {network.isTestnet ? '(Testnet)' : ''}
+                  </option>
+                ))}
+              </select>
+                    </div>
+
+            {/* Wallet Selector */}
+            <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Wallet</p>
+              <PrivateKeySelector
+                key={`${selectedNetwork.chain_id}-${keyRefreshCounter}`}
+                chainId={selectedNetwork.chain_id}
+                selectedKeyId={selectedPrivateKeyId}
+                onKeySelect={(keyId) => setSelectedPrivateKeyId(keyId)}
+                onAddKey={() => setShowAddKeyModal(true)}
+                label=""
+              />
+                    </div>
+
+            {/* Quote Details */}
+            <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm flex-1">
+              <p className="text-slate-800 dark:text-white text-sm font-bold mb-3">Quote Details</p>
+              <div className="flex flex-col gap-2.5 text-sm">
+                {quote && sellToken && buyToken ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Price:</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium">
+                        1 {sellToken.symbol} = {calculateExchangeRate(quote.sell_amount, quote.buy_amount, sellToken.decimals, buyToken.decimals)} {buyToken.symbol}
                       </span>
-                    ) : sellToken &&
-                      buyToken &&
-                      sellToken.address.toLowerCase() === buyToken.address.toLowerCase() ? (
-                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400">
-                        Cannot Swap Same Token
-                      </span>
-                    ) : !sellAmount ? (
-                      <span className="text-lg font-semibold text-white">Enter Amount</span>
-                    ) : quoteLoading ? (
-                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400">
-                        Getting Quote...
-                      </span>
-                    ) : !quote ? (
-                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400">
-                        Enter Amount to See Quote
-                      </span>
-                    ) : (
-                      <>
-                        <Zap className="h-5 w-5 text-white" />
-                        <span className="text-lg font-semibold text-white">
-                          Swap {sellToken.symbol} for {buyToken.symbol}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Slippage:</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium">{slippage / 100}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Network Fee:</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium">
+                        ~${(Number.parseInt(quote.estimated_gas || '0') * 0.00000002).toFixed(2)}
                         </span>
-                      </>
+                      </div>
+                  </>
+                ) : (
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">Enter amount to see quote</p>
                     )}
                   </div>
                 </div>
-              </button>
             </div>
-          </motion.div>
+        </div>
 
           {/* Recent Trades */}
           {tradeHistory.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.5 }}
-              className="overflow-hidden rounded-3xl bg-[#FFFFFF] shadow-xl dark:bg-gray-800/80 dark:shadow-none"
-            >
-              <div className="bg-gradient-to-r from-primary to-secondary p-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5" />
-                    <span className="font-semibold">Recent Trades</span>
-                  </div>
-                  <button
-                    onClick={fetchTradeHistory}
-                    className="flex items-center space-x-2 rounded-lg bg-white/20 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/30"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-800 dark:shadow-none">
-                <div className="max-h-80 space-y-3 overflow-y-auto">
-                  <AnimatePresence>
-                    {tradeHistory.slice(0, 5).map((trade, index) => {
-                      // Get token info using the helper function
+          <div className="flex flex-col gap-2 p-4 md:p-6 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+            <h2 className="text-slate-900 dark:text-white text-lg font-bold mb-2">Recent Trades</h2>
+            <div className="flex flex-col">
+              {tradeHistory.slice(0, 3).map((trade) => {
                       const sellTokenInfo = getTokenInfo(trade.sell_token, trade.chain_id);
                       const buyTokenInfo = getTokenInfo(trade.buy_token, trade.chain_id);
-
                       const formatAmount = (amount: string, decimals = 18) => {
                         try {
-                          const formatted = (
-                            Number.parseFloat(amount) / Math.pow(10, decimals)
-                          ).toFixed(6);
+                    const formatted = (Number.parseFloat(amount) / Math.pow(10, decimals)).toFixed(6);
                           return Number.parseFloat(formatted).toString();
                         } catch {
                           return '0';
                         }
                       };
+                const getStatusIcon = () => {
+                  if (trade.status === 'success') return 'check_circle';
+                  if (trade.status === 'failed') return 'cancel';
+                  return 'hourglass_top';
+                };
+                const getStatusColor = () => {
+                  if (trade.status === 'success') return 'text-green-500 bg-green-500/10 dark:bg-green-500/20';
+                  if (trade.status === 'failed') return 'text-red-500 bg-red-500/10 dark:bg-red-500/20';
+                  return 'text-yellow-500 bg-yellow-500/10 dark:bg-yellow-500/20';
+                };
+                const getStatusText = () => {
+                  if (trade.status === 'success') return 'Success';
+                  if (trade.status === 'failed') return 'Failed';
+                  return 'Pending';
+                };
+                const getStatusBadgeColor = () => {
+                  if (trade.status === 'success') return 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-500/20';
+                  if (trade.status === 'failed') return 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-500/20';
+                  return 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-500/20';
+                      };
 
                       return (
-                        <motion.div
+                  <div
                           key={trade.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.3, delay: index * 0.1 }}
-                          className="rounded-2xl bg-[#FAFBFC] p-4 shadow-sm dark:bg-gray-700 dark:shadow-none"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex min-w-0 flex-1 items-center space-x-3">
-                              <div className="flex items-center space-x-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xs font-bold text-white shadow-lg">
-                                  {sellTokenInfo.symbol.substring(0, 2)}
-                                </div>
-                                <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xs font-bold text-white shadow-lg">
-                                  {buyTokenInfo.symbol.substring(0, 2)}
-                                </div>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                                  {formatAmount(trade.sell_amount, sellTokenInfo.decimals)}{' '}
-                                  {sellTokenInfo.symbol} →{' '}
-                                  {formatAmount(trade.buy_amount, buyTokenInfo.decimals)}{' '}
-                                  {buyTokenInfo.symbol}
-                                </div>
-                                <div className="truncate text-xs text-gray-500 dark:text-gray-400">
-                                  {new Date(trade.created_at).toLocaleDateString()} •{' '}
-                                  <span className="hidden sm:inline">
-                                    {trade.network_name || `Chain ${trade.chain_id}`}
-                                  </span>
-                                  <span className="sm:hidden">
-                                    {trade.network_name?.split(' ')[0] || `C${trade.chain_id}`}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-4 border-b border-slate-200 dark:border-white/10 last:border-0"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`flex items-center justify-center size-10 rounded-full ${getStatusColor()}`}>
+                        <span className={`material-symbols-outlined ${getStatusColor().split(' ')[0]}`}>
+                          {getStatusIcon()}
                                   </span>
                                 </div>
+                      <div>
+                        <p className="text-slate-800 dark:text-white font-medium">
+                          Swap {formatAmount(trade.sell_amount, sellTokenInfo.decimals)} {sellTokenInfo.symbol} for {formatAmount(trade.buy_amount, buyTokenInfo.decimals)} {buyTokenInfo.symbol}
+                        </p>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                          {new Date(trade.created_at).toLocaleString()} on {trade.network_name || `Chain ${trade.chain_id}`}
+                        </p>
                               </div>
                             </div>
-                            <div className="flex flex-shrink-0 items-center space-x-2">
-                              <div
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  trade.status === 'success'
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                    : trade.status === 'failed'
-                                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                }`}
-                              >
-                                {trade.status === 'success' ? (
-                                  <Check className="inline h-3 w-3" />
-                                ) : trade.status === 'failed' ? (
-                                  <X className="inline h-3 w-3" />
-                                ) : (
-                                  <Clock className="inline h-3 w-3" />
-                                )}
+                    <div className="flex items-center gap-4 w-full sm:w-auto sm:justify-end pl-14 sm:pl-0">
+                      <div className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor()}`}>
+                        {getStatusText()}
                               </div>
-                              {trade.status === 'pending' && (
-                                <button
-                                  onClick={() =>
-                                    refreshTransactionStatus(trade.transaction_hash, trade.chain_id)
-                                  }
-                                  className="rounded-lg bg-yellow-500 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-yellow-600"
-                                  title="Check Status"
-                                >
-                                  <RefreshCw className="h-3 w-3" />
-                                </button>
-                              )}
                               <a
                                 href={getExplorerTxUrl(trade.chain_id, trade.transaction_hash)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="rounded-lg bg-blue-500 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600"
+                        className="text-primary text-sm font-semibold hover:underline"
                               >
-                                <ExternalLink className="h-3 w-3" />
+                        Check Status
                               </a>
                             </div>
                           </div>
-                        </motion.div>
                       );
                     })}
-                  </AnimatePresence>
                 </div>
-                {tradeHistory.length > 5 && (
-                  <div className="mt-4 text-center">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Showing 5 of {tradeHistory.length} trades
-                    </span>
                   </div>
                 )}
-              </div>
-            </motion.div>
-          )}
-        </div>
       </div>
 
       {/* Modals */}
@@ -1189,3 +832,5 @@ const ManualTrade: React.FC = () => {
 };
 
 export default ManualTrade;
+
+

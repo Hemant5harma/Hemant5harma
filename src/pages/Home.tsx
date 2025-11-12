@@ -1,84 +1,173 @@
-import CryptoCard from '../components/CryptoCard';
+import React, { useState } from 'react';
+import SparklineChart from '../components/SparklineChart';
 import PortfolioChart from '../components/PortfolioChart';
 
-// Mock data for crypto charts
-const generateChartData = (count: number, initialPrice: number, trend: 'up' | 'down') => {
-  return Array.from({ length: count }, (_, i) => ({
-    date: new Date(Date.now() - (count - i) * 86400000).toISOString().split('T')[0],
-    price:
-      trend === 'up'
-        ? initialPrice * (1 + ((Math.random() * 0.1 + 0.01) * i) / count)
-        : initialPrice * (1 - ((Math.random() * 0.1 + 0.01) * i) / count),
-  }));
-};
+// Mock data for crypto prices
+const cryptoData = [
+  {
+    name: 'Bitcoin',
+    symbol: 'BTC',
+    pair: 'BTC/USD',
+    price: 68123.45,
+    change: 2.5,
+    changeAmount: 1661.55,
+    trend: 'up' as const,
+    logo: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
+    chartData: [73, 73, 14, 14, 27.5, 27.5, 62.5, 62.5, 22.5, 22.5, 68, 68, 41, 41, 30.5, 30.5, 81.5, 81.5, 100, 100, 1, 1, 54.5, 54.5, 87, 87, 17],
+  },
+  {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    pair: 'ETH/USD',
+    price: 3567.89,
+    change: -1.8,
+    changeAmount: -65.51,
+    trend: 'down' as const,
+    logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+    chartData: [17, 17, 87, 87, 72.5, 72.5, 37.5, 37.5, 77.5, 77.5, 32, 32, 59, 59, 69.5, 69.5, 18.5, 18.5, 1, 1, 100, 100, 45.5, 45.5, 13, 13, 83],
+  },
+  {
+    name: 'Solana',
+    symbol: 'SOL',
+    pair: 'SOL/USD',
+    price: 172.34,
+    change: 5.1,
+    changeAmount: 8.36,
+    trend: 'up' as const,
+    logo: 'https://cryptologos.cc/logos/solana-sol-logo.png',
+    chartData: [41, 41, 86, 86, 62.5, 62.5, 92.5, 92.5, 37.5, 37.5, 77, 77, 19, 19, 49.5, 49.5, 1, 1, 30, 30, 80, 80, 45.5, 45.5, 90, 90, 13],
+  },
+];
 
 export default function Dashboard() {
+  const [selectedPeriod, setSelectedPeriod] = useState('24H');
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/10 to-secondary/10 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="bg-[#FFFFFF] px-4 py-6 dark:bg-boxdark">
-        {/* Crypto Cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <CryptoCard
-            symbol="BTC"
-            name="Bitcoin"
-            price="$98,804.36"
-            change="1.56"
-            chartData={generateChartData(30, 98804.36, 'up')}
-            high24h="$99,500.00"
-            low24h="$97,800.00"
-            volume24h="1200 BTC"
-          />
-          <CryptoCard
-            symbol="ETH"
-            name="Ethereum"
-            price="$3,416.88"
-            change="2.05"
-            chartData={generateChartData(30, 3416.88, 'up')}
-            high24h="$3,500.00"
-            low24h="$3,300.00"
-            volume24h="5000 ETH"
-          />
-          <CryptoCard
-            symbol="BNB"
-            name="BNB"
-            price="$670.17"
-            change="9.97"
-            chartData={generateChartData(30, 670.17, 'down')}
-            high24h="$700.00"
-            low24h="$650.00"
-            volume24h="10000 BNB"
-          />
-        </div>
-
-        {/* Overview Section */}
-        <div className="mb-8">
-          <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">OVERVIEW</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-              <p className="text-sm text-gray-600 dark:text-white">Total Balance</p>
-            </div>
-            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-              <p className="text-sm text-gray-600 dark:text-white">Total DEX(s)</p>
-            </div>
-            <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-              <p className="text-3xl font-bold text-black dark:text-white">$0</p>
-              <p className="text-sm text-gray-600 dark:text-white">Total CEX(s)</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Portfolio Evolution */}
-        <div className="rounded-2xl bg-[#FFFFFF] p-6 shadow-xl dark:bg-gray-800 dark:shadow-none">
-          <h2 className="mb-4 text-xl font-semibold text-black dark:text-white">
-            Portfolio Evolution
-          </h2>
-          <div className="rounded-xl bg-[#FAFBFC] p-4 shadow-inner dark:bg-gray-700 dark:shadow-none">
-            <PortfolioChart />
-          </div>
-        </div>
+    <div className="w-full">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-text-light-primary dark:text-text-dark-primary text-4xl font-black leading-tight tracking-[-0.033em]">
+          Dashboard
+        </h1>
+        <p className="mt-2 text-text-light-secondary dark:text-text-dark-secondary text-base font-normal leading-normal">
+          Welcome back, here is your portfolio overview.
+        </p>
       </div>
+
+      {/* Crypto Cards */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {cryptoData.map((crypto) => (
+          <div
+            key={crypto.symbol}
+            className="bg-card-light dark:bg-card-dark rounded-xl p-6 flex flex-col shadow-sm border border-border-light dark:border-border-dark"
+          >
+            <div className="flex items-center gap-4 mb-2">
+              <img
+                alt={`${crypto.name} logo`}
+                className="size-8"
+                src={crypto.logo}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/32';
+                }}
+              />
+              <div className="flex-1">
+                <p className="text-text-light-primary dark:text-text-dark-primary text-base font-medium leading-normal">
+                  {crypto.name}
+                </p>
+                <p className="text-text-light-secondary dark:text-text-dark-secondary text-sm">
+                  {crypto.pair}
+                </p>
+              </div>
+            </div>
+            <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-3xl font-bold leading-tight truncate">
+              ${crypto.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <div className="flex gap-2 items-center text-sm font-medium">
+              <span
+                className={`material-symbols-outlined text-base ${
+                  crypto.change >= 0 ? 'text-success' : 'text-danger'
+                }`}
+              >
+                {crypto.change >= 0 ? 'arrow_drop_up' : 'arrow_drop_down'}
+              </span>
+              <p className={crypto.change >= 0 ? 'text-success' : 'text-danger'}>
+                {crypto.change >= 0 ? '+' : ''}
+                {crypto.change}% ({crypto.change >= 0 ? '+' : ''}${Math.abs(crypto.changeAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+              </p>
+            </div>
+            <div className="flex h-[100px] flex-1 flex-col mt-4">
+              <SparklineChart
+                data={crypto.chartData}
+                color={crypto.change >= 0 ? '#0bda65' : '#fa6538'}
+                trend={crypto.trend}
+                height={100}
+              />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Overview Section */}
+      <section className="mb-8">
+        <h2 className="text-text-light-primary dark:text-text-dark-primary text-[22px] font-bold leading-tight tracking-[-0.015em] mb-4">
+          Overview
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-2 rounded-xl p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm">
+            <p className="text-text-light-secondary dark:text-text-dark-secondary text-base font-medium leading-normal">
+              Total Balance
+            </p>
+            <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
+              $1,234,567.89
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm">
+            <p className="text-text-light-secondary dark:text-text-dark-secondary text-base font-medium leading-normal">
+              Connected DEXs
+            </p>
+            <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
+              3
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm">
+            <p className="text-text-light-secondary dark:text-text-dark-secondary text-base font-medium leading-normal">
+              Connected CEXs
+            </p>
+            <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
+              5
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Portfolio Evolution */}
+      <section>
+        <div className="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <h3 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">
+              Portfolio Evolution
+            </h3>
+            <div className="flex items-center gap-2 rounded-lg p-1 bg-gray-100 dark:bg-background-dark">
+              {['24H', '7D', '1M', '1Y'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSelectedPeriod(period)}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                    selectedPeriod === period
+                      ? 'bg-white dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary shadow'
+                      : 'text-text-light-secondary dark:text-text-dark-secondary'
+                  }`}
+                >
+                  {period}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="h-96">
+            <PortfolioChart period={selectedPeriod} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

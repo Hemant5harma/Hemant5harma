@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import DarkModeSwitcher from './DarkModeSwitcher';
 import DropdownNotification from './DropdownNotification';
-import DropdownUser from './DropdownUser';
-import Logo from '../assets/image/logo.svg';
-import { FaBars, FaTimes } from 'react-icons/fa';
+import ClickOutside from './ClickOutside';
+import UserOne from '../assets/image/user-10.png';
+import { BrowserProvider } from 'ethers';
+import { setAuthToken, removeAuthToken } from '../utils/auth';
+import { showNotification } from '@mantine/notifications';
+import { apiClient } from '../utils/apiClient';
 
 interface HeaderProps {
   sidebarOpen?: boolean;
@@ -11,66 +15,398 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar }) => {
-  // const handleSearch = (query: string) => {
-  //   console.log("Searching for:", query);
-  //   // Implement search logic here
-  //   // Could dispatch to Redux store or call API
-  // };
+  const navigate = useNavigate();
+  const [account, setAccount] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  // Check if a wallet is connected when the component mounts
+  useEffect(() => {
+    async function checkConnection() {
+      if ((window as any).ethereum) {
+        try {
+          const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
+          if (accounts && accounts.length > 0) {
+            setAccount(accounts[0]);
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+              setIsAuthenticated(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching accounts', error);
+        }
+      }
+    }
+    checkConnection();
+
+    // Listen for account changes
+    if ((window as any).ethereum) {
+      (window as any).ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length === 0) {
+          setAccount(null);
+          setIsAuthenticated(false);
+          removeAuthToken();
+        } else {
+          setAccount(accounts[0]);
+          // Check if still authenticated
+          const token = localStorage.getItem('auth_token');
+          setIsAuthenticated(!!token);
+        }
+      });
+    }
+
+    return () => {
+      if ((window as any).ethereum?.removeListener) {
+        (window as any).ethereum.removeListener('accountsChanged', () => {});
+      }
+    };
+  }, []);
+
+  // One-step wallet connection and authentication
+  const connectAndAuthenticateWallet = async () => {
+    if (!(window as any).ethereum) {
+      showNotification({
+        title: 'MetaMask Not Found',
+        message: 'Please install MetaMask to connect your wallet',
+        color: 'red',
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+
+    try {
+      // Step 1: Connect wallet
+      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found');
+      }
+
+      const walletAddress = accounts[0];
+      setAccount(walletAddress);
+
+      showNotification({
+        title: 'Wallet Connected',
+        message: `Connected to ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`,
+        color: 'blue',
+      });
+
+      // Step 2: Authenticate automatically
+      setIsAuthenticating(true);
+
+      // Create a message for the user to sign
+      const message = `Sign this message to authenticate with our application: ${Date.now()}`;
+
+      // Request signature from the user
+      const provider = new BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
+
+      // Send the signature to the backend
+      try {
+        const data = await apiClient.post('/users/metamask_login', {
+          address: walletAddress,
+          message: message,
+          signature: signature,
+        });
+        
+        setAuthToken(data.access_token);
+        setIsAuthenticated(true);
+
+        showNotification({
+          title: 'Authentication Successful',
+          message: 'You are now signed in with your wallet!',
+          color: 'green',
+        });
+
+        setUserDropdownOpen(false);
+      } catch (error: any) {
+        const errorMessage = error.message || 'Authentication failed';
+
+        showNotification({
+          title: 'Authentication Failed',
+          message: errorMessage,
+          color: 'red',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error during wallet connection/authentication:', error);
+
+      let errorMessage = 'Failed to connect wallet';
+
+      if (error.code === 4001) {
+        errorMessage = 'Connection request was rejected';
+      } else if (error.code === -32002) {
+        errorMessage = 'Please check MetaMask for pending connection request';
+      } else if (error.message?.includes('User rejected')) {
+        errorMessage = 'Signature request was rejected';
+      } else if (error.message?.includes('fetch')) {
+        errorMessage = 'Unable to connect to server';
+      }
+
+      showNotification({
+        title: 'Connection Failed',
+        message: errorMessage,
+        color: 'red',
+      });
+    } finally {
+      setIsConnecting(false);
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Separate sign-in function for already connected wallets
+  const signInWithConnectedWallet = async () => {
+    if (!account) return;
+
+    setIsAuthenticating(true);
+
+    try {
+      // Create a message for the user to sign
+      const message = `Sign this message to authenticate with our application: ${Date.now()}`;
+
+      // Request signature from the user
+      const provider = new BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
+
+      // Send the signature to the backend
+      try {
+        const data = await apiClient.post('/users/metamask_login', {
+          address: account,
+          message: message,
+          signature: signature,
+        });
+        
+        setAuthToken(data.access_token);
+        setIsAuthenticated(true);
+
+        showNotification({
+          title: 'Authentication Successful',
+          message: 'You are now signed in with your wallet!',
+          color: 'green',
+        });
+
+        setUserDropdownOpen(false);
+      } catch (error: any) {
+        const errorMessage = error.message || 'Authentication failed';
+
+        showNotification({
+          title: 'Authentication Failed',
+          message: errorMessage,
+          color: 'red',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error during authentication:', error);
+
+      let errorMessage = 'Failed to authenticate';
+
+      if (error.message?.includes('User rejected')) {
+        errorMessage = 'Signature request was rejected';
+      } else if (error.message?.includes('fetch')) {
+        errorMessage = 'Unable to connect to server';
+      }
+
+      showNotification({
+        title: 'Authentication Failed',
+        message: errorMessage,
+        color: 'red',
+      });
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Disconnect wallet function
+  const disconnectWallet = () => {
+    setAccount(null);
+    setIsAuthenticated(false);
+    removeAuthToken();
+    setUserDropdownOpen(false);
+
+    showNotification({
+      title: 'Wallet Disconnected',
+      message: 'Your wallet has been disconnected successfully',
+      color: 'blue',
+    });
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    disconnectWallet();
+    navigate('/');
+  };
 
   return (
-    <header className="flex-1">
-      <div className="flex flex-grow items-center justify-between px-4 py-4 md:px-6 2xl:px-8">
-        {/* Logo Section */}
-        <div className="flex items-center gap-3">
-          <a href="/" className="group flex items-center gap-3">
-            <div className="relative">
-              <img
-                src={Logo}
-                alt="TradePro Logo"
-                className="h-10 w-10 drop-shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-xl"
-              />
-              <div className="absolute -inset-2 rounded-xl bg-gradient-to-r from-primary to-secondary opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-20 dark:group-hover:opacity-30"></div>
-            </div>
-            <div>
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-2xl font-bold text-transparent transition-all duration-300 group-hover:from-secondary group-hover:to-primary">
-                TradePro
-              </span>
-            </div>
-          </a>
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-end border-b border-border-light bg-card-light px-4 shadow-sm dark:border-border-dark dark:bg-card-dark sm:px-6 lg:px-8">
+      {/* Right Section */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Dark Mode Toggle */}
+        <div className="hidden sm:block">
+          <DarkModeSwitcher />
         </div>
 
-        {/* Search Section */}
-        {/* <SearchBar 
-          placeholder="Search crypto, portfolios, bots..."
-          onSearch={handleSearch}
-        /> */}
+        {/* Notifications */}
+        <div className="hidden sm:block">
+          <DropdownNotification />
+        </div>
 
-        {/* Right Section */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <ul className="flex items-center gap-2 sm:gap-3">
-            {/* Dark Mode Toggler */}
-            <li>
-              <DarkModeSwitcher />
-            </li>
-            {/* Notification Menu Area */}
-            <li className="hidden sm:block">
-              <DropdownNotification />
-            </li>
-          </ul>
+        {/* Wallet Address */}
+        {account && (
+          <div className="hidden items-center gap-2 rounded-lg border border-border-light bg-background-light px-3 py-1.5 text-sm font-medium text-text-light-secondary dark:border-border-dark dark:bg-background-dark dark:text-text-dark-secondary lg:flex">
+            <span className="material-symbols-outlined text-base">account_balance_wallet</span>
+            <span className="font-mono">
+              {account.substring(0, 6)}...{account.substring(account.length - 4)}
+            </span>
+          </div>
+        )}
 
-          {/* User Area */}
-          <DropdownUser />
+        {/* User Profile Dropdown */}
+        <ClickOutside onClick={() => setUserDropdownOpen(false)} className="relative">
+          <button
+            onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+            className="flex items-center gap-2 rounded-full transition-all hover:ring-2 hover:ring-primary/20"
+          >
+            <img
+              src={UserOne || '/placeholder.svg'}
+              alt="User"
+              className="h-10 w-10 rounded-full border-2 border-border-light dark:border-border-dark"
+            />
+          </button>
 
-          {/* Mobile Burger Menu */}
-          {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              className="ml-2 rounded-lg p-2 text-gray-700 transition-all duration-200 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 sm:hidden"
-            >
-              {sidebarOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
-            </button>
+          {/* Dropdown Menu */}
+          {userDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border-light bg-card-light shadow-lg dark:border-border-dark dark:bg-card-dark">
+              <ul className="flex flex-col gap-1 p-2">
+                <li>
+                  <Link
+                    to="/profile"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-text-light-primary transition-colors hover:bg-background-light dark:text-text-dark-primary dark:hover:bg-background-dark"
+                  >
+                    <span className="material-symbols-outlined text-xl">person</span>
+                    My Profile
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/settings"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-text-light-primary transition-colors hover:bg-background-light dark:text-text-dark-primary dark:hover:bg-background-dark"
+                  >
+                    <span className="material-symbols-outlined text-xl">settings</span>
+                    Account Settings
+                  </Link>
+                </li>
+              </ul>
+
+              {/* Wallet Connection Section */}
+              <div className="border-t border-border-light px-2 py-2 dark:border-border-dark">
+                {!account ? (
+                  <button
+                    onClick={connectAndAuthenticateWallet}
+                    disabled={isConnecting}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/60 disabled:opacity-70"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        {isAuthenticating ? 'Authenticating...' : 'Connecting...'}
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-lg">account_balance_wallet</span>
+                        Connect & Sign In
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {!isAuthenticated ? (
+                      <button
+                        onClick={signInWithConnectedWallet}
+                        disabled={isAuthenticating}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary/80 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {isAuthenticating ? (
+                          <>
+                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            Signing In...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-lg">login</span>
+                            Sign In With Wallet
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary dark:bg-primary/20">
+                        <span className="material-symbols-outlined text-base">check_circle</span>
+                        Authenticated
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Logout Section */}
+              <div className="border-t border-border-light dark:border-border-dark">
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-text-light-primary transition-colors hover:bg-background-light dark:text-text-dark-primary dark:hover:bg-background-dark"
+                >
+                  <span className="material-symbols-outlined text-xl">logout</span>
+                  Log Out
+                </button>
+              </div>
+            </div>
           )}
-        </div>
+        </ClickOutside>
+
+        {/* Mobile Burger Menu */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="rounded-lg p-2 text-text-light-secondary transition-colors hover:bg-background-light dark:text-text-dark-secondary dark:hover:bg-background-dark sm:hidden"
+          >
+            <span className="material-symbols-outlined text-2xl">
+              {sidebarOpen ? 'close' : 'menu'}
+            </span>
+          </button>
+        )}
       </div>
     </header>
   );

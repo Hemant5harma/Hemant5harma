@@ -1,116 +1,101 @@
-import { useState, useCallback } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import { Colors } from '../styles/theme';
+import React from 'react';
 
-const data = [
-  { date: '2023-05-01', value: 10000 },
-  { date: '2023-05-02', value: 10200 },
-  { date: '2023-05-03', value: 10150 },
-  { date: '2023-05-04', value: 10400 },
-  { date: '2023-05-05', value: 10300 },
-  { date: '2023-05-06', value: 10450 },
-  { date: '2023-05-07', value: 10600 },
-  { date: '2023-05-08', value: 10550 },
-  { date: '2023-05-09', value: 10700 },
-  { date: '2023-05-10', value: 10800 },
-];
+interface PortfolioChartProps {
+  period?: string;
+}
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded border border-gray-200 bg-white p-2 shadow-lg">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {new Date(label).toLocaleDateString()}
-        </p>
-        <p className="text-sm font-bold text-blue-600">${payload[0].value.toLocaleString()}</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const CustomizedDot = (props: any) => {
-  const { cx, cy } = props;
-  return (
-    <circle cx={cx} cy={cy} r={4} stroke={Colors.PRIMARY} strokeWidth={2} fill={Colors.WHITE} />
-  );
-};
-
-export default function PortfolioChart() {
-  const [activePoint, setActivePoint] = useState<{
-    x: number;
-    y: number;
-    value: number;
-  } | null>(null);
-
-  const handleMouseMove = useCallback((e: any) => {
-    if (e.activePayload) {
-      const { chartX, chartY } = e;
-      setActivePoint({
-        x: chartX,
-        y: chartY,
-        value: e.activePayload[0].value,
-      });
-    } else {
-      setActivePoint(null);
+const PortfolioChart: React.FC<PortfolioChartProps> = ({ period = '24H' }) => {
+  // Generate data points based on period
+  const generateData = () => {
+    const points = 16;
+    const data = [];
+    for (let i = 0; i <= points; i++) {
+      const x = (i / points) * 800;
+      // Generate a smooth curve that goes up over time
+      const y = 320 - (i / points) * 230 + Math.sin((i / points) * Math.PI * 2) * 20;
+      data.push({ x, y });
     }
-  }, []);
+    return data;
+  };
+
+  const data = generateData();
+  const pathD = data.map((point, i) => (i === 0 ? 'M' : 'L') + ` ${point.x} ${point.y}`).join(' ');
+  const areaPath = `${pathD} V 400 H 0 Z`;
+
+  // Y-axis labels
+  const yLabels = ['$1.20M', '$1.22M', '$1.24M', '$1.26M', '$1.28M'];
+  const yPositions = [395, 305, 205, 105, 5];
 
   return (
-    <div className="relative h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setActivePoint(null)}
-        >
-          <CartesianGrid stroke={Colors.STROKE_LIGHT} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(tick) => new Date(tick).toLocaleDateString()}
-            stroke={Colors.GRAY_DARK}
-          />
-          <YAxis tickFormatter={(tick) => `$${tick.toLocaleString()}`} stroke={Colors.GRAY_DARK} />
-          <Tooltip
-            content={<CustomTooltip />}
-            cursor={{ stroke: Colors.GRAY_DARK, strokeWidth: 1 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke={Colors.PRIMARY}
-            strokeWidth={2}
-            dot={<CustomizedDot />}
-            activeDot={{
-              r: 6,
-              fill: Colors.PRIMARY,
-              stroke: Colors.WHITE,
-              strokeWidth: 2,
-            }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-      {activePoint && (
-        <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full transform rounded border border-gray-200 bg-white px-2 py-1 shadow-lg"
-          style={{
-            left: activePoint.x,
-            top: activePoint.y - 16,
-          }}
-        >
-          <span className="text-sm font-bold text-blue-600">
-            ${activePoint.value.toLocaleString()}
-          </span>
-        </div>
-      )}
+    <div className="h-96">
+      <svg
+        fill="none"
+        height="100%"
+        preserveAspectRatio="none"
+        viewBox="0 0 800 400"
+        width="100%"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="portfolioGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#354ae9" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#354ae9" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <g className="text-text-light-secondary dark:text-text-dark-secondary text-xs">
+          {yLabels.map((label, i) => (
+            <text key={i} x="0" y={yPositions[i]}>
+              {label}
+            </text>
+          ))}
+        </g>
+        <path
+          d={pathD}
+          fill="none"
+          stroke="#354ae9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.5"
+        />
+        <path d={areaPath} fill="url(#portfolioGradient)" />
+        <line
+          className="stroke-border-light dark:stroke-border-dark"
+          strokeWidth="1"
+          x1="40"
+          x2="800"
+          y1="400"
+          y2="400"
+        />
+        <line
+          className="stroke-border-light dark:stroke-border-dark"
+          strokeDasharray="4 4"
+          strokeWidth="1"
+          x1="40"
+          x2="800"
+          y1="300"
+          y2="300"
+        />
+        <line
+          className="stroke-border-light dark:stroke-border-dark"
+          strokeDasharray="4 4"
+          strokeWidth="1"
+          x1="40"
+          x2="800"
+          y1="200"
+          y2="200"
+        />
+        <line
+          className="stroke-border-light dark:stroke-border-dark"
+          strokeDasharray="4 4"
+          strokeWidth="1"
+          x1="40"
+          x2="800"
+          y1="100"
+          y2="100"
+        />
+      </svg>
     </div>
   );
-}
+};
+
+export default PortfolioChart;

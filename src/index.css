@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Material Symbols Outlined */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  font-size: 24px;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
 @layer base {
   body {
     /* Default text & background */

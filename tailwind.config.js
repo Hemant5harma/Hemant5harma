@@ -8,6 +8,7 @@ module.exports = {
   theme: {
     fontFamily: {
       satoshi: ['Satoshi', 'sans-serif'],
+      display: ['Inter', 'sans-serif'],
     },
     screens: {
       '2xsm': '375px',
@@ -33,8 +34,20 @@ module.exports = {
         bodydark: '#AEB7C0',
         bodydark1: '#DEE4EE',
         bodydark2: '#8A99AF',
-        primary: '#3C50E0',
+        primary: '#354ae9',
         secondary: '#80CAEE',
+        'background-light': '#f6f6f8',
+        'background-dark': '#111321',
+        'card-light': '#ffffff',
+        'card-dark': '#1a1c2c',
+        'content-light': '#ffffff',
+        'content-dark': '#181A2A',
+        'text-light-primary': '#111321',
+        'text-light-secondary': '#6b7280',
+        'text-dark-primary': '#ffffff',
+        'text-dark-secondary': '#9399c8',
+        'border-light': '#e5e7eb',
+        'border-dark': '#343a65',
         stroke: '#E2E8F0',
         gray: {
           ...colors.gray,
@@ -62,8 +75,8 @@ module.exports = {
           9: '#E5E7EB',
           10: '#0FADCF',
         },
-        success: '#219653',
-        danger: '#D34053',
+        success: '#0bda65',
+        danger: '#fa6538',
         warning: '#FFA70B',
       },
       fontSize: {
@@ -218,6 +231,12 @@ module.exports = {
       },
       boxShadow: {
         default: '0px 8px 13px -3px rgba(0, 0, 0, 0.07)',
+      },
+      borderRadius: {
+        DEFAULT: '0.5rem',
+        lg: '1rem',
+        xl: '1.5rem',
+        full: '9999px',
       },
     },
   },

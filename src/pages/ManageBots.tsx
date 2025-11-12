@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import BotCard from '../components/BotCard';
 import { fetchBots } from '../utils/apiClient';
-import { Search } from 'lucide-react';
 
 // Token address to name mapping
 const tokenAddressToName: Record<string, { symbol: string; name: string }> = {
@@ -73,10 +73,11 @@ export default function ManageBots() {
   };
 
   const filteredBots = useMemo(() => {
+    if (!searchTerm) return bots;
     return bots.filter(
       (bot) =>
         bot.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bot.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (bot.network_name && bot.network_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         bot.coins.some((coin: any) => {
           const tokenInfo = getTokenInfo(coin.token_address);
           return (
@@ -88,71 +89,108 @@ export default function ManageBots() {
   }, [bots, searchTerm]);
 
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-6">
-      {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold text-black dark:text-white sm:text-3xl">
-          Trading Bots
+    <div className="w-full">
+      {/* Header */}
+      <header className="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <h1 className="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
+          Manage Bots
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Manage and monitor your automated trading strategies
-        </p>
-      </div>
+        <Link
+          to="/bots/dca"
+          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary hover:bg-primary/90 text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] px-4 transition-colors"
+        >
+          <span className="material-symbols-outlined text-base filled">add</span>
+          <span className="truncate">New Bot</span>
+        </Link>
+      </header>
 
-      {/* Search and Actions */}
+      {/* Search */}
       <div className="mb-8">
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-5 w-5 text-gray-400" />
+        <label className="flex flex-col w-full">
+          <div className="relative flex w-full flex-1 items-stretch rounded-lg h-12">
+            <div className="text-gray-400 dark:text-[#9399c8] pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-4">
+              <span className="material-symbols-outlined">search</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Search bots by name, network, or asset..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#242847] h-full placeholder:text-gray-400 dark:placeholder:text-[#9399c8] pl-12 pr-4 text-base font-normal leading-normal"
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Search by name, status, or token name..."
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 pl-10 text-black transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-boxdark dark:text-white dark:focus:ring-indigo-400"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        </label>
       </div>
 
-      {/* Bot Cards Grid */}
+      {/* Bot Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-[420px] animate-pulse rounded-2xl bg-white p-6 shadow-xl dark:bg-boxdark"
+              className="flex flex-col bg-white dark:bg-[#181a2e] rounded-xl p-5 gap-4 border border-gray-200 dark:border-gray-800 animate-pulse"
             >
-              <div className="mb-4 h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700"></div>
-              <div className="mb-6 h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-700"></div>
-              <div className="mb-6 grid grid-cols-2 gap-3">
-                {[1, 2, 3, 4].map((j) => (
-                  <div key={j} className="h-16 rounded-lg bg-gray-100 dark:bg-gray-800"></div>
-                ))}
+              <div className="flex justify-between items-start">
+                <div className="h-6 w-3/5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-6 w-1/5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
               </div>
-              <div className="mb-6 h-24 rounded-lg bg-gray-100 dark:bg-gray-800"></div>
-              <div className="h-12 rounded-lg bg-gray-100 dark:bg-gray-800"></div>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                </div>
+              </div>
+              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between">
+                <div className="space-y-2 w-1/3">
+                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-5 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+                <div className="space-y-2 w-1/3">
+                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-5 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-1/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="flex -space-x-2">
+                  <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-[#181a2e]"></div>
+                  <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-[#181a2e]"></div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       ) : filteredBots.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredBots.map((bot) => (
             <BotCard key={bot.id} bot={bot} />
           ))}
         </div>
       ) : (
-        <div className="py-12 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-            <Search className="h-8 w-8 text-gray-500 dark:text-gray-400" />
+        <div className="w-full text-center py-24">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-6">
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-4xl">
+              smart_toy
+            </span>
           </div>
-          <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-gray-100">
-            No bots found
-          </h3>
-          <p className="mx-auto max-w-md text-gray-600 dark:text-gray-400">
-            We couldn't find any trading bots matching your search criteria. Try adjusting your
-            search terms.
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            You haven't created any bots yet.
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            Get started by creating a new trading bot.
           </p>
+          <Link
+            to="/bots/dca"
+            className="flex mx-auto cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary hover:bg-primary/90 text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] px-4 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base filled">add</span>
+            <span className="truncate">Create New Bot</span>
+          </Link>
         </div>
       )}
     </div>

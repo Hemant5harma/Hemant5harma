@@ -597,6 +597,9 @@ export default function BotDetails() {
                             Price
                           </Table.Th>
                           <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                            Fee
+                          </Table.Th>
+                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
                             Total Value
                           </Table.Th>
                         </Table.Tr>
@@ -615,6 +618,11 @@ export default function BotDetails() {
                             <Table.Td className="dark:border-gray-700">{formatAmount(trade.amount)}</Table.Td>
                             <Table.Td className="dark:border-gray-700">
                               {formatCurrency(trade.trade_price)}
+                            </Table.Td>
+                            <Table.Td className="dark:border-gray-700">
+                              {trade.fee_native !== undefined && trade.fee_native !== null
+                                ? `${formatAmount(trade.fee_native)} ${trade.fee_currency ?? ''}`
+                                : '-'}
                             </Table.Td>
                             <Table.Td className="dark:border-gray-700">
                               {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
@@ -667,6 +675,16 @@ export default function BotDetails() {
                           </Text>
                           <Text size="sm" className="dark:text-white">
                             {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
+                          </Text>
+                        </Grid.Col>
+                        <Grid.Col span={6}>
+                          <Text size="xs" className="dark:text-gray-400">
+                            Fee
+                          </Text>
+                          <Text size="sm" className="dark:text-white">
+                            {trade.fee_native !== undefined && trade.fee_native !== null
+                              ? `${formatAmount(trade.fee_native)} ${trade.fee_currency ?? ''}`
+                              : '-'}
                           </Text>
                         </Grid.Col>
                       </Grid>

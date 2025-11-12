@@ -1,13 +1,18 @@
+import React from 'react';
 import useColorMode from '../hooks/useColorMode';
 
-const DarkModeSwitcher = () => {
+interface DarkModeSwitcherProps {
+  className?: string;
+}
+
+const DarkModeSwitcher: React.FC<DarkModeSwitcherProps> = ({ className = '' }) => {
   const [colorMode, setColorMode] = useColorMode();
 
   return (
-    <li>
+    <div className={className}>
       <label
-        className={`relative m-0 block h-7.5 w-14 rounded-full ${
-          colorMode === 'dark' ? 'bg-primary' : 'bg-stroke'
+        className={`relative m-0 block h-7.5 w-14 rounded-full cursor-pointer ${
+          colorMode === 'dark' ? 'bg-primary' : 'bg-stroke dark:bg-border-dark'
         }`}
       >
         <input
@@ -58,7 +63,7 @@ const DarkModeSwitcher = () => {
           </span>
         </span>
       </label>
-    </li>
+    </div>
   );
 };
 

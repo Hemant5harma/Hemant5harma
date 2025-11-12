@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import ClickOutside from './ClickOutside';
-import { useNotifications, NotificationType } from '../context/NotificationContext';
+import { useNotifications } from '../context/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationIcon = ({ severity }: { severity: string }) => {
@@ -100,41 +99,27 @@ const DropdownNotification = () => {
 
   return (
     <ClickOutside onClick={() => setDropdownOpen(false)} className="relative hidden sm:block">
-      <li>
-        <Link
-          onClick={() => {
-            setDropdownOpen(!dropdownOpen);
-          }}
-          to="#"
-          className="relative flex h-8.5 w-8.5 items-center justify-center rounded-full border-[0.5px] border-stroke bg-gray hover:text-primary dark:border-strokedark dark:bg-meta-4 dark:text-white"
-        >
+      <button
+        onClick={() => {
+          setDropdownOpen(!dropdownOpen);
+        }}
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border-light bg-background-light text-text-light-secondary transition-colors hover:bg-card-light hover:text-primary dark:border-border-dark dark:bg-background-dark dark:text-text-dark-secondary dark:hover:bg-card-dark"
+      >
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 right-0 z-1 h-2 w-2 rounded-full bg-meta-1">
-              <span className="absolute -z-1 inline-flex h-full w-full animate-ping rounded-full bg-meta-1 opacity-75"></span>
+            <span className="absolute -top-0.5 right-0 z-10 h-2 w-2 rounded-full bg-danger">
+              <span className="absolute -z-10 inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75"></span>
             </span>
           )}
 
-          <svg
-            className="fill-current duration-300 ease-in-out"
-            width="18"
-            height="18"
-            viewBox="0 0 18 18"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M16.1999 14.9343L15.6374 14.0624C15.5249 13.8937 15.4687 13.7249 15.4687 13.528V7.67803C15.4687 6.01865 14.7655 4.47178 13.4718 3.31865C12.4312 2.39053 11.0812 1.7999 9.64678 1.6874V1.1249C9.64678 0.787402 9.36553 0.478027 8.9999 0.478027C8.6624 0.478027 8.35303 0.759277 8.35303 1.1249V1.65928C8.29678 1.65928 8.24053 1.65928 8.18428 1.6874C4.92178 2.05303 2.4749 4.66865 2.4749 7.79053V13.528C2.44678 13.8093 2.39053 13.9499 2.33428 14.0343L1.7999 14.9343C1.63115 15.2155 1.63115 15.553 1.7999 15.8343C1.96865 16.0874 2.2499 16.2562 2.55928 16.2562H8.38115V16.8749C8.38115 17.2124 8.6624 17.5218 9.02803 17.5218C9.36553 17.5218 9.6749 17.2405 9.6749 16.8749V16.2562H15.4687C15.778 16.2562 16.0593 16.0874 16.228 15.8343C16.3968 15.553 16.3968 15.2155 16.1999 14.9343ZM3.23428 14.9905L3.43115 14.653C3.5999 14.3718 3.68428 14.0343 3.74053 13.6405V7.79053C3.74053 5.31553 5.70928 3.23428 8.3249 2.95303C9.92803 2.78428 11.503 3.2624 12.6562 4.2749C13.6687 5.1749 14.2312 6.38428 14.2312 7.67803V13.528C14.2312 13.9499 14.3437 14.3437 14.5968 14.7374L14.7655 14.9905H3.23428Z"
-              fill=""
-            />
-          </svg>
-        </Link>
+          <span className="material-symbols-outlined text-xl">notifications</span>
+        </button>
 
         {dropdownOpen && (
           <div
-            className={`absolute -right-27 mt-2.5 flex h-90 w-75 flex-col rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark sm:right-0 sm:w-80`}
+            className="absolute right-0 mt-2 flex max-h-96 w-80 flex-col rounded-xl border border-border-light bg-card-light shadow-lg dark:border-border-dark dark:bg-card-dark"
           >
-            <div className="flex items-center justify-between px-4.5 py-3">
-              <h5 className="text-sm font-medium text-bodydark2">Notifications</h5>
+            <div className="flex items-center justify-between border-b border-border-light px-4 py-3 dark:border-border-dark">
+              <h5 className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">Notifications</h5>
               {notifications.length > 0 && (
                 <button
                   onClick={clearAllNotifications}
@@ -146,15 +131,15 @@ const DropdownNotification = () => {
             </div>
 
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="px-4 py-8 text-center text-sm text-text-light-secondary dark:text-text-dark-secondary">
                 No notifications yet
               </div>
             ) : (
-              <ul className="no-scrollbar flex max-h-[320px] flex-col overflow-y-auto">
+              <ul className="flex max-h-[320px] flex-col overflow-y-auto">
                 {notifications.map((notification) => (
                   <li key={notification.id}>
                     <div
-                      className={`flex gap-4 border-t border-stroke p-4 hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4 ${
+                      className={`flex gap-3 border-t border-border-light p-4 transition-colors hover:bg-background-light dark:border-border-dark dark:hover:bg-background-dark ${
                         notification.status === 'read' ? 'opacity-70' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification.id)}
@@ -163,13 +148,13 @@ const DropdownNotification = () => {
                         <NotificationIcon severity={notification.severity} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h6 className="mb-1 font-medium text-black dark:text-white break-words">
+                        <h6 className="mb-1 text-sm font-medium text-text-light-primary break-words dark:text-text-dark-primary">
                           {notification.title}
                         </h6>
-                        <p className="text-sm text-body dark:text-bodydark break-words overflow-wrap-anywhere">
+                        <p className="text-sm text-text-light-secondary break-words dark:text-text-dark-secondary">
                           {notification.message}
                         </p>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-1 text-xs text-text-light-secondary dark:text-text-dark-secondary">
                           {formatDistanceToNow(
                             new Date(notification.created_at.includes('Z') ? notification.created_at : notification.created_at + 'Z'), 
                             { addSuffix: true }
@@ -177,26 +162,13 @@ const DropdownNotification = () => {
                         </p>
                       </div>
                       <button
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                        className="text-text-light-secondary transition-colors hover:text-text-light-primary dark:text-text-dark-secondary dark:hover:text-text-dark-primary"
                         onClick={(e) => {
                           e.stopPropagation();
                           clearNotification(notification.id);
                         }}
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
+                        <span className="material-symbols-outlined text-base">close</span>
                       </button>
                     </div>
                   </li>
@@ -205,7 +177,6 @@ const DropdownNotification = () => {
             )}
           </div>
         )}
-      </li>
     </ClickOutside>
   );
 };

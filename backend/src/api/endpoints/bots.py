@@ -26,6 +26,7 @@ from src.services.logic import check_bot, calculate_bot_performance
 from typing import List, Optional
 import logging
 from src.services.notifications import NotificationService
+from src.dex.unified_dex_router import UnifiedDexRouter
 
 logger = logging.getLogger(__name__)
 
@@ -462,7 +463,7 @@ async def get_trades_for_bot(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Retrieves trade history for a specific bot.
+    Retrieves trade history for a specific bot, including computed fee info.
     """
     # Verify bot ownership
     bot = await get_bot_by_id(db, bot_id)
@@ -470,7 +471,62 @@ async def get_trades_for_bot(
         raise HTTPException(status_code=404, detail="Bot not found or not yours")
 
     trades = await get_trades_by_bot(db, bot_id)
-    trade_responses = [TradeResponse.model_validate(trade) for trade in trades]
+    router = UnifiedDexRouter()
+
+    trade_responses: List[TradeResponse] = []
+    for trade in trades:
+        # Default fee data
+        fee_native = None
+        fee_currency = None
+
+        try:
+            chain_id = getattr(trade, "chain_id", None) or getattr(bot, "chain_id", None) or 1
+            status_result = await router.get_transaction_status(trade.transaction_hash, chain_id)
+
+            # Determine native currency symbol for display
+            try:
+                blockchain_info = router.get_blockchain_info(chain_id)
+                fee_currency = blockchain_info.get("native_token")
+            except Exception:
+                fee_currency = None
+
+            # Compute fee in native units
+            if isinstance(status_result, dict):
+                if "fee" in status_result and status_result.get("fee") is not None:
+                    # Solana fee is in lamports -> convert to SOL
+                    try:
+                        lamports = float(status_result.get("fee", 0))
+                        fee_native = lamports / 1_000_000_000.0
+                    except Exception:
+                        fee_native = None
+                elif "gas_used" in status_result and "gas_price" in status_result:
+                    try:
+                        gas_used = float(status_result.get("gas_used", 0))
+                        gas_price = float(status_result.get("gas_price", 0))
+                        wei_cost = gas_used * gas_price
+                        # Assume 18 decimals for EVM native tokens
+                        fee_native = wei_cost / 1_000_000_000_000_000_000.0
+                    except Exception:
+                        fee_native = None
+        except Exception as e:
+            logger.warning(f"Failed to compute fee for trade {trade.id}: {e}")
+
+        trade_data = {
+            "id": trade.id,
+            "bot_id": trade.bot_id,
+            "coin_id": trade.coin_id,
+            "trade_time": trade.trade_time,
+            "trade_price": trade.trade_price,
+            "token_address": trade.token_address,
+            "amount": trade.amount,
+            "transaction_hash": trade.transaction_hash,
+            "chain_id": getattr(trade, "chain_id", None),
+            "network_name": getattr(trade, "network_name", None),
+            "fee_native": fee_native,
+            "fee_currency": fee_currency,
+        }
+        trade_responses.append(TradeResponse.model_validate(trade_data))
+
     return trade_responses
 
 
