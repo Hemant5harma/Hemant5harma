@@ -3,7 +3,12 @@ import { showNotification } from '@mantine/notifications';
 
 // Use environment variable injected at build time (Create-React-App)
 // Fallback to localhost when not provided, e.g. during local dev without Docker
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
+// Validate API_BASE_URL is set
+if (!process.env.REACT_APP_API_BASE_URL) {
+  console.warn('REACT_APP_API_BASE_URL is not set, using default:', API_BASE_URL);
+}
 
 /**
  * API client with authentication
@@ -14,19 +19,28 @@ export const apiClient = {
    */
   get: async (endpoint: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage =
-          errorData?.detail ||
-          errorData?.message ||
-          `Request failed with status ${response.status}`;
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.detail || errorData?.message || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {
+            // Ignore parsing errors
+          }
+        }
 
-        // Show error notification only once
+        // Show error notification
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -36,19 +50,32 @@ export const apiClient = {
         throw new Error(errorMessage);
       }
 
-      return response.json();
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
+      if (!text || text.trim() === '') {
+        return null;
+      }
+      
+      if (contentType && contentType.includes('application/json')) {
+        return JSON.parse(text);
+      }
+      
+      return text;
     } catch (error: any) {
-      // Only show notification for network errors if no notification was already shown
-      if (error.message === 'Failed to fetch') {
+      // Handle network errors
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const errorMsg = `Unable to connect to server. Please check if the backend is running at ${API_BASE_URL}`;
         showNotification({
           title: 'Connection Error',
-          message: 'Unable to connect to server',
+          message: errorMsg,
           color: 'red',
         });
-        throw new Error('Unable to connect to server');
+        throw new Error(errorMsg);
       }
 
-      // Re-throw the error without showing another notification
+      // Re-throw the error if it's already been handled
       throw error;
     }
   },
@@ -58,20 +85,29 @@ export const apiClient = {
    */
   post: async (endpoint: string, data: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage =
-          errorData?.detail ||
-          errorData?.message ||
-          `Request failed with status ${response.status}`;
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.detail || errorData?.message || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {
+            // Ignore parsing errors
+          }
+        }
 
-        // Show error notification only once
+        // Show error notification
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -81,19 +117,32 @@ export const apiClient = {
         throw new Error(errorMessage);
       }
 
-      return response.json();
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
+      if (!text || text.trim() === '') {
+        return null;
+      }
+      
+      if (contentType && contentType.includes('application/json')) {
+        return JSON.parse(text);
+      }
+      
+      return text;
     } catch (error: any) {
-      // Only show notification for network errors if no notification was already shown
-      if (error.message === 'Failed to fetch') {
+      // Handle network errors
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const errorMsg = `Unable to connect to server. Please check if the backend is running at ${API_BASE_URL}`;
         showNotification({
           title: 'Connection Error',
-          message: 'Unable to connect to server',
+          message: errorMsg,
           color: 'red',
         });
-        throw new Error('Unable to connect to server');
+        throw new Error(errorMsg);
       }
 
-      // Re-throw the error without showing another notification
+      // Re-throw the error if it's already been handled
       throw error;
     }
   },
@@ -103,20 +152,27 @@ export const apiClient = {
    */
   put: async (endpoint: string, data: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage =
-          errorData?.detail ||
-          errorData?.message ||
-          `Request failed with status ${response.status}`;
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.detail || errorData?.message || errorMessage;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {
+            // Ignore parsing errors
+          }
+        }
 
-        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -126,19 +182,23 @@ export const apiClient = {
         throw new Error(errorMessage);
       }
 
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+      }
+      
       return response.json();
     } catch (error: any) {
-      // Only show notification for network errors if no notification was already shown
-      if (error.message === 'Failed to fetch') {
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const errorMsg = `Unable to connect to server. Please check if the backend is running at ${API_BASE_URL}`;
         showNotification({
           title: 'Connection Error',
-          message: 'Unable to connect to server',
+          message: errorMsg,
           color: 'red',
         });
-        throw new Error('Unable to connect to server');
+        throw new Error(errorMsg);
       }
-
-      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -148,20 +208,27 @@ export const apiClient = {
    */
   patch: async (endpoint: string, data: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage =
-          errorData?.detail ||
-          errorData?.message ||
-          `Request failed with status ${response.status}`;
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.detail || errorData?.message || errorMessage;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {
+            // Ignore parsing errors
+          }
+        }
 
-        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -171,19 +238,28 @@ export const apiClient = {
         throw new Error(errorMessage);
       }
 
-      return response.json();
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
+      if (!text || text.trim() === '') {
+        return null;
+      }
+      
+      if (contentType && contentType.includes('application/json')) {
+        return JSON.parse(text);
+      }
+      
+      return text;
     } catch (error: any) {
-      // Only show notification for network errors if no notification was already shown
-      if (error.message === 'Failed to fetch') {
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const errorMsg = `Unable to connect to server. Please check if the backend is running at ${API_BASE_URL}`;
         showNotification({
           title: 'Connection Error',
-          message: 'Unable to connect to server',
+          message: errorMsg,
           color: 'red',
         });
-        throw new Error('Unable to connect to server');
+        throw new Error(errorMsg);
       }
-
-      // Re-throw the error without showing another notification
       throw error;
     }
   },
@@ -193,19 +269,26 @@ export const apiClient = {
    */
   delete: async (endpoint: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage =
-          errorData?.detail ||
-          errorData?.message ||
-          `Request failed with status ${response.status}`;
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.detail || errorData?.message || errorMessage;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {
+            // Ignore parsing errors
+          }
+        }
 
-        // Show error notification only once
         showNotification({
           title: 'Error',
           message: errorMessage,
@@ -215,19 +298,28 @@ export const apiClient = {
         throw new Error(errorMessage);
       }
 
-      return response.json();
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
+      if (!text || text.trim() === '') {
+        return null;
+      }
+      
+      if (contentType && contentType.includes('application/json')) {
+        return JSON.parse(text);
+      }
+      
+      return text;
     } catch (error: any) {
-      // Only show notification for network errors if no notification was already shown
-      if (error.message === 'Failed to fetch') {
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const errorMsg = `Unable to connect to server. Please check if the backend is running at ${API_BASE_URL}`;
         showNotification({
           title: 'Connection Error',
-          message: 'Unable to connect to server',
+          message: errorMsg,
           color: 'red',
         });
-        throw new Error('Unable to connect to server');
+        throw new Error(errorMsg);
       }
-
-      // Re-throw the error without showing another notification
       throw error;
     }
   },

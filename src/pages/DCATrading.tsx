@@ -10,6 +10,7 @@ import {
 import ConditionBuilder from '../components/ConditionBuilder';
 import PrivateKeySelector from '../components/PrivateKeySelector';
 import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
+import CustomDropdown from '../components/CustomDropdown';
 import { apiClient } from '../utils/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -663,9 +664,9 @@ const DCATrading: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-              className="overflow-hidden rounded-3xl border border-border-light bg-card-light shadow-soft dark:border-border-dark dark:bg-card-dark"
+              className="overflow-visible rounded-3xl border border-border-light bg-card-light shadow-soft dark:border-border-dark dark:bg-card-dark"
             >
-              <div className="bg-gradient-to-r from-primary to-secondary px-6 py-7 sm:px-8">
+              <div className="bg-gradient-to-r from-primary to-secondary rounded-t-3xl px-6 py-7 sm:px-8">
                 <h2 className="text-2xl font-semibold text-white sm:text-3xl">Step 1 · Bot Essentials</h2>
                 <p className="mt-2 text-sm text-white/80">Name your bot and choose where it will execute trades.</p>
                 </div>
@@ -682,48 +683,29 @@ const DCATrading: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Trading Frequency</label>
-                    <div className="relative">
-                      <select
-                        value={dca.dcaSettings.frequency}
-                        onChange={(e) => handleUpdateDCASettings('frequency', e.target.value)}
-                        className="w-full appearance-none rounded-xl border border-border-light bg-card-light px-4 py-3 pr-12 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
-                      >
-                        <option value="" disabled>
-                          Select how often to invest
-                        </option>
-                        {frequencyOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.icon} {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="material-symbols-outlined pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-base text-text-light-secondary dark:text-text-dark-secondary">
-                        expand_more
-                      </span>
-                      </div>
-                    </div>
+                    <CustomDropdown
+                      label="Trading Frequency"
+                      options={frequencyOptions.map(opt => ({
+                        value: opt.value,
+                        label: opt.label,
+                        icon: opt.icon,
+                      }))}
+                      value={dca.dcaSettings.frequency}
+                      onChange={(value) => handleUpdateDCASettings('frequency', value as string)}
+                      placeholder="Select how often to invest"
+                    />
+                  </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">Blockchain Network</label>
-                    <div className="relative">
-                      <select
-                        value={dca.dcaSettings.chain_id}
-                        onChange={(e) => handleUpdateDCASettings('chain_id', Number(e.target.value))}
-                        className="w-full appearance-none rounded-xl border border-border-light bg-card-light px-4 py-3 pr-12 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
-                      >
-                        <option value="" disabled>
-                          Select network
-                        </option>
-                        {networkOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="material-symbols-outlined pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-base text-text-light-secondary dark:text-text-dark-secondary">
-                        expand_more
-                        </span>
-                      </div>
+                    <CustomDropdown
+                      label="Blockchain Network"
+                      options={networkOptions.map(opt => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
+                      value={dca.dcaSettings.chain_id}
+                      onChange={(value) => handleUpdateDCASettings('chain_id', value as number)}
+                      placeholder="Select network"
+                    />
                     {selectedNetwork && (
                       <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                         Connected to <span className="font-medium text-text-light-primary dark:text-text-dark-primary">{selectedNetwork.shortName}</span>
@@ -830,21 +812,21 @@ const DCATrading: React.FC = () => {
                             </button>
                           </div>
                             <div className="space-y-2">
-                              <label className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
+                              <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">
                               Investment Amount (USDT)
                             </label>
                             <input
                               type="number"
                               value={asset.amount}
                                 onChange={(e) => handleAmountChange(asset.symbol, Number(e.target.value))}
-                                className="w-full rounded-lg border border-border-light bg-card-light px-4 py-3 text-text-light-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
+                                className="w-full rounded-xl border-2 border-border-light bg-card-light px-4 py-3 text-text-light-primary transition-colors focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary"
                               min="0"
                               step="0.0001"
                               placeholder="0.00"
                             />
                           </div>
                             <div className="space-y-2">
-                              <label className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
+                              <label className="text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">
                               Trading Condition
                             </label>
                             <ConditionBuilder
@@ -855,7 +837,6 @@ const DCATrading: React.FC = () => {
                                 },
                               }}
                                 onChange={(conditionData) => handleConditionChange(asset.symbol, conditionData)}
-                                className="rounded-lg border border-border-light bg-card-light dark:border-border-dark dark:bg-card-dark"
                             />
                           </div>
                         </motion.div>

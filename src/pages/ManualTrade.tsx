@@ -12,6 +12,7 @@ import {
 } from '../data/networkData';
 import PrivateKeySelector from '../components/PrivateKeySelector';
 import AddPrivateKeyModal from '../components/AddPrivateKeyModal';
+import CustomDropdown from '../components/CustomDropdown';
 import { Search, X } from 'lucide-react';
 
 // Types (keeping the same)
@@ -677,18 +678,16 @@ const ManualTrade: React.FC = () => {
           <div className="w-full lg:w-64 flex flex-col gap-4">
             {/* Network Selector */}
             <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Network</p>
-              <select
+              <CustomDropdown
+                label="Network"
+                options={networkOptions.map(net => ({
+                  value: net.chain_id,
+                  label: `${net.name}${net.isTestnet ? ' (Testnet)' : ''}`,
+                }))}
                 value={selectedNetwork.chain_id}
-                onChange={(e) => handleNetworkChange(Number.parseInt(e.target.value))}
-                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-100 dark:bg-black/20 hover:bg-slate-200 dark:hover:bg-black/30 transition-colors text-slate-800 dark:text-white font-semibold border-none focus:ring-2 focus:ring-primary"
-              >
-                {networkOptions.map((network) => (
-                  <option key={network.chain_id} value={network.chain_id}>
-                    {network.name} {network.isTestnet ? '(Testnet)' : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleNetworkChange(value as number)}
+                placeholder="Select network"
+              />
                     </div>
 
             {/* Wallet Selector */}

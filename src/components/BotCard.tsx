@@ -87,7 +87,7 @@ const generateSparklineData = (perf: number) => {
     value = Math.max(5, Math.min(95, value + change));
     data.push(value);
   }
-  
+
   return data;
 };
 
@@ -153,15 +153,15 @@ export default function BotCard({ bot }: { bot: Bot }) {
             <span
               className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${getNetworkColor(network.color)}`}
             >
-              {networkDisplayName}
-            </span>
-          </div>
+            {networkDisplayName}
+          </span>
+        </div>
         </div>
 
         {/* Sparkline Chart */}
         <div className="h-16">
           <SparklineChart data={sparklineData} color={chartColor} trend={trend} height={64} width={100} />
-        </div>
+          </div>
 
         {/* Performance Metrics */}
         <div className="flex justify-between items-center text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -198,10 +198,10 @@ export default function BotCard({ bot }: { bot: Bot }) {
             <span className="text-gray-500 dark:text-gray-400 text-sm">Allocation:</span>
             <div className="flex -space-x-2">
               {bot.coins.slice(0, 3).map((coin) => {
-                const tokenInfo = getTokenInfo(coin.token_address);
-                return (
-                  <div
-                    key={coin.id}
+              const tokenInfo = getTokenInfo(coin.token_address);
+              return (
+                <div
+                  key={coin.id}
                     className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-[#181a2e] bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold text-white"
                     title={tokenInfo.name}
                   >
@@ -217,7 +217,7 @@ export default function BotCard({ bot }: { bot: Bot }) {
             </div>
           </div>
         )}
-      </div>
+        </div>
     </Link>
   );
 }

@@ -54,7 +54,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Crypto Cards */}
+        {/* Crypto Cards */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {cryptoData.map((crypto) => (
           <div
@@ -101,13 +101,13 @@ export default function Dashboard() {
                 color={crypto.change >= 0 ? '#0bda65' : '#fa6538'}
                 trend={crypto.trend}
                 height={100}
-              />
-            </div>
+          />
+        </div>
           </div>
         ))}
       </section>
 
-      {/* Overview Section */}
+        {/* Overview Section */}
       <section className="mb-8">
         <h2 className="text-text-light-primary dark:text-text-dark-primary text-[22px] font-bold leading-tight tracking-[-0.015em] mb-4">
           Overview
@@ -120,7 +120,7 @@ export default function Dashboard() {
             <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
               $1,234,567.89
             </p>
-          </div>
+            </div>
           <div className="flex flex-col gap-2 rounded-xl p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm">
             <p className="text-text-light-secondary dark:text-text-dark-secondary text-base font-medium leading-normal">
               Connected DEXs
@@ -128,7 +128,7 @@ export default function Dashboard() {
             <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
               3
             </p>
-          </div>
+            </div>
           <div className="flex flex-col gap-2 rounded-xl p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm">
             <p className="text-text-light-secondary dark:text-text-dark-secondary text-base font-medium leading-normal">
               Connected CEXs
@@ -136,16 +136,16 @@ export default function Dashboard() {
             <p className="text-text-light-primary dark:text-text-dark-primary tracking-light text-4xl font-bold leading-tight">
               5
             </p>
+            </div>
           </div>
-        </div>
       </section>
 
-      {/* Portfolio Evolution */}
+        {/* Portfolio Evolution */}
       <section>
         <div className="bg-card-light dark:bg-card-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark">
           <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
             <h3 className="text-text-light-primary dark:text-text-dark-primary text-xl font-bold">
-              Portfolio Evolution
+            Portfolio Evolution
             </h3>
             <div className="flex items-center gap-2 rounded-lg p-1 bg-gray-100 dark:bg-background-dark">
               {['24H', '7D', '1M', '1Y'].map((period) => (
@@ -161,11 +161,11 @@ export default function Dashboard() {
                   {period}
                 </button>
               ))}
-            </div>
           </div>
+        </div>
           <div className="h-96">
             <PortfolioChart period={selectedPeriod} />
-          </div>
+      </div>
         </div>
       </section>
     </div>

@@ -50,66 +50,120 @@ const validateEVMPrivateKey = (privateKey: string): PrivateKeyValidation => {
 
 /**
  * Validate a Solana private key format
+ * Accepts all formats that SolanaKeyHandler can process:
+ * - Base58 encoded (any length)
+ * - Hex encoded (any length, with or without 0x prefix)
+ * - Base64 encoded
+ * - JSON array format [1,2,3,...]
+ * - JSON object format {secretKey: [...]}
+ * - Comma-separated integers
  */
 const validateSolanaPrivateKey = (privateKey: string): PrivateKeyValidation => {
   try {
-    // Solana private keys can be:
-    // 1. Base58 encoded (common format from wallets)
-    // 2. Hex encoded (128 characters for 64 bytes)
-    // 3. Array format (comma-separated numbers)
-
-    // Check for hex format (128 chars = 64 bytes)
-    if (privateKey.length === 128) {
-      const hexRegex = /^[0-9a-fA-F]+$/;
-      if (hexRegex.test(privateKey)) {
-        return {
-          isValid: true,
-          formatted: privateKey.toLowerCase(),
-          type: 'solana',
-        };
-      }
+    const cleanKey = privateKey.trim();
+    
+    // Empty check
+    if (!cleanKey || cleanKey.length < 1) {
+      return {
+        isValid: false,
+        error: 'Private key cannot be empty',
+      };
     }
 
-    // Check for array format [1,2,3,...]
-    if (privateKey.startsWith('[') && privateKey.endsWith(']')) {
+    // Check for JSON array format [1,2,3,...]
+    if (cleanKey.startsWith('[') && cleanKey.endsWith(']')) {
       try {
-        const arr = JSON.parse(privateKey);
-        if (Array.isArray(arr) && (arr.length === 32 || arr.length === 64)) {
+        const arr = JSON.parse(cleanKey);
+        if (Array.isArray(arr) && arr.length > 0) {
           return {
             isValid: true,
-            formatted: privateKey,
+            formatted: cleanKey,
             type: 'solana',
           };
         }
       } catch {
-        return {
-          isValid: false,
-          error: 'Invalid Solana array format',
-        };
+        // Not valid JSON, continue to other checks
       }
     }
 
-    // Check for Base58 format (length typically 44-88 characters)
-    if (privateKey.length >= 32 && privateKey.length <= 88) {
-      // Basic Base58 character check
-      const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
-      if (base58Regex.test(privateKey)) {
+    // Check for JSON object format {secretKey: [...]} or similar
+    if (cleanKey.startsWith('{') && cleanKey.endsWith('}')) {
+      try {
+        const obj = JSON.parse(cleanKey);
+        if (typeof obj === 'object' && obj !== null) {
+          return {
+            isValid: true,
+            formatted: cleanKey,
+            type: 'solana',
+          };
+        }
+      } catch {
+        // Not valid JSON, continue to other checks
+      }
+    }
+
+    // Check for hex format (with or without 0x prefix, any length)
+    let hexKey = cleanKey;
+    if (hexKey.startsWith('0x') || hexKey.startsWith('0X')) {
+      hexKey = hexKey.slice(2);
+    }
+    const hexRegex = /^[0-9a-fA-F]+$/;
+    if (hexRegex.test(hexKey) && hexKey.length >= 1) {
+      return {
+        isValid: true,
+        formatted: cleanKey,
+        type: 'solana',
+      };
+    }
+
+    // Check for Base64 format
+    const base64Regex = /^[A-Za-z0-9+/=]+$/;
+    if (base64Regex.test(cleanKey) && cleanKey.length >= 1) {
+      return {
+        isValid: true,
+        formatted: cleanKey,
+        type: 'solana',
+      };
+    }
+
+    // Check for Base58 format (Base58 characters, any reasonable length)
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (base58Regex.test(cleanKey) && cleanKey.length >= 1) {
+      return {
+        isValid: true,
+        formatted: cleanKey,
+        type: 'solana',
+      };
+    }
+
+    // Check for comma-separated integers (CSV format)
+    if (cleanKey.includes(',')) {
+      const parts = cleanKey.split(',');
+      if (parts.length > 0 && parts.every(part => {
+        const trimmed = part.trim();
+        return trimmed === '' || (!isNaN(Number(trimmed)) && Number.isInteger(Number(trimmed)));
+      })) {
         return {
           isValid: true,
-          formatted: privateKey,
+          formatted: cleanKey,
           type: 'solana',
         };
       }
     }
 
+    // If none of the above, still accept it - let the backend handler decide
+    // This allows for any format that SolanaKeyHandler might support
     return {
-      isValid: false,
-      error: 'Invalid Solana private key format. Expected Base58 (44-88 chars), hex (128 chars), or array format.',
+      isValid: true,
+      formatted: cleanKey,
+      type: 'solana',
     };
   } catch {
+    // Even on error, accept it - backend will validate properly
     return {
-      isValid: false,
-      error: 'Invalid Solana private key format',
+      isValid: true,
+      formatted: privateKey.trim(),
+      type: 'solana',
     };
   }
 };
@@ -145,7 +199,7 @@ export const validatePrivateKey = (privateKey: string): PrivateKeyValidation => 
   // If neither format is valid, return the most helpful error
   return {
     isValid: false,
-    error: 'Invalid private key format. Must be either:\n• EVM: 64 hex characters (with or without 0x prefix)\n• Solana: Base58 encoded, hex (128 chars), or array format',
+    error: 'Invalid private key format. Must be either:\n• EVM: 64 hex characters (with or without 0x prefix)\n• Solana: Any format (Base58, hex, Base64, JSON array/object, CSV, etc.)',
   };
 };
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Key, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../utils/apiClient';
+import { validatePrivateKey } from '../utils/privateKeyUtils';
 
 interface AddPrivateKeyModalProps {
   isOpen: boolean;
@@ -43,6 +44,25 @@ const AddPrivateKeyModal: React.FC<AddPrivateKeyModalProps> = ({
       return;
     }
 
+    // Validate private key format and check for type mismatch
+    const validation = validatePrivateKey(privateKey.trim());
+    
+    if (!validation.isValid) {
+      setError(validation.error || 'Invalid private key format');
+      return;
+    }
+
+    // Check if the detected key type matches the selected network type
+    if (validation.type === 'solana' && keyType === 'evm') {
+      setError('This appears to be a Solana private key, but you are adding an EVM wallet. Please select a Solana network (chain ID 900) or use an EVM private key (64 hex characters).');
+      return;
+    }
+    
+    if (validation.type === 'evm' && keyType === 'solana') {
+      setError('This appears to be an EVM private key, but you are adding a Solana wallet. Please select an EVM network or use a Solana private key.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -59,7 +79,18 @@ const AddPrivateKeyModal: React.FC<AddPrivateKeyModalProps> = ({
       }, 1500);
     } catch (err: any) {
       console.error('Error creating private key:', err);
-      setError(err.response?.data?.detail || 'Failed to add wallet. Please check your private key.');
+      // Extract error message from various possible formats
+      let errorMessage = 'Failed to add wallet. Please check your private key.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -160,7 +191,7 @@ const AddPrivateKeyModal: React.FC<AddPrivateKeyModalProps> = ({
                   onChange={(e) => setPrivateKey(e.target.value)}
                   placeholder={
                     keyType === 'solana'
-                      ? 'Enter your Solana private key (Base58)'
+                      ? 'Enter your Solana private key (any format: Base58, hex, Base64, JSON, CSV, etc.)'
                       : 'Enter your EVM private key (0x...)'
                   }
                   rows={3}

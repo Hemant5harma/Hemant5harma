@@ -80,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
                     const subActive = isActive(subItem.href);
                     return (
                       <Link
-                        key={subItem.label}
+                      key={subItem.label}
                         to={subItem.href}
                         className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                           subActive
@@ -147,15 +147,15 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
         <nav className="flex flex-1 flex-col gap-1">
           {menuItems.map(renderMenuItem)}
         </nav>
-      </div>
+        </div>
 
-      {/* Bottom Section */}
+        {/* Bottom Section */}
       <div className="flex flex-col gap-2 mt-auto">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
           <span className="material-symbols-outlined text-2xl">dark_mode</span>
           <span className="flex-1">Dark Mode</span>
           <DarkModeSwitcher />
-        </div>
+              </div>
         <Link
           to="/help"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-light-secondary transition-colors hover:bg-background-light dark:text-text-dark-secondary dark:hover:bg-background-dark"

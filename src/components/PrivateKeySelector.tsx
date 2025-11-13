@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, Plus, Key, Loader } from 'lucide-react';
 import { apiClient, getWalletBalances } from '../utils/apiClient';
 import { tokensByNetwork, Token } from '../data/networkData';
+import CustomDropdown from './CustomDropdown';
 
 interface PrivateKeyInfo {
   id: number;
@@ -42,21 +43,34 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
       try {
         const keyType = getKeyType(chainId);
         const data = await apiClient.get(`/private-keys/?key_type=${keyType}&chain_id=${chainId}`);
-        setKeys(data);
         
-        // Auto-select default or first key if none selected
-        if (!selectedKeyId && data.length > 0) {
-          const defaultKey = data.find((k: PrivateKeyInfo) => k.is_default) || data[0];
-          onKeySelect(defaultKey.id);
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setKeys(data);
+          
+          // Auto-select default or first key if none selected
+          if (!selectedKeyId && data.length > 0) {
+            const defaultKey = data.find((k: PrivateKeyInfo) => k.is_default) || data[0];
+            if (defaultKey) {
+              onKeySelect(defaultKey.id);
+            }
+          }
+        } else {
+          console.warn('Unexpected response format from /private-keys:', data);
+          setKeys([]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading private keys:', error);
+        setKeys([]);
+        // Don't show notification here as apiClient already handles it
       } finally {
         setLoading(false);
       }
     };
 
-    loadKeys();
+    if (chainId) {
+      loadKeys();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chainId]);
 
@@ -159,32 +173,24 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="relative">
-            <select
-              value={selectedKeyId || ''}
-              onChange={(e) => onKeySelect(e.target.value ? Number(e.target.value) : null)}
-              className="w-full appearance-none rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 pr-12 text-gray-900 transition-all duration-200 focus:border-primary focus:bg-[#FFFFFF] focus:outline-none focus:ring-4 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white dark:focus:border-primary dark:focus:bg-gray-700"
-            >
-              <option value="">Select a wallet</option>
-              {keys.map((key) => (
-                <option key={key.id} value={key.id}>
-                  {key.name} ({truncateAddress(key.address)}){key.is_default ? ' ★' : ''}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-              <Wallet className="h-5 w-5" />
-            </div>
-          </div>
+          <CustomDropdown
+            options={keys.map((key) => ({
+              value: key.id,
+              label: `${key.name} (${truncateAddress(key.address)})${key.is_default ? ' ★' : ''}`,
+            }))}
+            value={selectedKeyId}
+            onChange={(value) => onKeySelect(value ? Number(value) : null)}
+            placeholder="Select a wallet"
+          />
 
           {selectedKey && (
             <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
                     {selectedKey.name}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 break-all font-mono">
                     {selectedKey.address}
                   </p>
                   {purchaseBalance && (
@@ -194,7 +200,7 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
                   )}
                 </div>
                 {selectedKey.is_default && (
-                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-800 dark:text-blue-100 flex-shrink-0">
                     Default
                   </span>
                 )}

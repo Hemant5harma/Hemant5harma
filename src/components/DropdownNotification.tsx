@@ -100,11 +100,11 @@ const DropdownNotification = () => {
   return (
     <ClickOutside onClick={() => setDropdownOpen(false)} className="relative hidden sm:block">
       <button
-        onClick={() => {
-          setDropdownOpen(!dropdownOpen);
-        }}
+          onClick={() => {
+            setDropdownOpen(!dropdownOpen);
+          }}
         className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border-light bg-background-light text-text-light-secondary transition-colors hover:bg-card-light hover:text-primary dark:border-border-dark dark:bg-background-dark dark:text-text-dark-secondary dark:hover:bg-card-dark"
-      >
+        >
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 right-0 z-10 h-2 w-2 rounded-full bg-danger">
               <span className="absolute -z-10 inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75"></span>

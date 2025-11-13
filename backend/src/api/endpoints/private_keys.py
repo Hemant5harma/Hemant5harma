@@ -48,11 +48,29 @@ def get_address_from_private_key(private_key: str, key_type: str) -> str:
             keypair = SolanaKeyHandler.create_keypair_from_private_key(private_key)
             return str(keypair.pubkey())
         else:  # EVM
+            # Check if this looks like a Solana key (Base58 format)
+            from src.utils.encryption import encryption_util
+            if encryption_util._is_solana_private_key(private_key) and not encryption_util._is_evm_private_key(private_key):
+                raise ValueError("This appears to be a Solana private key. Please select a Solana network (chain ID 900) or use an EVM private key (64 hex characters starting with 0x).")
+            
             if not private_key.startswith('0x'):
                 private_key = '0x' + private_key
             account = Account.from_key(private_key)
             return account.address
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Re-raise ValueError with helpful message
+        logger.error(f"Error deriving address: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        error_msg = str(e)
+        # Check for common EVM key errors and provide helpful messages
+        if "Non-hexadecimal digit" in error_msg or "invalid hex" in error_msg.lower():
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid EVM private key format. EVM keys must be 64 hexadecimal characters (with or without 0x prefix). This key appears to be in a different format - if it's a Solana key, please select a Solana network."
+            )
         logger.error(f"Error deriving address: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
 

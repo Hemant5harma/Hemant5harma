@@ -76,13 +76,58 @@ async def update_user_private_key_by_type(db: AsyncSession, user_id: int, encryp
     return user
 
 async def get_user_private_key_by_type(db: AsyncSession, user_id: int, key_type: str) -> Optional[str]:
-    """Get user's encrypted private key for specific blockchain"""
-    if key_type == 'eth':
+    """
+    Get user's encrypted private key for specific blockchain.
+    First checks the new private_keys table, then falls back to old users table for backward compatibility.
+    """
+    from src.database.models.models import PrivateKey
+    
+    # Map old key types to new ones
+    key_type_mapping = {
+        'eth': 'evm',  # Old 'eth' maps to new 'evm'
+        'evm': 'evm',
+        'solana': 'solana'
+    }
+    
+    mapped_key_type = key_type_mapping.get(key_type.lower())
+    if not mapped_key_type:
+        raise ValueError(f"Invalid key type: {key_type}")
+    
+    # First, try the new private_keys table (preferred method)
+    # Try to get default key first
+    query = select(PrivateKey.encrypted_private_key).where(
+        PrivateKey.user_id == user_id,
+        PrivateKey.key_type == mapped_key_type,
+        PrivateKey.is_default == 1
+    ).order_by(PrivateKey.created_at.asc())
+    
+    result = await db.execute(query)
+    encrypted_key = result.scalar_one_or_none()
+    
+    # If default key found, return it
+    if encrypted_key:
+        return encrypted_key
+    
+    # If no default key, get the first available key (for backward compatibility)
+    query = select(PrivateKey.encrypted_private_key).where(
+        PrivateKey.user_id == user_id,
+        PrivateKey.key_type == mapped_key_type
+    ).order_by(PrivateKey.created_at.asc())
+    
+    result = await db.execute(query)
+    encrypted_key = result.scalar_one_or_none()
+    
+    # If found in new table, return it
+    if encrypted_key:
+        return encrypted_key
+    
+    # Fallback to old users table for backward compatibility
+    if key_type.lower() == 'eth':
         result = await db.execute(select(User.encrypted_eth_private_key).where(User.id == user_id))
-    elif key_type == 'solana':
+    elif key_type.lower() == 'solana':
         result = await db.execute(select(User.encrypted_solana_private_key).where(User.id == user_id))
     else:
-        raise ValueError(f"Invalid key type: {key_type}")
+        return None
     
     encrypted_key = result.scalar_one_or_none()
     return encrypted_key

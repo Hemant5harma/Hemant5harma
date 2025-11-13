@@ -116,41 +116,26 @@ class PrivateKeyEncryption:
             return False
     
     def _is_solana_private_key(self, private_key: str) -> bool:
-        """Check if private key is valid Solana format"""
+        """
+        Check if private key appears to be Solana format.
+        This is a lenient check - actual validation is done by SolanaKeyHandler.
+        Accepts all formats that SolanaKeyHandler can process.
+        """
         try:
-            import base58
-            
-            # Solana private keys are typically:
-            # 1. Base58 encoded bytes (44-88 characters)
-            # 2. Array of 64 bytes when decoded
-            # 3. Or array of 32 bytes for seed
-            
             if not isinstance(private_key, str):
                 return False
             
-            # Check length (Base58 encoded should be reasonable length)
-            if len(private_key) < 32 or len(private_key) > 88:
+            # Empty check
+            if not private_key.strip():
                 return False
             
-            # Try to decode as Base58
-            decoded = base58.b58decode(private_key)
-            
-            # Solana private keys are typically 32 or 64 bytes
-            if len(decoded) not in [32, 64]:
-                return False
-            
-            return True
+            # Very lenient check - accept any non-empty string
+            # The actual format validation will be done by SolanaKeyHandler
+            # which supports: base58, hex, base64, JSON array, JSON object, CSV, etc.
+            return len(private_key.strip()) >= 1
             
         except Exception:
-            # If base58 is not available or decoding fails, try as hex
-            try:
-                # Some Solana keys might be in hex format (64 bytes = 128 hex chars)
-                if len(private_key) == 128:
-                    int(private_key, 16)
-                    return True
-                return False
-            except (ValueError, TypeError):
-                return False
+            return False
     
     def get_private_key_type(self, private_key: str) -> str:
         """Determine the type of private key (evm, solana, or unknown)"""

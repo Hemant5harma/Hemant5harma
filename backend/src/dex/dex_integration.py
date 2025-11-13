@@ -28,14 +28,70 @@ class DexIntegration:
         
         # Supported chains by 0x API (same as manual_trading.py)
         self.supported_chains = {
-            1: {"name": "Ethereum", "rpc": f"https://mainnet.infura.io/v3/{self.infura_api_key}"},
-            137: {"name": "Polygon", "rpc": f"https://polygon-mainnet.infura.io/v3/{self.infura_api_key}"},
-            42161: {"name": "Arbitrum", "rpc": f"https://arbitrum-mainnet.infura.io/v3/{self.infura_api_key}"},
-            43114: {"name": "Avalanche", "rpc": f"https://avalanche-mainnet.infura.io/v3/{self.infura_api_key}"},
-            56: {"name": "BSC", "rpc": f"https://bsc-mainnet.infura.io/v3/{self.infura_api_key}"},
-            8453: {"name": "Base", "rpc": f"https://base-mainnet.infura.io/v3/{self.infura_api_key}"},
-            10: {"name": "Optimism", "rpc": f"https://optimism-mainnet.infura.io/v3/{self.infura_api_key}"},
-            10143: {"name": "Monad Testnet", "rpc": "https://testnet-rpc.monad.xyz"},
+            1: {
+                "name": "Ethereum",
+                "rpc": f"https://mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_1", "ETHEREUM_RPC_URL", "ETH_RPC_URL"]
+                ),
+            },
+            137: {
+                "name": "Polygon",
+                "rpc": f"https://polygon-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://polygon-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_137", "POLYGON_RPC_URL", "MATIC_RPC_URL"]
+                ),
+            },
+            42161: {
+                "name": "Arbitrum",
+                "rpc": f"https://arbitrum-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://arbitrum-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_42161", "ARBITRUM_RPC_URL"]
+                ),
+            },
+            43114: {
+                "name": "Avalanche",
+                "rpc": f"https://avalanche-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://avalanche-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_43114", "AVALANCHE_RPC_URL", "AVAX_RPC_URL"]
+                ),
+            },
+            56: {
+                "name": "BSC",
+                "rpc": f"https://bsc-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://bsc-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_56", "BSC_RPC_URL", "BSC_MAINNET_RPC"]
+                ),
+            },
+            8453: {
+                "name": "Base",
+                "rpc": f"https://base-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://base-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_8453", "BASE_RPC_URL"]
+                ),
+            },
+            10: {
+                "name": "Optimism",
+                "rpc": f"https://optimism-mainnet.infura.io/v3/{self.infura_api_key}",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    [f"https://optimism-mainnet.infura.io/v3/{self.infura_api_key}"],
+                    ["RPC_URL_10", "OPTIMISM_RPC_URL"]
+                ),
+            },
+            10143: {
+                "name": "Monad Testnet",
+                "rpc": "https://testnet-rpc.monad.xyz",
+                "rpc_endpoints": self._build_rpc_endpoints(
+                    ["https://testnet-rpc.monad.xyz", "https://monad-testnet.rpc.thirdweb.com"],
+                    ["RPC_URL_10143", "MONAD_RPC_URL", "MONAD_TESTNET_RPC"]
+                ),
+            },
         }
         
         # USDT token addresses for each supported chain (for DCA bot purchases)
@@ -55,13 +111,9 @@ class DexIntegration:
         if chain_id not in self.supported_chains:
             raise Exception(f"Chain {chain_id} not supported by 0x API")
         
-        # Setup Web3 for this chain
+        # Setup Web3 for this chain using resilient RPC handling
         chain_info = self.supported_chains[chain_id]
-        web3 = Web3(Web3.HTTPProvider(chain_info["rpc"]))
-        web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-        
-        if not web3.is_connected():
-            raise Exception(f"Failed to connect to {chain_info['name']} network")
+        web3, rpc_url = self._connect_web3(chain_id)
         
         # Setup user account - use ETH private key for EVM chains
         encrypted_key = await get_user_private_key_by_type(db, user_id, 'eth')
@@ -72,7 +124,7 @@ class DexIntegration:
         account = Account.from_key(private_key)
         wallet_address = account.address
         
-        logger.info(f"DEX Setup for {chain_info['name']} - User: {user_id} - Wallet: {wallet_address}")
+        logger.info(f"DEX Setup for {chain_info['name']} ({rpc_url}) - User: {user_id} - Wallet: {wallet_address}")
         return web3, account, wallet_address
     
     def _normalize_token_address(self, token: str) -> str:
@@ -268,14 +320,13 @@ class DexIntegration:
             
             # Setup Web3 connection for status checking (no auth needed)
             chain_info = self.supported_chains[chain_id]
-            web3 = Web3(Web3.HTTPProvider(chain_info["rpc"]))
-            web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-            
-            if not web3.is_connected():
+            try:
+                web3, rpc_url = self._connect_web3(chain_id)
+            except Exception as conn_err:
                 return {
                     "transaction_hash": tx_hash,
                     "status": "error",
-                    "error": f"Failed to connect to {chain_info['name']} network",
+                    "error": str(conn_err),
                     "chain_id": chain_id
                 }
             
@@ -319,6 +370,50 @@ class DexIntegration:
     def get_supported_chains(self) -> Dict[int, Dict[str, str]]:
         """Get supported chains"""
         return self.supported_chains
+
+    def _build_rpc_endpoints(self, defaults: list[str], env_keys: Optional[list[str]] = None) -> list[str]:
+        """Construct an ordered list of RPC endpoints with environment overrides."""
+        endpoints: list[str] = []
+        for key in env_keys or []:
+            value = os.getenv(key)
+            if value and value.strip():
+                endpoints.append(value.strip())
+        for default in defaults:
+            if default and default.strip():
+                endpoints.append(default.strip())
+        # Deduplicate while preserving order
+        unique: list[str] = []
+        for url in endpoints:
+            if url not in unique:
+                unique.append(url)
+        return unique
+
+    def _connect_web3(self, chain_id: int) -> tuple[Web3, str]:
+        """Attempt RPC connections sequentially until one succeeds."""
+        if chain_id not in self.supported_chains:
+            raise Exception(f"Chain {chain_id} not supported by 0x API")
+        
+        chain_info = self.supported_chains[chain_id]
+        endpoints = chain_info.get("rpc_endpoints") or [chain_info.get("rpc")]
+        last_error: Optional[Exception | str] = None
+        
+        for rpc_url in endpoints:
+            if not rpc_url:
+                continue
+            try:
+                provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 30})
+                web3 = Web3(provider)
+                web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+                if web3.is_connected():
+                    if rpc_url != chain_info.get("rpc"):
+                        logger.info(f"Using fallback RPC for {chain_info['name']} ({chain_id}) -> {rpc_url}")
+                    return web3, rpc_url
+                last_error = f"is_connected() returned False for {rpc_url}"
+            except Exception as exc:
+                last_error = exc
+                logger.warning(f"RPC endpoint failed for {chain_info['name']} ({chain_id}) via {rpc_url}: {exc}")
+        
+        raise Exception(f"Failed to connect to {chain_info['name']} network via all RPC endpoints. Last error: {last_error}")
 
 # Legacy compatibility - for existing code that expects the old pattern
 class DexIntegrationLegacy:

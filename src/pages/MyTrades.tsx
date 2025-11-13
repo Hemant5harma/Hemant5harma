@@ -102,7 +102,7 @@ const MyTrades = () => {
           <span className="material-symbols-outlined text-base">download</span>
           <span className="truncate">Export History</span>
         </button>
-      </div>
+          </div>
 
       {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-800">
@@ -119,7 +119,7 @@ const MyTrades = () => {
             {activeTab === 'open' && (
               <span className="px-2 py-0.5 text-xs font-semibold bg-primary/10 dark:bg-primary/20 rounded-full">
                 {openTradesCount}
-              </span>
+                  </span>
             )}
           </button>
           <button
@@ -132,8 +132,8 @@ const MyTrades = () => {
           >
             <p className="text-sm font-bold">Trade History</p>
           </button>
-        </div>
-      </div>
+                </div>
+              </div>
 
       {/* Search and Filters */}
       <div className="mt-6 bg-content-light dark:bg-content-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -141,7 +141,7 @@ const MyTrades = () => {
           <div className="relative w-full md:w-auto md:max-w-xs">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
               search
-            </span>
+                    </span>
             <input
               type="text"
               placeholder="Search pair..."
@@ -163,8 +163,8 @@ const MyTrades = () => {
               <span className="material-symbols-outlined text-xl">swap_horiz</span>
               <span>Side</span>
             </button>
-          </div>
-        </div>
+                </div>
+              </div>
 
         {/* Table */}
         <div className="@container">
@@ -220,8 +220,8 @@ const MyTrades = () => {
                           }`}
                         >
                           {trade.type}
-                        </span>
-                      </div>
+                  </span>
+                </div>
                       <div className="text-slate-500 dark:text-slate-400 text-sm @[640px]:hidden">
                         Amount
                       </div>
@@ -323,8 +323,8 @@ const MyTrades = () => {
                 >
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
-              </div>
-            </div>
+        </div>
+        </div>
           )}
         </div>
       </div>
