@@ -2,19 +2,43 @@
  * Auth utilities for JWT token management
  */
 
+type StorageLike = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+const createMemoryStorage = (): StorageLike => {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key: string) => (store.has(key) ? store.get(key)! : null),
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  };
+};
+
+const safeStorage: StorageLike =
+  typeof window !== 'undefined' && window.localStorage
+    ? window.localStorage
+    : createMemoryStorage();
+
 // Store token in localStorage
 export const setAuthToken = (token: string): void => {
-  localStorage.setItem('auth_token', token);
+  safeStorage.setItem('auth_token', token);
 };
 
 // Get token from localStorage
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+  return safeStorage.getItem('auth_token');
 };
 
 // Remove token from localStorage
 export const removeAuthToken = (): void => {
-  localStorage.removeItem('auth_token');
+  safeStorage.removeItem('auth_token');
 };
 
 // Check if user is authenticated

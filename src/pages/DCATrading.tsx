@@ -806,7 +806,7 @@ const DCATrading: React.FC = () => {
                           exit={{ opacity: 0, scale: 0.95, y: -20 }}
                           transition={{ duration: 0.3, delay: index * 0.1 }}
                             className="group space-y-6 rounded-2xl border border-border-light bg-card-light p-6 shadow transition hover:shadow-lg dark:border-border-dark dark:bg-card-dark"
-                          >
+                        >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cryptoData?.color || 'from-primary to-secondary'} text-white shadow`}>
@@ -878,7 +878,7 @@ const DCATrading: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               className="space-y-6"
-            >
+          >
               <div className="rounded-3xl border border-border-light bg-card-light p-6 shadow-sm dark:border-border-dark dark:bg-card-dark">
                 <h2 className="text-2xl font-semibold text-text-light-primary dark:text-text-dark-primary">
                   Step 3 · Review &amp; Launch

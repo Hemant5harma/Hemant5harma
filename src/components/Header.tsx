@@ -5,7 +5,7 @@ import DropdownNotification from './DropdownNotification';
 import ClickOutside from './ClickOutside';
 import UserOne from '../assets/image/user-10.png';
 import { BrowserProvider } from 'ethers';
-import { setAuthToken, removeAuthToken } from '../utils/auth';
+import { setAuthToken, removeAuthToken, getAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
 import { apiClient } from '../utils/apiClient';
 
@@ -30,10 +30,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
           const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
           if (accounts && accounts.length > 0) {
             setAccount(accounts[0]);
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-              setIsAuthenticated(true);
-            }
+            const token = getAuthToken();
+            setIsAuthenticated(!!token);
           }
         } catch (error) {
           console.error('Error fetching accounts', error);
@@ -52,8 +50,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
         } else {
           setAccount(accounts[0]);
           // Check if still authenticated
-          const token = localStorage.getItem('auth_token');
-          setIsAuthenticated(!!token);
+          setIsAuthenticated(!!getAuthToken());
         }
       });
     }

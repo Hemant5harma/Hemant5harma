@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import ClickOutside from './ClickOutside';
 import UserOne from '../assets/image/user-10.png';
 import { BrowserProvider } from 'ethers';
-import { setAuthToken, removeAuthToken } from '../utils/auth';
+import { setAuthToken, removeAuthToken, getAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
 import { apiClient } from '../utils/apiClient';
 
@@ -25,10 +25,8 @@ const DropdownUser = () => {
           if (accounts && accounts.length > 0) {
             setAccount(accounts[0]);
             // Check if user is already authenticated
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-              setIsAuthenticated(true);
-            }
+            const token = getAuthToken();
+            setIsAuthenticated(!!token);
           }
         } catch (error) {
           console.error('Error fetching accounts', error);
@@ -134,8 +132,8 @@ const DropdownUser = () => {
   // Disconnect wallet function
   const disconnectWallet = () => {
     setAccount(null);
-    setIsAuthenticated(false);
-    removeAuthToken(); // Remove the token
+        setIsAuthenticated(false);
+        removeAuthToken(); // Remove the token
     setDropdownOpen(false);
 
     showNotification({

@@ -5,7 +5,16 @@ type SetValue<T> = T | ((val: T) => T);
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: SetValue<T>) => void] {
   // State to store our value
   // Pass  initial state function to useState so logic is only executed once
+  const isBrowser =
+    typeof window !== 'undefined' &&
+    typeof window.localStorage !== 'undefined' &&
+    window.localStorage !== null;
+
   const [storedValue, setStoredValue] = useState(() => {
+    if (!isBrowser) {
+      return initialValue;
+    }
+
     try {
       // Get from local storage by key
       const item = window.localStorage.getItem(key);
@@ -20,6 +29,10 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: SetValue<
 
   // useEffect to update local storage when the state changes
   useEffect(() => {
+    if (!isBrowser) {
+      return;
+    }
+
     try {
       // Allow value to be a function so we have same API as useState
       const valueToStore =
@@ -30,7 +43,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: SetValue<
       // A more advanced implementation would handle the error case
       console.log(error);
     }
-  }, [key, storedValue]);
+  }, [isBrowser, key, storedValue]);
 
   return [storedValue, setStoredValue];
 }
