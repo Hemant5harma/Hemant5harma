@@ -4,10 +4,8 @@ import DarkModeSwitcher from './DarkModeSwitcher';
 import DropdownNotification from './DropdownNotification';
 import ClickOutside from './ClickOutside';
 import UserOne from '../assets/image/user-10.png';
-import { BrowserProvider } from 'ethers';
-import { setAuthToken, removeAuthToken, getAuthToken } from '../utils/auth';
+import { removeAuthToken, getAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
-import { apiClient } from '../utils/apiClient';
 
 interface HeaderProps {
   sidebarOpen?: boolean;
@@ -16,12 +14,27 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar }) => {
   const navigate = useNavigate();
-  const [account, setAccount] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
+  // Check authentication status
+  useEffect(() => {
+    // Authentication status is checked via token existence
+    // Token check is handled by ProtectedRoute component
+    
+    // Load user info from localStorage
+    const userInfo = localStorage.getItem('user');
+    if (userInfo) {
+      try {
+        JSON.parse(userInfo);
+        // Set user data if needed
+      } catch (error) {
+        console.error('Error parsing user info', error);
+      }
+    }
+  }, []);
+
+  // WALLET CONNECTION (COMMENTED OUT FOR FUTURE USE)
+  /*
   // Check if a wallet is connected when the component mounts
   useEffect(() => {
     async function checkConnection() {
@@ -61,7 +74,10 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
       }
     };
   }, []);
+  */
 
+  // WALLET CONNECTION FUNCTIONS (COMMENTED OUT FOR FUTURE USE)
+  /*
   // One-step wallet connection and authentication
   const connectAndAuthenticateWallet = async () => {
     if (!(window as any).ethereum) {
@@ -231,11 +247,21 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
       color: 'blue',
     });
   };
+  */
 
   // Logout function
   const handleLogout = () => {
-    disconnectWallet();
-    navigate('/');
+    removeAuthToken();
+    localStorage.removeItem('user');
+    setUserDropdownOpen(false);
+    
+    showNotification({
+      title: 'Logged Out',
+      message: 'You have been logged out successfully',
+      color: 'blue',
+    });
+    
+    navigate('/login');
   };
 
   return (
@@ -252,15 +278,15 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
           <DropdownNotification />
         </div>
 
-        {/* Wallet Address */}
-        {account && (
+        {/* Wallet Address (Commented out for future use) */}
+        {/* {account && (
           <div className="hidden items-center gap-2 rounded-lg border border-border-light bg-background-light px-3 py-1.5 text-sm font-medium text-text-light-secondary dark:border-border-dark dark:bg-background-dark dark:text-text-dark-secondary lg:flex">
             <span className="material-symbols-outlined text-base">account_balance_wallet</span>
             <span className="font-mono">
               {account.substring(0, 6)}...{account.substring(account.length - 4)}
             </span>
           </div>
-        )}
+        )} */}
 
         {/* User Profile Dropdown */}
         <ClickOutside onClick={() => setUserDropdownOpen(false)} className="relative">
@@ -301,8 +327,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
                 </li>
               </ul>
 
-              {/* Wallet Connection Section */}
-              <div className="border-t border-border-light px-2 py-2 dark:border-border-dark">
+              {/* Wallet Connection Section (Commented out for future use) */}
+              {/* <div className="border-t border-border-light px-2 py-2 dark:border-border-dark">
                 {!account ? (
                   <button
                     onClick={connectAndAuthenticateWallet}
@@ -358,8 +384,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
                                 className="opacity-75"
                                 fill="currentColor"
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
+                          ></path>
+                        </svg>
                             Signing In...
                           </>
                         ) : (
@@ -377,7 +403,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen = false, onToggleSidebar })
                     )}
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Logout Section */}
               <div className="border-t border-border-light dark:border-border-dark">

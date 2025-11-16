@@ -1,4 +1,4 @@
-import { getAuthHeaders } from './auth';
+import { getAuthHeaders, removeAuthToken } from './auth';
 import { showNotification } from '@mantine/notifications';
 
 // Use environment variable injected at build time (Create-React-App)
@@ -26,6 +26,25 @@ export const apiClient = {
       });
 
       if (!response.ok) {
+        // Handle 401 Unauthorized (token expired or invalid)
+        if (response.status === 401) {
+          removeAuthToken();
+          localStorage.removeItem('user');
+          
+          showNotification({
+            title: 'Session Expired',
+            message: 'Your credentials are not validated. Please sign in again.',
+            color: 'red',
+          });
+          
+          // Redirect to login page
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1000);
+          
+          throw new Error('Credentials not validated');
+        }
+        
         let errorMessage = `Request failed with status ${response.status}`;
         try {
           const errorData = await response.json();
@@ -93,6 +112,25 @@ export const apiClient = {
       });
 
       if (!response.ok) {
+        // Handle 401 Unauthorized (token expired or invalid)
+        if (response.status === 401) {
+          removeAuthToken();
+          localStorage.removeItem('user');
+          
+          showNotification({
+            title: 'Session Expired',
+            message: 'Your credentials are not validated. Please sign in again.',
+            color: 'red',
+          });
+          
+          // Redirect to login page
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1000);
+          
+          throw new Error('Credentials not validated');
+        }
+        
         let errorMessage = `Request failed with status ${response.status}`;
         try {
           const errorData = await response.json();

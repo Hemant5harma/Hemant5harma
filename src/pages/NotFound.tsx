@@ -1,26 +1,56 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Home, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const NotFound: React.FC = () => {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      {/* Big gradient 404 label */}
-      <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-9xl font-extrabold text-transparent drop-shadow-lg sm:text-[200px]">
-        404
-      </h1>
-      <p className="mt-6 text-lg font-medium text-gray-600 dark:text-gray-300 md:text-xl">
-        Oops! The page you are looking for doesn&apos;t exist or has been moved.
-      </p>
+  const navigate = useNavigate();
 
-      {/* Back to home button */}
-      <Link
-        to="/"
-        className="mt-10 inline-block rounded-md bg-gradient-to-r from-primary to-secondary px-8 py-3 text-base font-semibold text-white shadow transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-secondary"
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background-light px-4 dark:bg-background-dark">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md text-center"
       >
-        Back to Home
-      </Link>
+        <div className="mb-6 inline-flex rounded-full bg-red-50 p-4 dark:bg-red-900/20">
+          <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+        </div>
+        
+        <h1 className="mb-2 text-4xl font-bold text-text-light-primary dark:text-text-dark-primary">
+          404
+        </h1>
+        
+        <h2 className="mb-4 text-2xl font-semibold text-text-light-primary dark:text-text-dark-primary">
+          Page Not Found
+        </h2>
+        
+        <p className="mb-8 text-text-light-secondary dark:text-text-dark-secondary">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-border-light bg-card-light px-6 py-3 font-semibold text-text-light-primary transition-colors hover:bg-background-light dark:border-border-dark dark:bg-card-dark dark:text-text-dark-primary dark:hover:bg-background-dark"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Go Back
+          </button>
+          
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-6 py-3 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl"
+          >
+            <Home className="h-5 w-5" />
+            Go Home
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 };
 
 export default NotFound;
+

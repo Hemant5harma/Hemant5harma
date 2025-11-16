@@ -5,7 +5,32 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy import desc
 
-# User Operations
+# User Operations - Email/Password Authentication
+async def create_user_with_email(db: AsyncSession, email: str, password_hash: str, name: str) -> User:
+    """
+    Creates a new user with email and password.
+    """
+    user = User(email=email, password_hash=password_hash, name=name, email_verified=0)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def get_user_by_email(db: AsyncSession, email: str) -> User:
+    """
+    Retrieves a user by their email address.
+    """
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
+
+async def get_user_by_id(db: AsyncSession, user_id: int) -> User:
+    """
+    Retrieves a user by their ID.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalars().first()
+
+# User Operations - Wallet Authentication (for future use)
 async def create_user(db: AsyncSession, address: str) -> User:
     """
     Creates a new user with the given wallet address.

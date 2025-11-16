@@ -2,33 +2,24 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { showNotification } from '@mantine/notifications';
 import {
-  Container,
-  Paper,
-  Text,
-  Title,
-  Flex,
-  Button,
-  Modal,
-  Group,
-  Loader,
-  Table,
-  Badge,
-  Progress,
-  Box,
-  Card,
-  Grid,
-  ScrollArea,
-} from '@mantine/core';
-import {
-  FaChartLine,
-  FaWallet,
-  FaCoins,
-  FaCalendarAlt,
-  FaExchangeAlt,
-  FaMoneyBillWave,
-  FaPercentage,
-} from 'react-icons/fa';
+  TrendingUp,
+  Activity,
+  Calendar,
+  Pause,
+  Play,
+  Trash2,
+  ArrowLeft,
+  AlertCircle,
+  BarChart3,
+  Coins,
+  DollarSign,
+  Percent,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react';
 import {
   apiClient,
   pauseBot,
@@ -189,27 +180,39 @@ export default function BotDetails() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" h="100vh" direction="column" gap="md">
-        <Loader size="xl" />
-        <Text size="lg" c="dimmed">
-          Loading bot details...
-        </Text>
-      </Flex>
+      <div className="flex min-h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-lg text-text-light-secondary dark:text-text-dark-secondary">
+            Loading bot details...
+          </p>
+        </div>
+      </div>
     );
   }
 
   if (!bot) {
     return (
-      <Flex align="center" justify="center" h="100vh">
-        <Paper p="xl" radius="md" shadow="md" className="bg-white dark:bg-boxdark">
-          <Text size="xl" fw={500} ta="center">
-            Bot not found
-          </Text>
-          <Button mt="lg" onClick={() => navigate('/bots/dca')} variant="light" fullWidth>
+      <div className="flex min-h-screen items-center justify-center bg-background-light px-4 dark:bg-background-dark">
+        <div className="w-full max-w-md rounded-2xl border border-border-light bg-card-light p-8 text-center shadow-lg dark:border-border-dark dark:bg-card-dark">
+          <div className="mb-4 inline-flex rounded-full bg-red-50 p-4 dark:bg-red-900/20">
+            <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="mb-2 text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">
+            Bot Not Found
+          </h2>
+          <p className="mb-6 text-text-light-secondary dark:text-text-dark-secondary">
+            The bot you're looking for doesn't exist or has been deleted.
+          </p>
+          <button
+            onClick={() => navigate('/bots/manage')}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-6 py-3 font-semibold text-white shadow-lg transition-all hover:scale-105"
+          >
+            <ArrowLeft className="h-5 w-5" />
             Return to Bots
-          </Button>
-        </Paper>
-      </Flex>
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -230,11 +233,20 @@ export default function BotDetails() {
     setPauseLoading(true);
     try {
       await pauseBot(bot.id);
-      // Optionally refetch or update local state
       const updatedBot = await apiClient.get(`/bots/${bot.id}`);
       setBot(updatedBot);
+      showNotification({
+        title: 'Bot Paused',
+        message: 'Bot has been paused successfully',
+        color: 'yellow',
+      });
     } catch (error) {
       console.error('Error pausing bot:', error);
+      showNotification({
+        title: 'Error',
+        message: 'Failed to pause bot',
+        color: 'red',
+      });
     } finally {
       setPauseLoading(false);
       setPauseModalOpen(false);
@@ -246,11 +258,20 @@ export default function BotDetails() {
     setResumeLoading(true);
     try {
       await resumeBot(bot.id);
-      // Optionally refetch or update local state
       const updatedBot = await apiClient.get(`/bots/${bot.id}`);
       setBot(updatedBot);
+      showNotification({
+        title: 'Bot Resumed',
+        message: 'Bot is now running',
+        color: 'green',
+      });
     } catch (error) {
       console.error('Error resuming bot:', error);
+      showNotification({
+        title: 'Error',
+        message: 'Failed to resume bot',
+        color: 'red',
+      });
     } finally {
       setResumeLoading(false);
     }
@@ -261,27 +282,24 @@ export default function BotDetails() {
     setDeleteLoading(true);
     try {
       await deleteBot(bot.id);
-      navigate('/bots/dca'); // Navigate back to your bots list or another route
+      showNotification({
+        title: 'Bot Deleted',
+        message: 'Bot has been deleted successfully',
+        color: 'blue',
+      });
+      navigate('/bots/manage');
     } catch (error) {
       console.error('Error deleting bot:', error);
+      showNotification({
+        title: 'Error',
+        message: 'Failed to delete bot',
+        color: 'red',
+      });
       setDeleteLoading(false);
       setDeleteModalOpen(false);
     }
   };
 
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'running':
-        return 'green';
-      case 'paused':
-        return 'yellow';
-      case 'stopped':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  };
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -290,481 +308,576 @@ export default function BotDetails() {
   };
 
   return (
-    <Container size="xl" py="xl" px={{ base: 'xs', sm: 'md', md: 'lg' }}>
-      {/* Pause Confirmation Modal */}
-      <Modal
-        opened={pauseModalOpen}
-        onClose={() => setPauseModalOpen(false)}
-        title={
-          <Text fw={600} size="lg">
-            Confirm Pause
-          </Text>
-        }
-        centered
-        overlayProps={{
-          backgroundOpacity: 0.55,
-          blur: 3,
-        }}
-      >
-        <Text mb="lg">
-          Are you sure you want to pause this bot? It will stop executing trades until resumed.
-        </Text>
-        <Group justify="flex-end">
-          <Button variant="outline" onClick={() => setPauseModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button color="yellow" onClick={handlePause} loading={pauseLoading}>
-            Pause
-          </Button>
-        </Group>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        opened={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title={
-          <Text fw={600} size="lg" c="red">
-            Confirm Exit
-          </Text>
-        }
-        centered
-        overlayProps={{
-          backgroundOpacity: 0.55,
-          blur: 3,
-        }}
-      >
-        <Text mb="lg">
-          Are you sure you want to exit (delete) this bot? This action cannot be undone.
-        </Text>
-        <Group justify="flex-end">
-          <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button color="red" onClick={handleDelete} loading={deleteLoading}>
-            Exit
-          </Button>
-        </Group>
-      </Modal>
-
-      <Grid gutter={{ base: 'md', md: 'xl' }}>
-        <Grid.Col span={{ base: 12, md: 8 }}>
-          {/* Basic Bot Info */}
-          <Paper
-            shadow="md"
-            radius="lg"
-            p="lg"
-            mb="lg"
-            className="bg-white transition-all duration-300 dark:bg-boxdark"
+    <div className="min-h-screen bg-background-light py-4 sm:py-6 lg:py-8 dark:bg-background-dark">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 xl:px-8">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <button
+            onClick={() => navigate('/bots/manage')}
+            className="mb-3 sm:mb-4 inline-flex items-center gap-1.5 sm:gap-2 text-text-light-secondary transition-colors hover:text-primary dark:text-text-dark-secondary dark:hover:text-primary min-h-[44px] touch-manipulation"
           >
-            <Flex
-              justify="space-between"
-              align={{ base: 'start', sm: 'center' }}
-              direction={{ base: 'column', sm: 'row' }}
-              gap={{ base: 'xs', sm: 0 }}
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-base font-medium">Back to Bots</span>
+          </button>
+        </motion.div>
+
+        {/* Pause Confirmation Modal */}
+        <AnimatePresence>
+          {pauseModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm"
+              onClick={() => setPauseModalOpen(false)}
             >
-              <div>
-                <Title order={2} className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {name}
-                </Title>
-                <Flex align="center" gap="xs" mt="xs" wrap="wrap">
-                  <Badge color={getStatusColor(status)} size="lg" radius="sm" variant="filled">
-                    {status.toUpperCase()}
-                  </Badge>
-                  <Text size="sm" c="dimmed" className="dark:text-gray-400">
-                    Frequency: {frequency}
-                  </Text>
-                </Flex>
-              </div>
-
-              <Flex gap="sm" mt={{ base: 'md', sm: 0 }}>
-                {status === 'running' && (
-                  <Button
-                    color="yellow"
-                    variant="filled"
-                    onClick={() => setPauseModalOpen(true)}
-                    loading={pauseLoading}
-                    radius="md"
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="w-full max-w-md rounded-xl sm:rounded-2xl border border-border-light bg-card-light p-4 sm:p-6 shadow-2xl dark:border-border-dark dark:bg-card-dark"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-bold text-text-light-primary dark:text-text-dark-primary">
+                  Confirm Pause
+                </h3>
+                <p className="mb-4 sm:mb-6 text-sm sm:text-base text-text-light-secondary dark:text-text-dark-secondary">
+                  Are you sure you want to pause this bot? It will stop executing trades until resumed.
+                </p>
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setPauseModalOpen(false)}
+                    className="rounded-lg border border-border-light bg-card-light px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium text-text-light-secondary transition-colors hover:bg-border-light dark:border-border-dark dark:bg-card-dark dark:text-text-dark-secondary dark:hover:bg-border-dark min-h-[44px] touch-manipulation"
                   >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePause}
+                    disabled={pauseLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-500 px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium text-white transition-colors hover:bg-yellow-600 disabled:opacity-50 min-h-[44px] touch-manipulation"
+                  >
+                    {pauseLoading && (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    )}
                     Pause Bot
-                  </Button>
-                )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {status === 'paused' && (
-                  <Button
-                    color="green"
-                    variant="filled"
-                    onClick={handleResume}
-                    loading={resumeLoading}
-                    radius="md"
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {deleteModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm"
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="w-full max-w-md rounded-xl sm:rounded-2xl border border-border-light bg-card-light p-4 sm:p-6 shadow-2xl dark:border-border-dark dark:bg-card-dark"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">
+                  Confirm Deletion
+                </h3>
+                <p className="mb-4 sm:mb-6 text-sm sm:text-base text-text-light-secondary dark:text-text-dark-secondary">
+                  Are you sure you want to delete this bot? This action cannot be undone.
+                </p>
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setDeleteModalOpen(false)}
+                    className="rounded-lg border border-border-light bg-card-light px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium text-text-light-secondary transition-colors hover:bg-border-light dark:border-border-dark dark:bg-card-dark dark:text-text-dark-secondary dark:hover:bg-border-dark min-h-[44px] touch-manipulation"
                   >
-                    Resume Bot
-                  </Button>
-                )}
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleteLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 min-h-[44px] touch-manipulation"
+                  >
+                    {deleteLoading && (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    )}
+                    Delete Bot
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                <Button
-                  color="red"
-                  variant="outline"
-                  onClick={() => setDeleteModalOpen(true)}
-                  loading={deleteLoading}
-                  radius="md"
-                >
-                  Exit Bot
-                </Button>
-              </Flex>
-            </Flex>
-
-            <Box mt="md" p="md" className="rounded-md bg-gray-50 dark:bg-gray-700">
-              <Flex align="center" gap="xs">
-                <FaCalendarAlt className="text-indigo-600 dark:text-indigo-400" />
-                <Text size="sm" className="text-gray-700 dark:text-gray-300">
-                  Next Execution: {formatDate(next_execution_time)}
-                </Text>
-              </Flex>
-            </Box>
-          </Paper>
-
-          {/* Performance Metrics */}
-          <Paper
-            shadow="md"
-            radius="lg"
-            p="lg"
-            mb="lg"
-            className="bg-white transition-all duration-300 dark:bg-boxdark"
-          >
-            <Title order={3} className="pb-4 text-xl font-bold text-gray-900 dark:text-white">
-              Performance Metrics
-            </Title>
-
-            <Grid gutter="md">
-              {/* 3M, 6M, Total Performance */}
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaChartLine className="text-indigo-600 dark:text-indigo-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      3M Performance
-                    </Text>
-                    <Text
-                      size="lg"
-                      fw={700}
-                      className={`${
-                        performance.three_month_perf >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
+        {/* Main Content Grid */}
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+          {/* Left Column - Main Info */}
+          <div className="space-y-4 sm:space-y-6 lg:col-span-2">
+            {/* Bot Header Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="overflow-hidden rounded-2xl sm:rounded-3xl border border-border-light bg-card-light shadow-soft dark:border-border-dark dark:bg-card-dark"
+            >
+              <div className="bg-gradient-to-r from-primary to-secondary px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white break-words">{name}</h1>
+                    <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                      <span
+                        className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold ${
+                          status.toLowerCase() === 'running'
+                            ? 'bg-green-500 text-white'
+                            : status.toLowerCase() === 'paused'
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-red-500 text-white'
+                        }`}
+                      >
+                        {status.toLowerCase() === 'running' ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        ) : status.toLowerCase() === 'paused' ? (
+                          <Pause className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        ) : (
+                          <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="whitespace-nowrap">{status.toUpperCase()}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-white/90">
+                        <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="whitespace-nowrap">{frequency}</span>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    {status === 'running' && (
+                      <button
+                        onClick={() => setPauseModalOpen(true)}
+                        disabled={pauseLoading}
+                        className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-white/20 px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-50 min-h-[44px] touch-manipulation"
+                      >
+                        {pauseLoading ? (
+                          <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        ) : (
+                          <Pause className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        )}
+                        <span>Pause</span>
+                      </button>
+                    )}
+                    
+                    {status === 'paused' && (
+                      <button
+                        onClick={handleResume}
+                        disabled={resumeLoading}
+                        className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-white/20 px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-50 min-h-[44px] touch-manipulation"
+                      >
+                        {resumeLoading ? (
+                          <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        ) : (
+                          <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        )}
+                        <span>Resume</span>
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => setDeleteModalOpen(true)}
+                      disabled={deleteLoading}
+                      className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border-2 border-white/30 bg-transparent px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10 disabled:opacity-50 min-h-[44px] touch-manipulation"
                     >
-                      {performance.three_month_perf >= 0 ? '+' : ''}
-                      {performance.three_month_perf.toFixed(2)}%
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
+                      {deleteLoading ? (
+                        <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      )}
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Next Execution Info */}
+              <div className="border-t border-border-light bg-surface-light p-3 sm:p-4 lg:p-6 dark:border-border-dark dark:bg-surface-dark">
+                <div className="flex items-center gap-2 sm:gap-3 text-text-light-secondary dark:text-text-dark-secondary">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium uppercase tracking-wide">Next Execution</p>
+                    <p className="mt-0.5 text-xs sm:text-sm font-semibold text-text-light-primary dark:text-text-dark-primary break-words">
+                      {formatDate(next_execution_time)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
 
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaWallet className="text-blue-600 dark:text-blue-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      6M Performance
-                    </Text>
-                    <Text
-                      size="lg"
-                      fw={700}
-                      className={`${
-                        performance.six_month_perf >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {performance.six_month_perf >= 0 ? '+' : ''}
-                      {performance.six_month_perf.toFixed(2)}%
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
+            {/* Performance Metrics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="rounded-2xl sm:rounded-3xl border border-border-light bg-card-light p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6 lg:p-8"
+            >
+              <h2 className="mb-4 sm:mb-6 text-xl sm:text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">
+                Performance Metrics
+              </h2>
 
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaCoins className="text-green-600 dark:text-green-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      Total Performance
-                    </Text>
-                    <Text
-                      size="lg"
-                      fw={700}
-                      className={`${
-                        performance.total_perf >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {performance.total_perf >= 0 ? '+' : ''}
-                      {performance.total_perf.toFixed(2)}%
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
+                {/* 3M Performance */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-primary/10 p-2 sm:p-3 dark:bg-primary/20">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    3M Performance
+                  </p>
+                  <p
+                    className={`mt-1 sm:mt-2 text-lg sm:text-xl lg:text-2xl font-bold ${
+                      performance.three_month_perf >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {performance.three_month_perf >= 0 ? '+' : ''}
+                    {performance.three_month_perf.toFixed(2)}%
+                  </p>
+                </div>
 
-              {/* Total Trades, Volume, APY */}
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaExchangeAlt className="text-purple-600 dark:text-purple-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      Total Trades
-                    </Text>
-                    <Text size="lg" fw={700} className="text-gray-900 dark:text-white">
-                      {performance.total_trades}
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
+                {/* 6M Performance */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-primary/10 p-2 sm:p-3 dark:bg-primary/20">
+                    <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    6M Performance
+                  </p>
+                  <p
+                    className={`mt-1 sm:mt-2 text-lg sm:text-xl lg:text-2xl font-bold ${
+                      performance.six_month_perf >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {performance.six_month_perf >= 0 ? '+' : ''}
+                    {performance.six_month_perf.toFixed(2)}%
+                  </p>
+                </div>
 
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaMoneyBillWave className="text-teal-600 dark:text-teal-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      Total Volume
-                    </Text>
-                    <Text size="lg" fw={700} className="text-gray-900 dark:text-white">
-                      ${performance.total_volume.toFixed(2)}
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
+                {/* Total Performance */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-green-500/10 p-2 sm:p-3 dark:bg-green-500/20">
+                    <Activity className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    Total Performance
+                  </p>
+                  <p
+                    className={`mt-1 sm:mt-2 text-lg sm:text-xl lg:text-2xl font-bold ${
+                      performance.total_perf >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {performance.total_perf >= 0 ? '+' : ''}
+                    {performance.total_perf.toFixed(2)}%
+                  </p>
+                </div>
 
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <Card padding="sm" radius="md" className="bg-gray-50 dark:bg-gray-800 ">
-                  <Flex direction="column" align="center" gap="xs">
-                    <FaPercentage className="text-amber-600 dark:text-amber-400" size={20} />
-                    <Text fw={500} size="sm" className="text-gray-700 dark:text-gray-300">
-                      APY
-                    </Text>
-                    <Text size="lg" fw={700} className="text-green-600 dark:text-green-400">
-                      {performance.apy.toFixed(1)}%
-                    </Text>
-                  </Flex>
-                </Card>
-              </Grid.Col>
-            </Grid>
-          </Paper>
+                {/* Total Trades */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-purple-500/10 p-2 sm:p-3 dark:bg-purple-500/20">
+                    <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    Total Trades
+                  </p>
+                  <p className="mt-1 sm:mt-2 text-lg sm:text-xl lg:text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">
+                    {performance.total_trades}
+                  </p>
+                </div>
 
-          {/* Trade History Section */}
-          <Paper
-            shadow="md"
-            radius="lg"
-            p="lg"
-            className="bg-white transition-all duration-300 dark:bg-boxdark"
-          >
-            <Title order={3} className="mb-4 text-xl font-bold text-gray-900 dark:text-white">
-              Trade History
-            </Title>
+                {/* Total Volume */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-blue-500/10 p-2 sm:p-3 dark:bg-blue-500/20">
+                    <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    Total Volume
+                  </p>
+                  <p className="mt-1 sm:mt-2 text-base sm:text-lg lg:text-2xl font-bold text-text-light-primary dark:text-text-dark-primary break-words">
+                    ${performance.total_volume.toFixed(2)}
+                  </p>
+                </div>
 
-            {tradeHistoryLoading ? (
-              <Flex align="center" justify="center" py="xl">
-                <Loader size="sm" />
-                <Text ml="sm" c="dimmed">
-                  Loading trade history...
-                </Text>
-              </Flex>
-            ) : tradeHistory.length === 0 ? (
-              <Box py="xl" ta="center" className="rounded-lg bg-gray-50 dark:bg-gray-800">
-                <Text c="dimmed" className="dark:text-gray-400">
-                  No trade history available for this bot.
-                </Text>
-              </Box>
-            ) : (
-              <>
-                {/* Desktop view */}
-                <Box className="hidden md:block">
-                  <ScrollArea>
-                    <Table striped className="dark:border-gray-700">
-                      <Table.Thead className="bg-gray-100 dark:bg-gray-800">
-                        <Table.Tr>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                {/* APY */}
+                <div className="flex flex-col items-center rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-2 sm:mb-3 rounded-full bg-amber-500/10 p-2 sm:p-3 dark:bg-amber-500/20">
+                    <Percent className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary text-center">
+                    APY
+                  </p>
+                  <p className="mt-1 sm:mt-2 text-lg sm:text-xl lg:text-2xl font-bold text-green-600 dark:text-green-400">
+                    {performance.apy.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Trade History Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="rounded-2xl sm:rounded-3xl border border-border-light bg-card-light p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6 lg:p-8"
+            >
+              <h2 className="mb-4 sm:mb-6 text-xl sm:text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">
+                Trade History
+              </h2>
+
+              {tradeHistoryLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p className="ml-3 text-text-light-secondary dark:text-text-dark-secondary">
+                    Loading trade history...
+                  </p>
+                </div>
+              ) : tradeHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border-light bg-background-light py-12 dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-4 rounded-full bg-primary/10 p-4 dark:bg-primary/20">
+                    <Activity className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="text-text-light-secondary dark:text-text-dark-secondary">
+                    No trade history available for this bot
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop view */}
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="w-full min-w-[600px]">
+                      <thead className="border-b-2 border-border-light bg-background-light dark:border-border-dark dark:bg-background-dark">
+                        <tr>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Date
-                          </Table.Th>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Token
-                          </Table.Th>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Amount (USDT)
-                          </Table.Th>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Price
-                          </Table.Th>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Fee
-                          </Table.Th>
-                          <Table.Th className="dark:border-gray-700 dark:text-gray-300">
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
                             Total Value
-                          </Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-light dark:divide-border-dark">
                         {tradeHistory.map((trade, index) => (
-                          <Table.Tr key={trade.id} className={'dark:bg-gray-800 dark:text-white'}>
-                            <Table.Td className="dark:border-gray-700">
+                          <tr
+                            key={trade.id}
+                            className="transition-colors hover:bg-background-light dark:hover:bg-background-dark"
+                          >
+                            <td className="px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm text-text-light-primary dark:text-text-dark-primary whitespace-nowrap">
                               {new Date(trade.trade_time).toLocaleString()}
-                            </Table.Td>
-                            <Table.Td className="dark:border-gray-700">
-                              <Badge variant="light" color="blue">
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 sm:py-4">
+                              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-primary dark:bg-primary/20">
                                 {getTokenInfo(trade.token_address).name}
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td className="dark:border-gray-700">{formatAmount(trade.amount)}</Table.Td>
-                            <Table.Td className="dark:border-gray-700">
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm text-text-light-primary dark:text-text-dark-primary">
+                              {formatAmount(trade.amount)}
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
                               {formatCurrency(trade.trade_price)}
-                            </Table.Td>
-                            <Table.Td className="dark:border-gray-700">
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm text-text-light-secondary dark:text-text-dark-secondary">
                               {trade.fee_native !== undefined && trade.fee_native !== null
                                 ? `${formatAmount(trade.fee_native)} ${trade.fee_currency ?? ''}`
                                 : '-'}
-                            </Table.Td>
-                            <Table.Td className="dark:border-gray-700">
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-green-600 dark:text-green-400">
                               {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
-                            </Table.Td>
-                          </Table.Tr>
+                            </td>
+                          </tr>
                         ))}
-                      </Table.Tbody>
-                    </Table>
-                  </ScrollArea>
-                </Box>
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* Mobile view - card-based layout */}
-                <Box className="space-y-3 md:hidden">
-                  {tradeHistory.map((trade, index) => (
-                    <Card
-                      key={trade.id}
-                      padding="sm"
-                      radius="md"
-                      className={
-                        index % 2 === 0
-                          ? 'bg-gray-50 dark:bg-gray-800'
-                          : 'bg-white dark:bg-gray-900'
-                      }
-                    >
-                      <Text size="xs" c="dimmed" mb="xs" className="dark:text-gray-400">
-                        {new Date(trade.trade_time).toLocaleString()}
-                      </Text>
+                  {/* Mobile/Tablet view - card-based layout */}
+                  <div className="space-y-3 sm:space-y-4 lg:hidden">
+                    {tradeHistory.map((trade, index) => (
+                      <motion.div
+                        key={trade.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="rounded-2xl border border-border-light bg-background-light p-4 dark:border-border-dark dark:bg-background-dark"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary dark:bg-primary/20">
+                            {getTokenInfo(trade.token_address).name}
+                          </span>
+                          <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                            {new Date(trade.trade_time).toLocaleString()}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                              Amount (USDT)
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+                              {formatAmount(trade.amount)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                              Price
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+                              {formatCurrency(trade.trade_price)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                              Fee
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+                              {trade.fee_native !== undefined && trade.fee_native !== null
+                                ? `${formatAmount(trade.fee_native)} ${trade.fee_currency ?? ''}`
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                              Total Value
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
 
-                      <Flex justify="space-between" align="center" mb="xs">
-                        <Badge variant="light" color="blue">
-                          {getTokenInfo(trade.token_address).name}
-                        </Badge>
-                        <Text size="sm" fw={600} className="dark:text-white">
-                          {formatCurrency(trade.trade_price)}
-                        </Text>
-                      </Flex>
+          {/* Right Column - Coin Allocations */}
+          <div className="space-y-4 sm:space-y-6 lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="rounded-2xl sm:rounded-3xl border border-border-light bg-card-light p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6 lg:sticky lg:top-24"
+            >
+              <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                <Coins className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                <h2 className="text-lg sm:text-xl font-bold text-text-light-primary dark:text-text-dark-primary">
+                  Asset Allocations
+                </h2>
+              </div>
 
-                      <Grid>
-                        <Grid.Col span={6}>
-                          <Text size="xs" className="dark:text-gray-400">
-                            Amount (USDT)
-                          </Text>
-                          <Text size="sm" className="dark:text-white">
-                            {formatAmount(trade.amount)}
-                          </Text>
-                        </Grid.Col>
-                        <Grid.Col span={6}>
-                          <Text size="xs" className="dark:text-gray-400">
-                            Total Value
-                          </Text>
-                          <Text size="sm" className="dark:text-white">
-                            {formatCurrency(calculateTotalValue(trade.amount, trade.trade_price))}
-                          </Text>
-                        </Grid.Col>
-                        <Grid.Col span={6}>
-                          <Text size="xs" className="dark:text-gray-400">
-                            Fee
-                          </Text>
-                          <Text size="sm" className="dark:text-white">
-                            {trade.fee_native !== undefined && trade.fee_native !== null
-                              ? `${formatAmount(trade.fee_native)} ${trade.fee_currency ?? ''}`
-                              : '-'}
-                          </Text>
-                        </Grid.Col>
-                      </Grid>
-                    </Card>
-                  ))}
-                </Box>
-              </>
-            )}
-          </Paper>
-        </Grid.Col>
+              {coins && coins.length > 0 ? (
+                <div className="space-y-3 sm:space-y-4">
+                  {coins.map((coin: any, index: number) => {
+                    const tokenInfo = getTokenInfo(coin.token_address);
+                    const progressValue = Math.min(100, (coin.amount / (coin.threshold || 1)) * 100);
 
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          {/* Coins Section */}
-          <Paper
-            shadow="md"
-            radius="lg"
-            p="lg"
-            className="bg-white transition-all duration-300 dark:bg-boxdark"
-            style={{ position: 'sticky', top: '20px' }}
-          >
-            <Title order={3} className="pb-4 text-xl font-bold text-gray-900 dark:text-white">
-              Coin Allocations
-            </Title>
+                    return (
+                      <motion.div
+                        key={coin.id || index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="rounded-xl sm:rounded-2xl border border-border-light bg-background-light p-3 sm:p-4 transition-all hover:shadow-md dark:border-border-dark dark:bg-background-dark"
+                      >
+                        {/* Token Header */}
+                        <div className="mb-2 sm:mb-3 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-secondary text-white shadow-sm flex-shrink-0">
+                              <span className="text-[10px] sm:text-xs font-bold">
+                                {tokenInfo.symbol.substring(0, 3)}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs sm:text-sm font-semibold text-text-light-primary dark:text-text-dark-primary truncate">
+                                {tokenInfo.name}
+                              </p>
+                              <p className="text-[10px] sm:text-xs text-text-light-secondary dark:text-text-dark-secondary truncate">
+                                {tokenInfo.symbol}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-green-500/10 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-green-600 dark:bg-green-500/20 dark:text-green-400 flex-shrink-0">
+                            <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-green-600 dark:bg-green-400"></span>
+                            <span className="hidden sm:inline">Active</span>
+                          </span>
+                        </div>
 
-            {coins && coins.length > 0 ? (
-              <div className="space-y-3">
-                {coins.map((coin: any, index: number) => {
-                  // Calculate a percentage for the progress bar based on threshold
-                  const progressValue = Math.min(100, (coin.amount / (coin.threshold || 1)) * 100);
+                        {/* Amount */}
+                        <div className="mb-2 sm:mb-3">
+                          <p className="text-[10px] sm:text-xs text-text-light-secondary dark:text-text-dark-secondary">
+                            Investment Amount
+                          </p>
+                          <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-text-light-primary dark:text-text-dark-primary break-words">
+                            ${coin.amount} USDT
+                          </p>
+                        </div>
 
-                  return (
-                    <Card
-                      key={coin.id || index}
-                      padding="xs"
-                      radius="md"
-                      className="bg-gray-50 dark:bg-gray-800"
-                    >
-                      <Flex justify="space-between" align="center" mb="xs">
-                        <Text fw={600} size="sm" className="text-gray-800 dark:text-gray-200">
-                          {getTokenInfo(coin.token_address).name}
-                        </Text>
-                        <Badge size="sm" variant="dot" color="indigo">
-                          Active
-                        </Badge>
-                      </Flex>
+                        {/* Progress Bar */}
+                        <div className="mb-2 sm:mb-3">
+                          <div className="h-1.5 sm:h-2 overflow-hidden rounded-full bg-border-light dark:bg-border-dark">
+                            <div
+                              className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+                              style={{ width: `${progressValue}%` }}
+                            ></div>
+                          </div>
+                        </div>
 
-                      <Flex direction="column" gap="xs">
-                        <Text size="xs" className="text-gray-700 dark:text-gray-300">
-                          Amount (USDT): {coin.amount}
-                        </Text>
-
-                        {/* Condition Display */}
-                        <div className="mt-2 rounded-md bg-gray-100 p-2 dark:bg-gray-700">
-                          <Text
-                            size="xs"
-                            fw={500}
-                            className="mb-1 text-gray-600 dark:text-gray-400"
-                          >
-                            Trading Condition:
-                          </Text>
-                          <Text size="xs" className="text-gray-800 dark:text-gray-200">
+                        {/* Trading Condition */}
+                        <div className="rounded-lg sm:rounded-xl border border-border-light bg-card-light p-2 sm:p-3 dark:border-border-dark dark:bg-card-dark">
+                          <p className="mb-1.5 sm:mb-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-text-light-secondary dark:text-text-dark-secondary">
+                            Trading Condition
+                          </p>
+                          <p className="mb-1.5 sm:mb-2 text-xs sm:text-sm font-medium text-text-light-primary dark:text-text-dark-primary break-words">
                             {coin.condition_type
                               ? coin.condition_type
                                   .split('_')
-                                  .map(
-                                    (word: string) => word.charAt(0).toUpperCase() + word.slice(1),
-                                  )
+                                  .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                                   .join(' ')
                               : 'Price Drop'}
-                          </Text>
+                          </p>
                           {coin.condition_params && (
-                            <div className="mt-1 space-y-1">
-                              {Object.entries(coin.condition_params).map(
-                                ([key, value]: [string, any]) => (
-                                  <Text
-                                    key={key}
-                                    size="xs"
-                                    className="text-gray-600 dark:text-gray-400"
-                                  >
-                                    {key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}:{' '}
+                            <div className="space-y-0.5 sm:space-y-1">
+                              {Object.entries(coin.condition_params).map(([key, value]: [string, any]) => (
+                                <div
+                                  key={key}
+                                  className="flex justify-between gap-2 text-[10px] sm:text-xs text-text-light-secondary dark:text-text-dark-secondary"
+                                >
+                                  <span className="truncate">{key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}:</span>
+                                  <span className="font-medium text-text-light-primary dark:text-text-dark-primary whitespace-nowrap ml-2">
                                     {typeof value === 'number'
                                       ? key.includes('threshold') || key.includes('price')
                                         ? key.includes('tolerance')
@@ -774,35 +887,30 @@ export default function BotDetails() {
                                             : `${value}%`
                                         : value.toString()
                                       : value}
-                                  </Text>
-                                ),
-                              )}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
-
-                        <Progress
-                          value={progressValue}
-                          color="indigo"
-                          size="xs"
-                          radius="xl"
-                          mt="xs"
-                        />
-                      </Flex>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <Box py="xl" ta="center" className="rounded-lg bg-gray-50 dark:bg-gray-800">
-                <Text c="dimmed" className="dark:text-gray-400">
-                  No coin allocations found.
-                </Text>
-              </Box>
-            )}
-          </Paper>
-        </Grid.Col>
-      </Grid>
-    </Container>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border-light bg-background-light py-12 dark:border-border-dark dark:bg-background-dark">
+                  <div className="mb-4 rounded-full bg-primary/10 p-4 dark:bg-primary/20">
+                    <Coins className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                    No asset allocations found
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

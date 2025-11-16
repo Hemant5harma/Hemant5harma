@@ -11,9 +11,19 @@ class Base(AsyncAttrs, DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    address = Column(String, unique=True, nullable=False)
+    # Email/Password Authentication
+    email = Column(String, unique=True, nullable=True, index=True)  # Email for authentication
+    password_hash = Column(String, nullable=True)  # Hashed password
+    name = Column(String, nullable=True)  # User's display name
+    email_verified = Column(Integer, default=0, nullable=False)  # 0 = not verified, 1 = verified (for future use)
+    # Wallet Authentication (commented out for future use)
+    address = Column(String, unique=True, nullable=True)  # Wallet address (nullable for email auth)
     encrypted_eth_private_key = Column(String, nullable=True)  # ETH private key (legacy - will be migrated)
     encrypted_solana_private_key = Column(String, nullable=True)  # Solana private key (legacy - will be migrated)
+    # Timestamps
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    # Relationships
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
     manual_trades = relationship("ManualTrade", back_populates="user", cascade="all, delete-orphan")
     private_keys = relationship("PrivateKey", back_populates="user", cascade="all, delete-orphan")

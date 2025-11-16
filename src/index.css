@@ -94,6 +94,12 @@
     background-clip: text;
   }
 
+  /* Touch optimization for mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Hide scrollbar utility */
   .no-scrollbar {
     scrollbar-width: none;

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from '../assets/image/logo.svg';
-import DarkModeSwitcher from './DarkModeSwitcher';
 import { removeAuthToken } from '../utils/auth';
 import { showNotification } from '@mantine/notifications';
 
@@ -21,6 +20,20 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<{ name?: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    // Load user info from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUserInfo({ name: user.name || 'User', email: user.email || '' });
+      } catch (error) {
+        console.error('Error parsing user info:', error);
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -151,11 +164,6 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
 
         {/* Bottom Section */}
       <div className="flex flex-col gap-2 mt-auto">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
-          <span className="material-symbols-outlined text-2xl">dark_mode</span>
-          <span className="flex-1">Dark Mode</span>
-          <DarkModeSwitcher />
-              </div>
         <Link
           to="/help"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-light-secondary transition-colors hover:bg-background-light dark:text-text-dark-secondary dark:hover:bg-background-dark"
@@ -165,24 +173,30 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems }) => {
         </Link>
         <div className="my-2 h-px w-full bg-border-light dark:bg-border-dark"></div>
         <div className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-background-light dark:hover:bg-background-dark">
-          <img
-            alt="User avatar"
-            className="h-10 w-10 rounded-full border-2 border-border-light dark:border-border-dark"
-            src="https://ui-avatars.com/api/?name=User&background=354ae9&color=fff"
-          />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+            {userInfo?.name
+              ? userInfo.name
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .substring(0, 2)
+              : 'U'}
+          </div>
           <div className="flex flex-1 flex-col">
             <p className="text-sm font-semibold leading-normal text-text-light-primary dark:text-text-dark-primary">
-              Jane Doe
+              {userInfo?.name || 'User'}
             </p>
             <p className="text-xs font-normal leading-normal text-text-light-secondary dark:text-text-dark-secondary">
-              janedoe@email.com
+              {userInfo?.email || 'No email'}
             </p>
           </div>
           <button
             onClick={handleLogout}
             className="text-text-light-secondary transition-colors hover:text-primary dark:text-text-dark-secondary dark:hover:text-primary"
+            aria-label="Logout"
           >
-            <span className="material-symbols-outlined text-xl">logout</span>
+            <span className="material-symbols-outlined text-xl">exit_to_app</span>
           </button>
         </div>
       </div>

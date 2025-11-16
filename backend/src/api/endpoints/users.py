@@ -56,6 +56,10 @@ async def read_users_me(authorization: str = Header(None), db: AsyncSession = De
     current_user = await get_current_user(token, db)
     return {"address": current_user.address}
 
+# ========================================
+# WALLET AUTHENTICATION ENDPOINTS (COMMENTED OUT FOR FUTURE USE)
+# ========================================
+"""
 @router.post("/metamask_login")
 async def metamask_login(auth_request: AuthLoginRequest, db: AsyncSession = Depends(get_db_session)):
     message_encoded = encode_defunct(text=auth_request.message)
@@ -70,9 +74,9 @@ async def metamask_login(auth_request: AuthLoginRequest, db: AsyncSession = Depe
 
 @router.post("/solana_login")
 async def solana_login(auth_request: SolanaAuthLoginRequest, db: AsyncSession = Depends(get_db_session)):
-    """
+    '''
     Authenticate a Solana wallet by verifying the signature of a message.
-    """
+    '''
     try:
         # Import Solana libraries
         from solders.keypair import Keypair
@@ -129,3 +133,4 @@ async def solana_login(auth_request: SolanaAuthLoginRequest, db: AsyncSession = 
     except Exception as e:
         logger.error(f"Solana login error: {e}")
         raise HTTPException(status_code=500, detail="Authentication failed")
+"""

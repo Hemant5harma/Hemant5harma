@@ -1,7 +1,29 @@
+import { useState, useEffect } from 'react';
 import Breadcrumb from '../components/Breadcrumb';
 import userOne from '../assets/image/user-10.png';
 
 const Profile = () => {
+  const [userInfo, setUserInfo] = useState<{ name?: string; email?: string }>({
+    name: '',
+    email: '',
+  });
+
+  useEffect(() => {
+    // Load user info from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUserInfo({
+          name: user.name || '',
+          email: user.email || '',
+        });
+      } catch (error) {
+        console.error('Error parsing user info:', error);
+      }
+    }
+  }, []);
+
   return (
     <>
       <div className="mx-auto max-w-270">
@@ -54,8 +76,9 @@ const Profile = () => {
                           type="text"
                           name="fullName"
                           id="fullName"
-                          placeholder="Kenji Yamada"
-                          defaultValue="Kenji Yamada"
+                          placeholder="Enter your name"
+                          defaultValue={userInfo.name}
+                          readOnly
                         />
                       </div>
                     </div>
@@ -116,8 +139,9 @@ const Profile = () => {
                         type="email"
                         name="emailAddress"
                         id="emailAddress"
-                        placeholder="yamadakenji0809@gmail.com"
-                        defaultValue="yamadakenji0809@gmail.com"
+                        placeholder="Enter your email"
+                        defaultValue={userInfo.email}
+                        readOnly
                       />
                     </div>
                   </div>

@@ -13,3 +13,5 @@ solana
 solders
 base58
 PyNaCl
+passlib[argon2]
+email-validator

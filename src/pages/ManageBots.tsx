@@ -91,13 +91,13 @@ export default function ManageBots() {
   return (
     <div className="w-full">
       {/* Header */}
-      <header className="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <h1 className="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
+      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <h1 className="text-gray-900 dark:text-white text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-[-0.033em]">
           Manage Bots
         </h1>
         <Link
           to="/bots/dca"
-          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary hover:bg-primary/90 text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] px-4 transition-colors"
+          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 sm:h-11 bg-primary hover:bg-primary/90 text-white gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold leading-normal tracking-[0.015em] px-3 sm:px-4 transition-colors min-h-[44px] touch-manipulation w-full sm:w-auto"
         >
           <span className="material-symbols-outlined text-base filled">add</span>
           <span className="truncate">New Bot</span>
@@ -105,18 +105,18 @@ export default function ManageBots() {
       </header>
 
       {/* Search */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <label className="flex flex-col w-full">
-          <div className="relative flex w-full flex-1 items-stretch rounded-lg h-12">
-            <div className="text-gray-400 dark:text-[#9399c8] pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-4">
-              <span className="material-symbols-outlined">search</span>
+          <div className="relative flex w-full flex-1 items-stretch rounded-lg h-11 sm:h-12">
+            <div className="text-gray-400 dark:text-[#9399c8] pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 sm:pl-4">
+              <span className="material-symbols-outlined text-lg sm:text-xl">search</span>
             </div>
             <input
               type="text"
               placeholder="Search bots by name, network, or asset..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#242847] h-full placeholder:text-gray-400 dark:placeholder:text-[#9399c8] pl-12 pr-4 text-base font-normal leading-normal"
+              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#242847] h-full placeholder:text-gray-400 dark:placeholder:text-[#9399c8] pl-10 sm:pl-12 pr-3 sm:pr-4 text-sm sm:text-base font-normal leading-normal"
             />
           </div>
         </label>
@@ -124,7 +124,7 @@ export default function ManageBots() {
 
       {/* Bot Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
@@ -166,27 +166,27 @@ export default function ManageBots() {
           ))}
         </div>
       ) : filteredBots.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
           {filteredBots.map((bot) => (
             <BotCard key={bot.id} bot={bot} />
           ))}
         </div>
       ) : (
-        <div className="w-full text-center py-24">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-6">
-            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-4xl">
+        <div className="w-full text-center py-12 sm:py-16 lg:py-24 px-4">
+          <div className="inline-flex items-center justify-center h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4 sm:mb-6">
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-3xl sm:text-4xl">
               smart_toy
             </span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
             You haven't created any bots yet.
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4 sm:mb-6">
             Get started by creating a new trading bot.
           </p>
           <Link
             to="/bots/dca"
-            className="flex mx-auto cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary hover:bg-primary/90 text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] px-4 transition-colors"
+            className="flex mx-auto cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 sm:h-11 bg-primary hover:bg-primary/90 text-white gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold leading-normal tracking-[0.015em] px-3 sm:px-4 transition-colors min-h-[44px] touch-manipulation max-w-xs"
           >
             <span className="material-symbols-outlined text-base filled">add</span>
             <span className="truncate">Create New Bot</span>

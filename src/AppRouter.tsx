@@ -2,7 +2,11 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Center, Loader } from '@mantine/core';
 import MainLayout from './components/layouts/MainLayout';
-import NotFound from './pages/NotFound';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Authentication pages (not lazy-loaded for faster initial access)
+import Login from './pages/authentication/Login';
+import Registration from './pages/authentication/Registration';
 
 // Lazy-loaded pages to reduce initial bundle size
 const Home = lazy(() => import('./pages/Home'));
@@ -18,6 +22,7 @@ const TrendTrading = lazy(() => import('./pages/TrendTrading'));
 const ArbitrageDashboard = lazy(() => import('./pages/ArbitrageBots'));
 const FrontBots = lazy(() => import('./pages/FrontBots'));
 const SettingsPage = lazy(() => import('./pages/setting'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const AppRouter = () => {
   const { pathname } = useLocation();
@@ -52,9 +57,22 @@ const AppRouter = () => {
   return (
     <Suspense fallback={LoaderFallback}>
       <Routes>
+        {/* Public Auth Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Registration />} />
+        
+        {/* Protected Routes */}
         <Route element={<MainLayout />}>
           {allroutes.map(({ url, component: Component }, i) => (
-            <Route key={i} path={url} element={<Component />} />
+            <Route 
+              key={i} 
+              path={url} 
+              element={
+                <ProtectedRoute>
+                  <Component />
+                </ProtectedRoute>
+              } 
+            />
           ))}
         </Route>
 

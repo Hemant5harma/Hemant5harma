@@ -140,31 +140,33 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="mb-3 flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-        <Key className="mr-2 h-5 w-5 text-primary" />
-        {label}
-      </label>
+      {label && (
+        <label className="mb-2 flex items-center text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary">
+          <Key className="mr-2 h-4 w-4 text-primary" />
+          {label}
+        </label>
+      )}
 
       {loading ? (
-        <div className="flex items-center justify-center rounded-xl border-2 border-gray-200 bg-[#FAFBFC] px-4 py-3 dark:border-gray-600 dark:bg-gray-700/50">
+        <div className="flex items-center justify-center rounded-xl border-2 border-border-light bg-surface-light px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
           <Loader className="h-5 w-5 animate-spin text-primary" />
-          <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading wallets...</span>
+          <span className="ml-2 text-sm text-text-light-secondary dark:text-text-dark-secondary">Loading wallets...</span>
         </div>
       ) : keys.length === 0 ? (
         <div className="space-y-3">
-          <div className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:border-gray-600 dark:bg-gray-800/50">
-            <Wallet className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500" />
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <div className="rounded-xl border-2 border-dashed border-border-light bg-surface-light p-4 text-center dark:border-border-dark dark:bg-surface-dark">
+            <Wallet className="mx-auto h-8 w-8 text-text-light-secondary dark:text-text-dark-secondary" />
+            <p className="mt-2 text-sm text-text-light-secondary dark:text-text-dark-secondary">
               No wallets found for {getKeyType(chainId) === 'solana' ? 'Solana' : 'EVM chains'}
             </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+            <p className="mt-1 text-xs text-text-light-secondary dark:text-text-dark-secondary">
               Add a wallet to start trading
             </p>
           </div>
           {onAddKey && (
             <button
               onClick={onAddKey}
-              className="flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-primary/90"
+              className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-3 text-sm font-semibold text-white transition-all hover:from-primary/90 hover:to-secondary/90 hover:shadow-lg"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Wallet
@@ -184,23 +186,23 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
           />
 
           {selectedKey && (
-            <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+            <div className="rounded-lg border border-border-light bg-primary/10 p-3 dark:border-border-dark dark:bg-primary/20">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
                     {selectedKey.name}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 break-all font-mono">
+                  <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary break-all font-mono">
                     {selectedKey.address}
                   </p>
                   {purchaseBalance && (
-                    <p className="mt-1 text-xs font-semibold text-green-700 dark:text-green-300">
+                    <p className="mt-1 text-xs font-semibold text-primary">
                       💰 {purchaseBalance}
                     </p>
                   )}
                 </div>
                 {selectedKey.is_default && (
-                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-800 dark:text-blue-100 flex-shrink-0">
+                  <span className="rounded-full bg-primary/20 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/30 dark:text-primary flex-shrink-0">
                     Default
                   </span>
                 )}
@@ -211,7 +213,7 @@ const PrivateKeySelector: React.FC<PrivateKeySelectorProps> = ({
           {onAddKey && (
             <button
               onClick={onAddKey}
-              className="flex w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-transparent px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-gray-600 dark:text-gray-300 dark:hover:border-primary"
+              className="flex w-full items-center justify-center rounded-xl border-2 border-dashed border-border-light bg-transparent px-4 py-2 text-sm font-medium text-text-light-secondary transition-all hover:border-primary hover:bg-primary/5 hover:text-primary dark:border-border-dark dark:text-text-dark-secondary dark:hover:border-primary"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Another Wallet
