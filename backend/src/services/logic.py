@@ -373,24 +373,31 @@ async def check_bot(bot_id: int):
                     # Create market data service instance
                     market_service = MarketDataService(db)
                     
-                    # Get price data for the token using bot's network configuration
-                    price_data = await market_service.get_price_for_bot_token(bot_id, coin.token_address)
+                    # Get price data for the token using bot's network configuration and frequency
+                    price_data = await market_service.get_price_for_bot_token(bot_id, coin.token_address, bot.frequency)
                     if not price_data:
                         logger.warning(f"No price data for {coin.token_address}, skipping")
                         continue
 
                     current_price = price_data.get("usdPrice")
-                    change_24h = price_data.get("24hChange")
+                    # Get the price change (frequency-based or 24h fallback)
+                    price_change = price_data.get("24hChange")  # Key name kept for compatibility
+                    change_interval = price_data.get("changeInterval", "24h")  # Actual interval used
                     
-                    if change_24h is None:
+                    if price_change is None:
                         logger.warning(
-                            f"No 24h change data for {coin.token_address}, skipping"
+                            f"No price change data for {coin.token_address} (interval: {change_interval}), skipping"
                         )
                         continue
 
                     logger.info(
-                        f"Token {coin.token_address}: current price ${current_price}, 24h change {change_24h}%, threshold {coin.threshold}%"
+                        f"Token {coin.token_address}: current price ${current_price}, "
+                        f"{change_interval} change {price_change}%, threshold {coin.threshold}%"
                     )
+
+                    # Update price_data to use the frequency-based change for condition evaluation
+                    # The evaluate_trading_condition function expects "24hChange" key
+                    price_data["24hChange"] = price_change  # This is actually frequency-based now
 
                     # Execute trade based on the evaluated condition
                     condition_met = await evaluate_trading_condition(coin, price_data, chain_id)
