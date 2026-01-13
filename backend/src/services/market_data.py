@@ -255,43 +255,25 @@ class MarketDataService:
             # Determine the appropriate interval based on frequency
             interval = frequency_to_coinpaprika_interval(bot_frequency) if bot_frequency else "24h"
             
-            # Strategy: Prioritize based on interval and token identification
-            # - If interval is NOT 24h AND we can identify token → Try CoinPaprika first (has frequency-based data)
-            # - If interval is 24h OR we can't identify token → Try GeckoTerminal first (works with addresses)
+            # Try to get token symbol from address (simplified - you might want to enhance this)
+            # For now, we'll try CoinPaprika for known tokens, fallback to GeckoTerminal
+            # In a production system, you'd have a token registry or API to get symbol from address
             
-            # Attempt to identify token by checking common token addresses
-            token_symbol = self._get_token_symbol_from_address(token_address, chain_id)
+            # Try CoinPaprika first if we have a way to identify the token
+            # For now, we'll primarily use GeckoTerminal but with frequency-aware logic
+            # Since CoinPaprika uses coin IDs not addresses, we'll use GeckoTerminal as primary
             
-            # If we have a non-24h interval and can identify the token, prioritize CoinPaprika
-            if interval != "24h" and token_symbol:
-                coin_id = self.search_coinpaprika_by_symbol(token_symbol)
-                if coin_id:
-                    logger.info(f"Using CoinPaprika for {token_symbol} ({token_address}) with {interval} interval")
-                    price_data = self.get_price_change_coinpaprika(coin_id, interval)
-                    if price_data:
-                        # Convert to expected format
-                        return {
-                            "usdPrice": price_data["price"],
-                            "24hChange": price_data["percent_change"],  # This will be the frequency-based change
-                            "changeInterval": interval,
-                            "source": "coinpaprika"
-                        }
-                    # If CoinPaprika failed, fall through to try GeckoTerminal
-            
-            # Try GeckoTerminal (works directly with addresses, but only has 24h data)
+            # Try GeckoTerminal first (works directly with addresses)
             price_data = self.get_current_price_gecko(token_address, chain_id, interval)
             if price_data:
                 price_data["changeInterval"] = "24h"  # GeckoTerminal only provides 24h
                 price_data["source"] = "geckoterminal"
-                # If we needed a different interval, log a warning
-                if interval != "24h":
-                    logger.warning(
-                        f"GeckoTerminal returned 24h data for {token_address}, but requested interval was {interval}. "
-                        f"Consider using CoinPaprika for frequency-based intervals."
-                    )
                 return price_data
             
-            # If GeckoTerminal failed and we haven't tried CoinPaprika yet, try it now
+            # If GeckoTerminal failed (404 or other error), try CoinPaprika as fallback
+            # Attempt to identify token by checking common token addresses
+            token_symbol = self._get_token_symbol_from_address(token_address, chain_id)
+            
             if token_symbol:
                 coin_id = self.search_coinpaprika_by_symbol(token_symbol)
                 if coin_id:
